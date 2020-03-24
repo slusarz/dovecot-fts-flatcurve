@@ -23,6 +23,7 @@ struct flatcurve_fts_backend {
 	struct fts_backend backend;
 	char *db;
 
+	struct fts_flatcurve_settings *set;
 	struct flatcurve_xapian *xapian;
 
 	struct mailbox *box;

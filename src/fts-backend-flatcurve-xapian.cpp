@@ -85,20 +85,19 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 }
 
 static bool
-fts_flatcurve_xapian_open_read(struct flatcurve_fts_backend *backend,
-			       struct fts_flatcurve_user *fuser)
+fts_flatcurve_xapian_open_read(struct flatcurve_fts_backend *backend)
 {
 	if (backend->xapian->db_read != NULL)
 		return TRUE;
 
 	try {
 		backend->xapian->db_read = new Xapian::Database(backend->db);
-		if (fuser && fuser->set.debug)
+		if (backend->set->debug)
 			i_info("%s Opened DB (RO) %s (%s)",
 			       FLATCURVE_DEBUG_PREFIX,
 			       backend->box->name, backend->db);
 	} catch (Xapian::Error e) {
-		if (fuser && fuser->set.debug)
+		if (backend->set->debug)
 			i_info("%s Can't open DB RO (%s) %s; %s",
 			       FLATCURVE_DEBUG_PREFIX,
 			       backend->box->name, backend->db,
@@ -110,8 +109,7 @@ fts_flatcurve_xapian_open_read(struct flatcurve_fts_backend *backend,
 }
 
 static bool
-fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend,
-				struct fts_flatcurve_user *fuser)
+fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend)
 {
 	struct flatcurve_xapian *xapian = backend->xapian;
 
@@ -122,12 +120,12 @@ fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend,
 		xapian->db_write = new Xapian::WritableDatabase(
 			backend->db,
 			Xapian::DB_CREATE_OR_OPEN | Xapian::DB_RETRY_LOCK);
-		if ((fuser != NULL) && fuser->set.debug)
+		if (backend->set->debug)
 			i_info("%s Opened DB (RW) %s (%s)",
 			       FLATCURVE_DEBUG_PREFIX,
 			       backend->box->name, backend->db);
 	} catch (Xapian::Error e) {
-		if ((fuser != NULL) && fuser->set.debug)
+		if (backend->set->debug)
 			i_info("%s Can't open DB RW (%s) %s; %s",
 			       FLATCURVE_DEBUG_PREFIX,
 			       backend->box->name, backend->db,
@@ -139,18 +137,17 @@ fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend,
 }
 
 void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
-				       struct fts_flatcurve_user *fuser,
 				       uint32_t *last_uid_r)
 {
 	*last_uid_r = 0;
 
-	if (!fts_flatcurve_xapian_open_read(backend, fuser))
+	if (!fts_flatcurve_xapian_open_read(backend))
 		return;
 
 	try {
 		*last_uid_r = backend->xapian->db_read->get_lastdocid();
 	} catch (Xapian::Error e) {
-		if (fuser->set.debug)
+		if (backend->set->debug)
 			i_error("%s get_last_uid (%s); %s",
 				FLATCURVE_DEBUG_PREFIX, backend->box->name,
 				e.get_msg().c_str());
@@ -158,16 +155,15 @@ void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 }
 
 void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
-				  struct fts_flatcurve_user *fuser,
 				  uint32_t uid)
 {
-	if (!fts_flatcurve_xapian_open_write(backend, fuser))
+	if (!fts_flatcurve_xapian_open_write(backend))
 		return;
 
 	try {
 		backend->xapian->db_write->delete_document(uid);
 	} catch (Xapian::Error e) {
-		if (fuser->set.debug)
+		if (backend->set->debug)
 			i_error("%s update_expunge (%s)",
 				FLATCURVE_DEBUG_PREFIX, e.get_msg().c_str());
 	}
@@ -186,7 +182,7 @@ fts_flatcurve_xapian_get_document(struct flatcurve_fts_backend_update_context *c
 
 	fts_flatcurve_xapian_clear_document(backend);
 
-	if (!fts_flatcurve_xapian_open_write(backend, NULL))
+	if (!fts_flatcurve_xapian_open_write(backend))
 		return FALSE;
 
 	try {
@@ -211,7 +207,6 @@ fts_flatcurve_xapian_get_document(struct flatcurve_fts_backend_update_context *c
 void
 fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *ctx,
 				  struct flatcurve_fts_backend *backend,
-				  struct fts_flatcurve_user *fuser,
 				  const unsigned char *data, size_t size)
 {
 	std::string p;
@@ -224,14 +219,14 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 	if (ctx->hdr_name != NULL) {
 		p += FLATCURVE_HEADER_PREFIX;
 		p += str_ucase(ctx->hdr_name);
-		if (fuser->set.no_position) {
+		if (backend->set->no_position) {
 			xapian->tg->index_text_without_positions(s, 1, p);
 		} else {
 			xapian->tg->index_text(s, 1, p);
 		}
 	}
 
-	if (fuser->set.no_position) {
+	if (backend->set->no_position) {
 		xapian->tg->index_text_without_positions(s, 1,
 							 FLATCURVE_ALL_HEADERS_PREFIX);
 	} else {
@@ -242,7 +237,6 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 void
 fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx,
 				struct flatcurve_fts_backend *backend,
-				struct fts_flatcurve_user *fuser,
 				const unsigned char *data, size_t size)
 {
 	std::string s((char *)data, size);
@@ -251,7 +245,7 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 	if (!fts_flatcurve_xapian_get_document(ctx, backend))
 		return;
 
-	if (fuser->set.no_position) {
+	if (backend->set->no_position) {
 		xapian->tg->index_text_without_positions(s, 1,
 							 FLATCURVE_BODYTEXT_PREFIX);
 	} else {
@@ -378,8 +372,8 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	return TRUE;
 }
 
-bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query,
-				      struct fts_flatcurve_user *fuser)
+bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
+				      struct flatcurve_fts_query *query)
 {
 	struct mail_search_arg *args = query->args;
 	void *key, *val;
@@ -398,7 +392,7 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query,
 			return FALSE;
 	}
 
-	if (fuser->set.debug)
+	if (backend->set->debug)
 		i_info("%s Search query generated: %s",
 		       FLATCURVE_DEBUG_PREFIX, query->xapian->str->c_str());
 
@@ -430,7 +424,6 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query,
 
 bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_backend *backend,
 				    struct flatcurve_fts_query *query,
-				    struct fts_flatcurve_user *fuser,
 				    struct fts_result *r)
 {
 	Xapian::Enquire *enquire;
@@ -438,7 +431,7 @@ bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_backend *backend,
 	Xapian::MSet m;
 	unsigned int offset = 0;
 
-	if (!fts_flatcurve_xapian_open_read(backend, fuser))
+	if (!fts_flatcurve_xapian_open_read(backend))
 		return FALSE;
 
 	enquire = new Xapian::Enquire(*backend->xapian->db_read);
