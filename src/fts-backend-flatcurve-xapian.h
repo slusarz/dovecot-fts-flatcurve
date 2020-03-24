@@ -6,7 +6,6 @@
 
 struct flatcurve_xapian *fts_flatcurve_xapian_init();
 void fts_flatcurve_xapian_deinit(struct flatcurve_xapian *xapian);
-void fts_flatcurve_xapian_commit(struct flatcurve_fts_backend *backend);
 void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend);
 void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 				       uint32_t *last_uid_r);

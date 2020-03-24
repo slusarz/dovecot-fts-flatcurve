@@ -14,7 +14,11 @@
 #define FTS_FLATCURVE_USER_CONTEXT_REQUIRE(obj) \
 	MODULE_CONTEXT_REQUIRE(obj, fts_flatcurve_user_module)
 
+#define FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT 50
+
 struct fts_flatcurve_settings {
+	unsigned int commit_limit;
+
 	bool debug:1;
 	bool no_position:1;
 };

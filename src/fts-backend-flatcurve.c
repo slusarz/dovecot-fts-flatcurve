@@ -44,7 +44,6 @@ fts_backend_flatcurve_init(struct fts_backend *_backend, const char **error_r)
 static void
 fts_backend_flatcurve_close_box(struct flatcurve_fts_backend *backend)
 {
-	fts_flatcurve_xapian_commit(backend);
 	fts_flatcurve_xapian_close(backend);
 
 	backend->box = NULL;
@@ -184,7 +183,6 @@ fts_backend_flatcurve_update_set_build_key(struct fts_backend_update_context *_c
 			i_info("%s Indexing mailbox=%s uid=%d",
 			       FLATCURVE_DEBUG_PREFIX, backend->box->name,
 			       key->uid);
-		fts_flatcurve_xapian_commit(backend);
 	}
 
 	ctx->type = key->type;

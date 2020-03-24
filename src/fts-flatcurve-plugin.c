@@ -25,12 +25,20 @@ fts_flatcurve_plugin_init_settings(struct fts_flatcurve_settings *set,
 				   const char *str)
 {
 	const char *const *tmp;
+	unsigned int val;
+
+	set->commit_limit = FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT;
 
 	for (tmp = t_strsplit_spaces(str, " "); *tmp != NULL; tmp++) {
 		if (str_begins(*tmp, "debug=")) {
 			set->debug = TRUE;
 		} else if (str_begins(*tmp, "no_position=")) {
 			set->no_position = TRUE;
+		} else if (str_begins(*tmp, "commit_limit=")) {
+			if (str_to_uint(*tmp + 13, &val) < 0 || val == 0) {
+				i_fatal("Invalid commit_limit: %s", *tmp + 13);
+                        }
+			set->commit_limit = val;
 		}
 	}
 
