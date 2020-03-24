@@ -6,7 +6,6 @@ extern "C" {
 #include "lib.h"
 #include "hash.h"
 #include "mail-storage-private.h"
-#include "mailbox-list-iter.h"
 #include "mail-search.h"
 #include "unlink-directory.h"
 #include "fts-backend-flatcurve.h"
@@ -272,45 +271,36 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 	}
 }
 
-void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend,
-				       const struct mailbox_info *info)
+void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 {
-	struct mailbox *box;
-	Xapian::Database *db;
-	const char *error, *new_path, *orig_path, *path;
-	enum mailbox_flags mbox_flags;
-	enum unlink_directory_flags unlink_flags;
+	const char *error;
+	enum unlink_directory_flags unlink_flags =
+		UNLINK_DIRECTORY_FLAG_RMDIR;
 
-	box = mailbox_alloc(backend->backend.ns->list, info->vname,
-			    mbox_flags);
-	if (mailbox_get_path_to(box, MAILBOX_LIST_PATH_TYPE_INDEX, &path) > 0) {
-		orig_path = t_strdup_printf("%s/%s", path,
-					    FLATCURVE_INDEX_NAME);
-		new_path = t_strdup_printf("%s%s", orig_path,
-					   FLATCURVE_INDEX_OPTIMIZE_SUFFIX);
-		std::string s(new_path);
+	if (!fts_flatcurve_xapian_open_read(backend))
+		return;
 
-		try {
-			db = new Xapian::Database(orig_path);
-			db->compact(new_path, Xapian::DBCOMPACT_NO_RENUMBER);
-			db->close();
-			delete(db);
+	std::string s(backend->db);
+	s += FLATCURVE_INDEX_OPTIMIZE_SUFFIX;
 
-			if (unlink_directory(orig_path, unlink_flags, &error) < 0) {
-				i_error("%s Deleting old directory (%s) failed: %s",
-					FLATCURVE_DEBUG_PREFIX, orig_path,
-					error);
-			} else {
-				if (rename(new_path, orig_path) < 0) {
-					i_error("%s Renaming directory (%s -> %s) failed: %m",
-						FLATCURVE_DEBUG_PREFIX,
-						new_path, orig_path);
-				}
-			}
-		} catch (Xapian::Error e) { }
+	try {
+		backend->xapian->db_read->compact(s,
+			Xapian::DBCOMPACT_NO_RENUMBER);
+	} catch (Xapian::Error e) {
+		i_error("%s Error optimizing DB: %s",
+			FLATCURVE_DEBUG_PREFIX, e.get_msg().c_str());
+		return;
 	}
 
-	mailbox_free(&box);
+	fts_flatcurve_xapian_close(backend);
+
+	if (unlink_directory(backend->db, unlink_flags, &error) < 0) {
+		i_error("%s Deleting old directory (%s) failed: %s",
+			FLATCURVE_DEBUG_PREFIX, backend->db, error);
+	} else if (rename(s.c_str(), backend->db) < 0) {
+		i_error("%s Renaming directory (%s -> %s) failed: %m",
+			FLATCURVE_DEBUG_PREFIX, s.c_str(), backend->db);
+	}
 }
 
 static bool

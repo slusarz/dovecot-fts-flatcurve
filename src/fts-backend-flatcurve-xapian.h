@@ -19,8 +19,7 @@ void
 fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx,
 				struct flatcurve_fts_backend *backend,
 				const unsigned char *data, size_t size);
-void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend,
-				       const struct mailbox_info *info);
+void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend);
 bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 				      struct flatcurve_fts_query *query);
 bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_backend *backend,

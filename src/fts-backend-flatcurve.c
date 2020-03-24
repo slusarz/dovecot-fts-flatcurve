@@ -248,22 +248,26 @@ static int fts_backend_flatcurve_optimize(struct fts_backend *_backend)
 {
 	struct flatcurve_fts_backend *backend =
 		(struct flatcurve_fts_backend *)_backend;
+	struct mailbox *box;
 	const struct mailbox_info *info;
 	struct mailbox_list_iterate_context *iter;
 	const enum mailbox_list_iter_flags iter_flags =
 		(enum mailbox_list_iter_flags)
 		(MAILBOX_LIST_ITER_NO_AUTO_BOXES |
 		 MAILBOX_LIST_ITER_RETURN_NO_FLAGS);
+	enum mailbox_flags mbox_flags = 0;
 
 	iter = mailbox_list_iter_init(_backend->ns->list, "*", iter_flags);
-	T_BEGIN {
-		while ((info = mailbox_list_iter_next(iter)) != NULL) {
-			if (backend->set->debug)
-				i_info("%s Optimizing mailbox=%s",
-				       FLATCURVE_DEBUG_PREFIX, info->vname);
-			fts_flatcurve_xapian_optimize_box(backend, info);
-		}
-	} T_END;
+	while ((info = mailbox_list_iter_next(iter)) != NULL) {
+		if (backend->set->debug)
+			i_info("%s Optimizing mailbox=%s",
+			       FLATCURVE_DEBUG_PREFIX, info->vname);
+		box = mailbox_alloc(_backend->ns->list, info->vname,
+				    mbox_flags);
+		fts_backend_flatcurve_set_mailbox(backend, box);
+		fts_flatcurve_xapian_optimize_box(backend);
+		mailbox_free(&box);
+	}
 
 	(void)mailbox_list_iter_deinit(&iter);
 
