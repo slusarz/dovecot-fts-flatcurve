@@ -22,6 +22,8 @@ struct flatcurve_xapian {
 	Xapian::WritableDatabase *db_write;
 	Xapian::Document *doc;
 	Xapian::TermGenerator *tg;
+
+	uint32_t doc_uid;
 };
 
 struct flatcurve_fts_query_xapian {
@@ -49,13 +51,18 @@ void fts_flatcurve_xapian_commit(struct flatcurve_fts_backend *backend)
 {
 	struct flatcurve_xapian *xapian = backend->xapian;
 
-	if (backend->last_uid != 0) {
-		xapian->db_write->replace_document(backend->last_uid,
+	if (xapian->doc != NULL)
+		xapian->db_write->replace_document(xapian->doc_uid,
 						   *xapian->doc);
-		xapian->doc = NULL;
-		delete(xapian->tg);
-		xapian->tg = NULL;
-	}
+}
+
+static void
+fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
+{
+	delete(backend->xapian->tg);
+	backend->xapian->doc = NULL;
+	backend->xapian->doc_uid = 0;
+	backend->xapian->tg = NULL;
 }
 
 void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
@@ -67,8 +74,7 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 		xapian->db_write->close();
 		delete(xapian->db_write);
 		xapian->db_write = NULL;
-		delete(xapian->tg);
-		xapian->tg = NULL;
+		fts_flatcurve_xapian_clear_document(backend);
 	}
 
 	if (xapian->db_read != NULL) {
@@ -78,20 +84,21 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 	}
 }
 
-bool fts_flatcurve_xapian_open_read(struct flatcurve_fts_backend *backend,
-				    struct fts_flatcurve_user *fuser)
+static bool
+fts_flatcurve_xapian_open_read(struct flatcurve_fts_backend *backend,
+			       struct fts_flatcurve_user *fuser)
 {
 	if (backend->xapian->db_read != NULL)
 		return TRUE;
 
 	try {
 		backend->xapian->db_read = new Xapian::Database(backend->db);
-		if (fuser->set.debug)
+		if (fuser && fuser->set.debug)
 			i_info("%s Opened DB (RO) %s (%s)",
 			       FLATCURVE_DEBUG_PREFIX,
 			       backend->box->name, backend->db);
 	} catch (Xapian::Error e) {
-		if (fuser->set.debug)
+		if (fuser && fuser->set.debug)
 			i_info("%s Can't open DB RO (%s) %s; %s",
 			       FLATCURVE_DEBUG_PREFIX,
 			       backend->box->name, backend->db,
@@ -102,8 +109,9 @@ bool fts_flatcurve_xapian_open_read(struct flatcurve_fts_backend *backend,
 	return TRUE;
 }
 
-bool fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend,
-				     struct fts_flatcurve_user *fuser)
+static bool
+fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend,
+				struct fts_flatcurve_user *fuser)
 {
 	struct flatcurve_xapian *xapian = backend->xapian;
 
@@ -114,12 +122,12 @@ bool fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend,
 		xapian->db_write = new Xapian::WritableDatabase(
 			backend->db,
 			Xapian::DB_CREATE_OR_OPEN | Xapian::DB_RETRY_LOCK);
-		if (fuser->set.debug)
+		if ((fuser != NULL) && fuser->set.debug)
 			i_info("%s Opened DB (RW) %s (%s)",
 			       FLATCURVE_DEBUG_PREFIX,
 			       backend->box->name, backend->db);
 	} catch (Xapian::Error e) {
-		if (fuser->set.debug)
+		if ((fuser != NULL) && fuser->set.debug)
 			i_info("%s Can't open DB RW (%s) %s; %s",
 			       FLATCURVE_DEBUG_PREFIX,
 			       backend->box->name, backend->db,
@@ -130,10 +138,15 @@ bool fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend,
 	return TRUE;
 }
 
-bool fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
+void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 				       struct fts_flatcurve_user *fuser,
 				       uint32_t *last_uid_r)
 {
+	*last_uid_r = 0;
+
+	if (!fts_flatcurve_xapian_open_read(backend, fuser))
+		return;
+
 	try {
 		*last_uid_r = backend->xapian->db_read->get_lastdocid();
 	} catch (Xapian::Error e) {
@@ -141,16 +154,16 @@ bool fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 			i_error("%s get_last_uid (%s); %s",
 				FLATCURVE_DEBUG_PREFIX, backend->box->name,
 				e.get_msg().c_str());
-		return FALSE;
 	}
-
-	return TRUE;
 }
 
 void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 				  struct fts_flatcurve_user *fuser,
 				  uint32_t uid)
 {
+	if (!fts_flatcurve_xapian_open_write(backend, fuser))
+		return;
+
 	try {
 		backend->xapian->db_write->delete_document(uid);
 	} catch (Xapian::Error e) {
@@ -167,9 +180,14 @@ fts_flatcurve_xapian_get_document(struct flatcurve_fts_backend_update_context *c
 	Xapian::Document doc;
 	struct flatcurve_xapian *xapian = backend->xapian;
 
-	if (xapian->doc != NULL) {
+	if (ctx->uid == xapian->doc_uid) {
 		return TRUE;
 	}
+
+	fts_flatcurve_xapian_clear_document(backend);
+
+	if (!fts_flatcurve_xapian_open_write(backend, NULL))
+		return FALSE;
 
 	try {
 		doc = xapian->db_write->get_document(ctx->uid);
@@ -184,6 +202,8 @@ fts_flatcurve_xapian_get_document(struct flatcurve_fts_backend_update_context *c
 	xapian->tg = new Xapian::TermGenerator();
 	xapian->tg->set_stemming_strategy(Xapian::TermGenerator::STEM_NONE);
 	xapian->tg->set_document(*xapian->doc);
+
+	xapian->doc_uid = ctx->uid;
 
 	return TRUE;
 }
@@ -417,6 +437,9 @@ bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_backend *backend,
 	Xapian::MSetIterator i;
 	Xapian::MSet m;
 	unsigned int offset = 0;
+
+	if (!fts_flatcurve_xapian_open_read(backend, fuser))
+		return FALSE;
 
 	enquire = new Xapian::Enquire(*backend->xapian->db_read);
 	enquire->set_query(*query->xapian->query);

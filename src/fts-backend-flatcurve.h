@@ -26,7 +26,6 @@ struct flatcurve_fts_backend {
 	struct flatcurve_xapian *xapian;
 
 	struct mailbox *box;
-	uint32_t last_uid;
 };
 
 struct flatcurve_fts_backend_update_context {
