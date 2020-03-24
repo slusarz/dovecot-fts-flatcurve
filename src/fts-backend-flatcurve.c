@@ -406,8 +406,7 @@ fts_backend_flatcurve_lookup(struct fts_backend *_backend, struct mailbox *box,
 
 struct fts_backend fts_backend_flatcurve = {
 	.name = "flatcurve",
-	.flags = FTS_BACKEND_FLAG_BUILD_FULL_WORDS |
-		 FTS_BACKEND_FLAG_TOKENIZED_INPUT,
+	.flags = FTS_BACKEND_FLAG_TOKENIZED_INPUT,
 	{
 		fts_backend_flatcurve_alloc,
 		fts_backend_flatcurve_init,
