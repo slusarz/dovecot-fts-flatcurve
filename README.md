@@ -88,8 +88,8 @@ Options for the `fts_flatcurve` plugin setting:
 		    (integer; DEFAULT: 50)
  - `debug` - if set, outputs debugging information (at INFO level)
 		    (boolean; DEFAULT: off)
- - `no_position` - if set, does not generate positional data (greatly reduces
-                   xapian storage, but does not allow phrase searching)
+ - `no_position` - Do not generate positional data (greatly reduces xapian
+		   storage, but does not allow phrase searching)
 		   (boolean; DEFAULT: off)
 
 
