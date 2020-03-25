@@ -60,15 +60,13 @@ fts_flatcurve_xapian_periodic_commit(struct flatcurve_fts_backend *backend)
 {
 	struct flatcurve_xapian *xapian = backend->xapian;
 
-	if (++xapian->doc_updates >= backend->set->commit_limit) {
+	if (++xapian->doc_updates >= backend->fuser->set.commit_limit) {
 		xapian->db_write->commit();
 		xapian->doc_updates = 0;
-		if (backend->set->debug)
-			i_info("%s Committing DB as update limit was reached; "
-			       "mailbox=%s limit=%d",
-			       FLATCURVE_DEBUG_PREFIX,
-			       backend->box->name,
-			       backend->set->commit_limit);
+		e_debug(backend->event, "Committing DB as update "
+			"limit was reached; mailbox=%s limit=%d",
+			backend->box->name,
+			backend->fuser->set.commit_limit);
 	}
 }
 
@@ -117,16 +115,11 @@ fts_flatcurve_xapian_open_read(struct flatcurve_fts_backend *backend)
 
 	try {
 		backend->xapian->db_read = new Xapian::Database(backend->db);
-		if (backend->set->debug)
-			i_info("%s Opened DB (RO) %s (%s)",
-			       FLATCURVE_DEBUG_PREFIX,
-			       backend->box->name, backend->db);
+		e_debug(backend->event, "Opened DB (RO) %s (%s)",
+			backend->box->name, backend->db);
 	} catch (Xapian::Error e) {
-		if (backend->set->debug)
-			i_info("%s Can't open DB RO (%s) %s; %s",
-			       FLATCURVE_DEBUG_PREFIX,
-			       backend->box->name, backend->db,
-			       e.get_msg().c_str());
+		e_debug(backend->event, "Cannot open DB RO (%s) %s; %s",
+			backend->box->name, backend->db, e.get_msg().c_str());
 		return FALSE;
 	}
 
@@ -145,16 +138,11 @@ fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend)
 		xapian->db_write = new Xapian::WritableDatabase(
 			backend->db,
 			Xapian::DB_CREATE_OR_OPEN | Xapian::DB_RETRY_LOCK);
-		if (backend->set->debug)
-			i_info("%s Opened DB (RW) %s (%s)",
-			       FLATCURVE_DEBUG_PREFIX,
-			       backend->box->name, backend->db);
+		e_debug(backend->event, "Opened DB (RW) %s (%s)",
+			backend->box->name, backend->db);
 	} catch (Xapian::Error e) {
-		if (backend->set->debug)
-			i_info("%s Can't open DB RW (%s) %s; %s",
-			       FLATCURVE_DEBUG_PREFIX,
-			       backend->box->name, backend->db,
-			       e.get_msg().c_str());
+		e_debug(backend->event, "Can't open DB RW (%s) %s; %s",
+			backend->box->name, backend->db, e.get_msg().c_str());
 		return FALSE;
 	}
 
@@ -172,10 +160,8 @@ void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 	try {
 		*last_uid_r = backend->xapian->db_read->get_lastdocid();
 	} catch (Xapian::Error e) {
-		if (backend->set->debug)
-			i_error("%s get_last_uid (%s); %s",
-				FLATCURVE_DEBUG_PREFIX, backend->box->name,
-				e.get_msg().c_str());
+		e_debug(backend->event, "get_last_uid (%s); %s",
+			backend->box->name, e.get_msg().c_str());
 	}
 }
 
@@ -204,9 +190,8 @@ void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 		backend->xapian->db_write->delete_document(uid);
 		fts_flatcurve_xapian_periodic_commit(backend);
 	} catch (Xapian::Error e) {
-		if (backend->set->debug)
-			i_error("%s update_expunge (%s)",
-				FLATCURVE_DEBUG_PREFIX, e.get_msg().c_str());
+		e_debug(backend->event, "update_expunge (%s)",
+			e.get_msg().c_str());
 	}
 }
 
@@ -260,14 +245,14 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 	if (ctx->hdr_name != NULL) {
 		p += FLATCURVE_HEADER_PREFIX;
 		p += str_ucase(ctx->hdr_name);
-		if (backend->set->no_position) {
+		if (backend->fuser->set.no_position) {
 			xapian->tg->index_text_without_positions(s, 1, p);
 		} else {
 			xapian->tg->index_text(s, 1, p);
 		}
 	}
 
-	if (backend->set->no_position) {
+	if (backend->fuser->set.no_position) {
 		xapian->tg->index_text_without_positions(s, 1,
 							 FLATCURVE_ALL_HEADERS_PREFIX);
 	} else {
@@ -286,7 +271,7 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 	if (!fts_flatcurve_xapian_get_document(ctx, backend))
 		return;
 
-	if (backend->set->no_position) {
+	if (backend->fuser->set.no_position) {
 		xapian->tg->index_text_without_positions(s, 1,
 							 FLATCURVE_BODYTEXT_PREFIX);
 	} else {
@@ -295,14 +280,15 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 }
 
 static bool
-fts_flatcurve_xapian_delete_index_real(const char *dir)
+fts_flatcurve_xapian_delete_index_real(struct flatcurve_fts_backend *backend,
+				       const char *dir)
 {
 	const char *error;
 	enum unlink_directory_flags unlink_flags = UNLINK_DIRECTORY_FLAG_RMDIR;
 
 	if (unlink_directory(dir, unlink_flags, &error) < 0) {
-		i_error("%s Deleting index (%s) failed: %s",
-			FLATCURVE_DEBUG_PREFIX, dir, error);
+		e_error(backend->event, "Deleting index (%s) failed: %s",
+			dir, error);
 		return FALSE;
 	}
 
@@ -312,7 +298,7 @@ fts_flatcurve_xapian_delete_index_real(const char *dir)
 bool fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend)
 {
 	fts_flatcurve_xapian_close(backend);
-	return fts_flatcurve_xapian_delete_index_real(backend->db);
+	return fts_flatcurve_xapian_delete_index_real(backend, backend->db);
 }
 
 void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
@@ -327,16 +313,17 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 		backend->xapian->db_read->compact(s,
 			Xapian::DBCOMPACT_NO_RENUMBER);
 	} catch (Xapian::Error e) {
-		i_error("%s Error optimizing DB: %s",
-			FLATCURVE_DEBUG_PREFIX, e.get_msg().c_str());
+		e_error(backend->event, "Error optimizing DB: %s",
+			e.get_msg().c_str());
 		return;
 	}
 
 	if (fts_flatcurve_xapian_delete_index(backend) &&
 	    (rename(s.c_str(), backend->db) < 0)) {
-		i_error("%s Activating new index (%s -> %s) failed: %m",
-			FLATCURVE_DEBUG_PREFIX, s.c_str(), backend->db);
-		fts_flatcurve_xapian_delete_index_real(s.c_str());
+		e_error(backend->event,
+			"Activating new index (%s -> %s) failed: %m",
+			s.c_str(), backend->db);
+		fts_flatcurve_xapian_delete_index_real(backend, s.c_str());
 	}
 }
 
@@ -438,9 +425,8 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 			return FALSE;
 	}
 
-	if (backend->set->debug)
-		i_info("%s Search query generated: %s",
-		       FLATCURVE_DEBUG_PREFIX, query->xapian->str->c_str());
+	e_debug(backend->event, "Search query generated: %s",
+		query->xapian->str->c_str());
 
 	qp.set_stemming_strategy(Xapian::QueryParser::STEM_NONE);
 
@@ -460,8 +446,8 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 			)
 		);
 	} catch (Xapian::QueryParserError e) {
-		i_error("%s Parsing query failed: %s",
-			FLATCURVE_DEBUG_PREFIX, e.get_msg().c_str());
+		e_error(backend->event, "Parsing query failed: %s",
+			e.get_msg().c_str());
 		return FALSE;
 	}
 

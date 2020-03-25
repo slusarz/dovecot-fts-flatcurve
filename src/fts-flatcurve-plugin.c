@@ -4,6 +4,7 @@
 #include "lib.h"
 #include "mail-storage-hooks.h"
 #include "fts-user.h"
+#include "fts-backend-flatcurve.h"
 #include "fts-flatcurve-plugin.h"
 
 const char *fts_flatcurve_plugin_version = DOVECOT_ABI_VERSION;
@@ -30,14 +31,12 @@ fts_flatcurve_plugin_init_settings(struct fts_flatcurve_settings *set,
 	set->commit_limit = FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT;
 
 	for (tmp = t_strsplit_spaces(str, " "); *tmp != NULL; tmp++) {
-		if (str_begins(*tmp, "debug=")) {
-			set->debug = TRUE;
-		} else if (str_begins(*tmp, "no_position=")) {
+		if (str_begins(*tmp, "no_position=")) {
 			set->no_position = TRUE;
 		} else if (str_begins(*tmp, "commit_limit=")) {
 			if (str_to_uint(*tmp + 13, &val) < 0 || val == 0) {
 				i_fatal("Invalid commit_limit: %s", *tmp + 13);
-                        }
+			}
 			set->commit_limit = val;
 		}
 	}
@@ -51,6 +50,11 @@ static void fts_flatcurve_mail_user_created(struct mail_user *user)
 	struct fts_flatcurve_user *fuser;
 	const char *env, *error;
 
+	if (fts_mail_user_init(user, &error) < 0) {
+		i_error("%s%s", FTS_FLATCURVE_DEBUG_PREFIX, error);
+		return;
+	}
+
 	fuser = p_new(user->pool, struct fts_flatcurve_user, 1);
 	env = mail_user_plugin_getenv(user, "fts_flatcurve");
 	if (env == NULL)
@@ -58,11 +62,6 @@ static void fts_flatcurve_mail_user_created(struct mail_user *user)
 
 	if (fts_flatcurve_plugin_init_settings(&fuser->set, env) < 0) {
 		/* Invalid settings, disabling */
-		return;
-	}
-
-	if (fts_mail_user_init(user, &error) < 0) {
-		i_error("fts_flatcurve: %s", error);
 		return;
 	}
 

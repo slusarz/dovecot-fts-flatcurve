@@ -8,7 +8,6 @@
 #include "mail-namespace.h"
 #include "fts-flatcurve-plugin.h"
 
-
 #define FLATCURVE_INDEX_NAME "flatcurve-index"
 #define FLATCURVE_INDEX_OPTIMIZE_SUFFIX ".optimize"
 
@@ -16,14 +15,15 @@
 #define FLATCURVE_BODYTEXT_PREFIX "XB"
 #define FLATCURVE_HEADER_PREFIX "XH"
 
-#define FLATCURVE_DEBUG_PREFIX "fts_flatcurve:"
-
+#define FTS_FLATCURVE_DEBUG_PREFIX "fts_flatcurve: "
 
 struct flatcurve_fts_backend {
 	struct fts_backend backend;
 	char *db;
 
-	struct fts_flatcurve_settings *set;
+	struct event *event;
+
+	struct fts_flatcurve_user *fuser;
 	struct flatcurve_xapian *xapian;
 
 	struct mailbox *box;

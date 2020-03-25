@@ -14,6 +14,10 @@ enum fts_backend_flatcurve_action {
 	FTS_BACKEND_FLATCURVE_ACTION_RESCAN
 };
 
+struct event_category event_category_fts_flatcurve = {
+	.name = "fts_flatcurve"
+};
+
 static struct fts_backend *fts_backend_flatcurve_alloc(void)
 {
 	struct flatcurve_fts_backend *backend;
@@ -37,11 +41,14 @@ fts_backend_flatcurve_init(struct fts_backend *_backend, const char **error_r)
 		return -1;
 	}
 
-	backend->set = &fuser->set;
+	backend->fuser = fuser;
 	backend->xapian = fts_flatcurve_xapian_init();
 
-	if (fuser->set.debug)
-		i_info("%s Initialized", FLATCURVE_DEBUG_PREFIX);
+	backend->event = event_create(_backend->ns->user->event);
+	event_add_category(backend->event, &event_category_fts_flatcurve);
+	event_set_append_log_prefix(backend->event, FTS_FLATCURVE_DEBUG_PREFIX);
+
+	e_debug(backend->event, "Initialized");
 
 	return 0;
 }
@@ -73,11 +80,11 @@ static void fts_backend_flatcurve_deinit(struct fts_backend *_backend)
 	struct flatcurve_fts_backend *backend =
 		(struct flatcurve_fts_backend *)_backend;
 
-	if (backend->set->debug)
-		i_info("%s De-initialized", FLATCURVE_DEBUG_PREFIX);
+	e_debug(backend->event, "Destroyed");
 
 	fts_backend_flatcurve_close_box(backend);
 	fts_flatcurve_xapian_deinit(backend->xapian);
+	event_unref(&backend->event);
 
 	i_free(backend);
 }
@@ -111,10 +118,8 @@ fts_backend_flatcurve_get_last_uid(struct fts_backend *_backend,
 
 	fts_flatcurve_xapian_get_last_uid(backend, last_uid_r);
 
-	if (backend->set->debug)
-		i_info("%s, Last UID mailbox=%s uid=%d",
-		       FLATCURVE_DEBUG_PREFIX, backend->box->name,
-		       *last_uid_r);
+	e_debug(backend->event, "Last UID mailbox=%s uid=%d",
+		backend->box->name, *last_uid_r);
 
 	return 0;
 }
@@ -162,9 +167,8 @@ fts_backend_flatcurve_update_expunge(struct fts_backend_update_context *_ctx,
 	struct flatcurve_fts_backend *backend =
 		(struct flatcurve_fts_backend *)ctx->ctx.backend;
 
-	if (backend->set->debug)
-		i_info("%s Expunge mailbox=%s uid=%d",
-		       FLATCURVE_DEBUG_PREFIX, backend->box->name, uid);
+	e_debug(backend->event, "Expunge mailbox=%s uid=%d",
+		backend->box->name, uid);
 
 	fts_flatcurve_xapian_expunge(backend, uid);
 }
@@ -183,12 +187,9 @@ fts_backend_flatcurve_update_set_build_key(struct fts_backend_update_context *_c
 	if (_ctx->failed)
 		return FALSE;
 
-	if (ctx->uid != key->uid) {
-		if (backend->set->debug)
-			i_info("%s Indexing mailbox=%s uid=%d",
-			       FLATCURVE_DEBUG_PREFIX, backend->box->name,
-			       key->uid);
-	}
+	if (ctx->uid != key->uid)
+		e_debug(backend->event, "Indexing mailbox=%s uid=%d",
+			backend->box->name, key->uid);
 
 	ctx->type = key->type;
 	ctx->uid = key->uid;
@@ -266,9 +267,7 @@ fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
 	if (mailbox_sync(box, MAILBOX_SYNC_FLAG_FULL_READ) < 0)
 		return FALSE;
 
-	if (backend->set->debug)
-		i_info("%s Rescanning mailbox=%s",
-		       FLATCURVE_DEBUG_PREFIX, box->name);
+	e_debug(backend->event, "Rescanning mailbox=%s", box->name);
 
 	trans = mailbox_transaction_begin(box, 0, __func__);
 	search_args = mail_search_build_init();
@@ -287,9 +286,9 @@ fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
 			goto end;
 		case 0:
 			seq_range_array_add(&missing, mail->uid);
-			if (backend->set->debug)
-				i_info("%s Rescan: Missing mailbox=%s uid=%d",
-				FLATCURVE_DEBUG_PREFIX, box->name, mail->uid);
+			e_debug(backend->event,
+				"Rescan: Missing mailbox=%s uid=%d",
+				box->name, mail->uid);
 			break;
 		default:
 			break;
@@ -306,15 +305,11 @@ end:
 		 * uids need to be indexed. Only solution is simply to delete
 		 * the index and rebuild at a later time. */
 		(void)fts_flatcurve_xapian_delete_index(backend);
-		if (backend->set->debug)
-			i_info("%s Rescan: Missing indexed messages, "
-			       "deleting index mailbox=%s",
-			       FLATCURVE_DEBUG_PREFIX, box->name);
+		e_debug(backend->event, "Rescan: Missing messages; "
+			"deleting index mailbox=%s", box->name);
 	} else if (dbexist) {
-		if (backend->set->debug)
-			i_info("%s Rescan: No missing messages "
-			       "mailbox=%s",
-			       FLATCURVE_DEBUG_PREFIX, box->name);
+		e_debug(backend->event, "Rescan: No missing messages "
+			"mailbox=%s", box->name);
 
 		/* Check for expunged mails. */
 		iter = fts_flatcurve_xapian_uid_iter_init(backend, NULL);
@@ -322,20 +317,18 @@ end:
 			if (!seq_range_exists(&uids, uid)) {
 				fts_flatcurve_xapian_expunge(backend, uid);
 				nodupes = FALSE;
-				if (backend->set->debug)
-					i_info("%s Rescan: Missing expunged "
-					       "message; deleting mailbox=%s "
-					       "uid=%d",
-					       FLATCURVE_DEBUG_PREFIX,
-					       box->name, uid);
+				e_debug(backend->event,
+					"Rescan: Missing expunged "
+					"message; deleting mailbox=%s "
+					"uid=%d", box->name, uid);
 			}
 		}
 		fts_flatcurve_xapian_uid_iter_deinit(&iter);
 
-		if (nodupes && backend->set->debug)
-			i_info("%s Rescan: No expunged messages "
-			       "mailbox=%s",
-			       FLATCURVE_DEBUG_PREFIX, box->name);
+		if (nodupes)
+			e_debug(backend->event,
+				"Rescan: No expunged messages mailbox=%s",
+				box->name);
 	}
 
 	array_free(&missing);
@@ -359,9 +352,7 @@ fts_backend_flatcurve_box_action(struct flatcurve_fts_backend *backend,
 		optimize = fts_backend_flatcurve_rescan_box(backend, box);
 	}
 	if (optimize) {
-		if (backend->set->debug)
-			i_info("%s Optimizing mailbox=%s",
-			       FLATCURVE_DEBUG_PREFIX, boxname);
+		e_debug(backend->event, "Optimizing mailbox=%s", boxname);
 		fts_flatcurve_xapian_optimize_box(backend);
 	}
 	mailbox_free(&box);

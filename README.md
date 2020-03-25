@@ -86,11 +86,15 @@ Options for the `fts_flatcurve` plugin setting:
 
  - `commit_limit` - Commit a database after this many documents are updated
 		    (integer; DEFAULT: 50)
- - `debug` - if set, outputs debugging information (at INFO level)
-		    (boolean; DEFAULT: off)
  - `no_position` - Do not generate positional data (greatly reduces xapian
 		   storage, but does not allow phrase searching)
 		   (boolean; DEFAULT: off)
+
+
+Logging/Events
+--------------
+
+This plugin emits events with the category `fts_flatcurve`.
 
 
 TODOs
