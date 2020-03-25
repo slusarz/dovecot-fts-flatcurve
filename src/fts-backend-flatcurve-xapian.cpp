@@ -115,11 +115,11 @@ fts_flatcurve_xapian_open_read(struct flatcurve_fts_backend *backend)
 
 	try {
 		backend->xapian->db_read = new Xapian::Database(backend->db);
-		e_debug(backend->event, "Opened DB (RO) %s (%s)",
+		e_debug(backend->event, "Opened DB (RO) (%s); %s",
 			backend->box->name, backend->db);
 	} catch (Xapian::Error e) {
-		e_debug(backend->event, "Cannot open DB RO (%s) %s; %s",
-			backend->box->name, backend->db, e.get_msg().c_str());
+		e_debug(backend->event, "Cannot open DB RO (%s); %s",
+			backend->box->name, e.get_msg().c_str());
 		return FALSE;
 	}
 
@@ -138,11 +138,11 @@ fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend)
 		xapian->db_write = new Xapian::WritableDatabase(
 			backend->db,
 			Xapian::DB_CREATE_OR_OPEN | Xapian::DB_RETRY_LOCK);
-		e_debug(backend->event, "Opened DB (RW) %s (%s)",
+		e_debug(backend->event, "Opened DB (RW) (%s); %s",
 			backend->box->name, backend->db);
 	} catch (Xapian::Error e) {
-		e_debug(backend->event, "Can't open DB RW (%s) %s; %s",
-			backend->box->name, backend->db, e.get_msg().c_str());
+		e_debug(backend->event, "Cannot open DB RW (%s); %s",
+			backend->box->name, e.get_msg().c_str());
 		return FALSE;
 	}
 
