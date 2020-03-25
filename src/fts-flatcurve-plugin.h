@@ -15,7 +15,6 @@
 	MODULE_CONTEXT_REQUIRE(obj, fts_flatcurve_user_module)
 
 #define FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT 50
-#define FTS_FLATCURVE_DEBUG_PREFIX "fts_flatcurve: "
 
 struct fts_flatcurve_settings {
 	unsigned int commit_limit;
