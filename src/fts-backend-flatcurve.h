@@ -5,7 +5,6 @@
 #define FTS_FLATCURVE_BACKEND_H
 
 #include "lib.h"
-#include "mail-namespace.h"
 #include "fts-flatcurve-plugin.h"
 
 #define FLATCURVE_INDEX_NAME "flatcurve-index"
@@ -19,14 +18,12 @@
 
 struct flatcurve_fts_backend {
 	struct fts_backend backend;
-	char *db;
+	char *boxname, *db;
 
 	struct event *event;
 
 	struct fts_flatcurve_user *fuser;
 	struct flatcurve_xapian *xapian;
-
-	struct mailbox *box;
 };
 
 struct flatcurve_fts_backend_update_context {

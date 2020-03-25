@@ -58,11 +58,8 @@ fts_backend_flatcurve_close_box(struct flatcurve_fts_backend *backend)
 {
 	fts_flatcurve_xapian_close(backend);
 
-	backend->box = NULL;
-
-	if (backend->db != NULL) {
-		i_free_and_null(backend->db);
-	}
+	i_free_and_null(backend->boxname);
+	i_free_and_null(backend->db);
 }
 
 static int fts_backend_flatcurve_refresh(struct fts_backend * _backend)
@@ -95,7 +92,8 @@ fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
 {
 	const char *path;
 
-	if ((box == NULL) || (box == backend->box))
+	if ((backend->boxname != NULL) &&
+	    (strcasecmp(box->vname, backend->boxname) == 0))
 		return;
 
 	fts_backend_flatcurve_close_box(backend);
@@ -103,8 +101,8 @@ fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
 	if (mailbox_get_path_to(box, MAILBOX_LIST_PATH_TYPE_INDEX, &path) <= 0)
 		i_unreached(); /* fts already checked this */
 
+	backend->boxname = i_strdup(box->vname);
 	backend->db = i_strdup_printf("%s/%s", path, FLATCURVE_INDEX_NAME);
-	backend->box = box;
 }
 
 static int
@@ -119,7 +117,7 @@ fts_backend_flatcurve_get_last_uid(struct fts_backend *_backend,
 	fts_flatcurve_xapian_get_last_uid(backend, last_uid_r);
 
 	e_debug(backend->event, "Last UID mailbox=%s uid=%d",
-		backend->box->name, *last_uid_r);
+		backend->boxname, *last_uid_r);
 
 	return 0;
 }
@@ -168,7 +166,7 @@ fts_backend_flatcurve_update_expunge(struct fts_backend_update_context *_ctx,
 		(struct flatcurve_fts_backend *)ctx->ctx.backend;
 
 	e_debug(backend->event, "Expunge mailbox=%s uid=%d",
-		backend->box->name, uid);
+		backend->boxname, uid);
 
 	fts_flatcurve_xapian_expunge(backend, uid);
 }
@@ -182,14 +180,14 @@ fts_backend_flatcurve_update_set_build_key(struct fts_backend_update_context *_c
 	struct flatcurve_fts_backend *backend =
 		(struct flatcurve_fts_backend *)ctx->ctx.backend;
 
-	i_assert(backend->box != NULL);
+	i_assert(backend->boxname != NULL);
 
 	if (_ctx->failed)
 		return FALSE;
 
 	if (ctx->uid != key->uid)
 		e_debug(backend->event, "Indexing mailbox=%s uid=%d",
-			backend->box->name, key->uid);
+			backend->boxname, key->uid);
 
 	ctx->type = key->type;
 	ctx->uid = key->uid;
@@ -352,7 +350,7 @@ fts_backend_flatcurve_box_action(struct flatcurve_fts_backend *backend,
 		optimize = fts_backend_flatcurve_rescan_box(backend, box);
 	}
 	if (optimize) {
-		e_debug(backend->event, "Optimizing mailbox=%s", boxname);
+		e_debug(backend->event, "Optimizing mailbox=%s", box->vname);
 		fts_flatcurve_xapian_optimize_box(backend);
 	}
 	mailbox_free(&box);

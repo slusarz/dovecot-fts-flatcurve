@@ -65,7 +65,7 @@ fts_flatcurve_xapian_periodic_commit(struct flatcurve_fts_backend *backend)
 		xapian->doc_updates = 0;
 		e_debug(backend->event, "Committing DB as update "
 			"limit was reached; mailbox=%s limit=%d",
-			backend->box->name,
+			backend->boxname,
 			backend->fuser->set.commit_limit);
 	}
 }
@@ -116,10 +116,10 @@ fts_flatcurve_xapian_open_read(struct flatcurve_fts_backend *backend)
 	try {
 		backend->xapian->db_read = new Xapian::Database(backend->db);
 		e_debug(backend->event, "Opened DB (RO) (%s); %s",
-			backend->box->name, backend->db);
+			backend->boxname, backend->db);
 	} catch (Xapian::Error e) {
 		e_debug(backend->event, "Cannot open DB RO (%s); %s",
-			backend->box->name, e.get_msg().c_str());
+			backend->boxname, e.get_msg().c_str());
 		return FALSE;
 	}
 
@@ -139,10 +139,10 @@ fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend)
 			backend->db,
 			Xapian::DB_CREATE_OR_OPEN | Xapian::DB_RETRY_LOCK);
 		e_debug(backend->event, "Opened DB (RW) (%s); %s",
-			backend->box->name, backend->db);
+			backend->boxname, backend->db);
 	} catch (Xapian::Error e) {
 		e_debug(backend->event, "Cannot open DB RW (%s); %s",
-			backend->box->name, e.get_msg().c_str());
+			backend->boxname, e.get_msg().c_str());
 		return FALSE;
 	}
 
@@ -161,7 +161,7 @@ void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 		*last_uid_r = backend->xapian->db_read->get_lastdocid();
 	} catch (Xapian::Error e) {
 		e_debug(backend->event, "get_last_uid (%s); %s",
-			backend->box->name, e.get_msg().c_str());
+			backend->boxname, e.get_msg().c_str());
 	}
 }
 
