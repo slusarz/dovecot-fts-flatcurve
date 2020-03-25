@@ -32,6 +32,14 @@ struct flatcurve_fts_query_xapian {
 	std::string *str;
 };
 
+struct fts_flatcurve_xapian_uid_iterate_context {
+	Xapian::Enquire *enquire;
+	Xapian::MSetIterator i;
+	Xapian::MSet m;
+	unsigned int offset;
+	bool init:1;
+};
+
 
 struct flatcurve_xapian *fts_flatcurve_xapian_init()
 {
@@ -171,6 +179,21 @@ void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 	}
 }
 
+int fts_flatcurve_xapian_uid_exists(struct flatcurve_fts_backend *backend,
+				    uint32_t uid)
+{
+	if (!fts_flatcurve_xapian_open_read(backend))
+		return -1;
+
+	try {
+		(void)backend->xapian->db_read->get_document(uid);
+	} catch (Xapian::DocNotFoundError e) {
+		return 0;
+	}
+
+	return 1;
+}
+
 void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 				  uint32_t uid)
 {
@@ -271,12 +294,29 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 	}
 }
 
-void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
+static bool
+fts_flatcurve_xapian_delete_index_real(const char *dir)
 {
 	const char *error;
-	enum unlink_directory_flags unlink_flags =
-		UNLINK_DIRECTORY_FLAG_RMDIR;
+	enum unlink_directory_flags unlink_flags = UNLINK_DIRECTORY_FLAG_RMDIR;
 
+	if (unlink_directory(dir, unlink_flags, &error) < 0) {
+		i_error("%s Deleting index (%s) failed: %s",
+			FLATCURVE_DEBUG_PREFIX, dir, error);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+bool fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend)
+{
+	fts_flatcurve_xapian_close(backend);
+	return fts_flatcurve_xapian_delete_index_real(backend->db);
+}
+
+void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
+{
 	if (!fts_flatcurve_xapian_open_read(backend))
 		return;
 
@@ -292,14 +332,11 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 		return;
 	}
 
-	fts_flatcurve_xapian_close(backend);
-
-	if (unlink_directory(backend->db, unlink_flags, &error) < 0) {
-		i_error("%s Deleting old directory (%s) failed: %s",
-			FLATCURVE_DEBUG_PREFIX, backend->db, error);
-	} else if (rename(s.c_str(), backend->db) < 0) {
-		i_error("%s Renaming directory (%s -> %s) failed: %m",
+	if (fts_flatcurve_xapian_delete_index(backend) &&
+	    (rename(s.c_str(), backend->db) < 0)) {
+		i_error("%s Activating new index (%s -> %s) failed: %m",
 			FLATCURVE_DEBUG_PREFIX, s.c_str(), backend->db);
+		fts_flatcurve_xapian_delete_index_real(s.c_str());
 	}
 }
 
@@ -431,30 +468,68 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 	return TRUE;
 }
 
+struct fts_flatcurve_xapian_uid_iterate_context
+*fts_flatcurve_xapian_uid_iter_init(struct flatcurve_fts_backend *backend,
+				    struct flatcurve_fts_query *query)
+{
+	struct fts_flatcurve_xapian_uid_iterate_context *ctx;
+
+	if (!fts_flatcurve_xapian_open_read(backend))
+		return NULL;
+
+	ctx = i_new(struct fts_flatcurve_xapian_uid_iterate_context, 1);
+	ctx->enquire = new Xapian::Enquire(*backend->xapian->db_read);
+	if (query == NULL) {
+		ctx->enquire->set_query(Xapian::Query::MatchAll);
+	} else {
+		ctx->enquire->set_query(*query->xapian->query);
+	}
+	ctx->enquire->set_docid_order(Xapian::Enquire::ASCENDING);
+	ctx->init = TRUE;
+
+	return ctx;
+}
+
+uint32_t fts_flatcurve_xapian_uid_iter_next(
+	struct fts_flatcurve_xapian_uid_iterate_context *ctx)
+{
+	uint32_t uid = 0;
+
+	if (ctx->init || (ctx->i == ctx->m.end())) {
+		ctx->m = ctx->enquire->get_mset(ctx->offset, 10);
+		if (ctx->m.size() == 0)
+			return uid;
+		ctx->i = ctx->m.begin();
+		ctx->offset += 10;
+		ctx->init = FALSE;
+	}
+
+	uid = *(ctx->i);
+	++ctx->i;
+
+	return uid;
+}
+
+void fts_flatcurve_xapian_uid_iter_deinit(
+	struct fts_flatcurve_xapian_uid_iterate_context **ctx)
+{
+	delete((*ctx)->enquire);
+	i_free_and_null(*ctx);
+}
+
 bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_backend *backend,
 				    struct flatcurve_fts_query *query,
 				    struct fts_result *r)
 {
-	Xapian::Enquire *enquire;
-	Xapian::MSetIterator i;
-	Xapian::MSet m;
-	unsigned int offset = 0;
+	struct fts_flatcurve_xapian_uid_iterate_context *iter;
+	uint32_t uid;
 
-	if (!fts_flatcurve_xapian_open_read(backend))
+	if ((iter = fts_flatcurve_xapian_uid_iter_init(backend, query)) == NULL)
 		return FALSE;
-
-	enquire = new Xapian::Enquire(*backend->xapian->db_read);
-	enquire->set_query(*query->xapian->query);
-	enquire->set_docid_order(Xapian::Enquire::ASCENDING);
-
-	do {
-		m = enquire->get_mset(offset, 100);
-		for (i = m.begin(); i != m.end(); ++i) {
-			seq_range_array_add(&r->definite_uids, *i);
-		}
-		offset += 100;
-	} while (m.size() > 0);
-
+	while ((uid = fts_flatcurve_xapian_uid_iter_next(iter)) != 0) {
+		seq_range_array_add(&r->definite_uids, uid);
+	}
+	fts_flatcurve_xapian_uid_iter_deinit(&iter);
 	return TRUE;
 }
 

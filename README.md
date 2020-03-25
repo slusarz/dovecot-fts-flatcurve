@@ -97,6 +97,5 @@ TODOs
 -----
 
 - Auto-optimize?
-- Implement rescan
 - Fuzzy search support?
 - Escape " (and other characters?) when creating search query
