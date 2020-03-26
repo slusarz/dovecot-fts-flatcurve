@@ -33,11 +33,11 @@ fts_flatcurve_plugin_init_settings(struct fts_flatcurve_settings *set,
 
 	for (tmp = t_strsplit_spaces(str, " "); *tmp != NULL; tmp++) {
 		if (str_begins(*tmp, "auto_optimize=")) {
-			if (str_to_uint(*tmp + 14, &val) < 0 || val == 0)
+			if (str_to_uint(*tmp + 14, &val) < 0)
 				i_fatal("Invalid auto_optimize: %s", *tmp + 14);
 			set->auto_optimize = val;
 		} else if (str_begins(*tmp, "commit_limit=")) {
-			if (str_to_uint(*tmp + 13, &val) < 0 || val == 0)
+			if (str_to_uint(*tmp + 13, &val) < 0)
 				i_fatal("Invalid commit_limit: %s", *tmp + 13);
 			set->commit_limit = val;
 		} else if (str_begins(*tmp, "no_position=")) {
