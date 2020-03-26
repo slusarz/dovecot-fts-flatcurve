@@ -26,22 +26,8 @@ CFLAGS="$CFLAGS $EXTRA_CFLAGS"
 LIBS="$DOVECOT_LIBS"
 AC_SUBST(LIBDOVECOT_INCLUDE)
 
-AC_CHECK_PROG(XAPIAN_CONFIG, xapian-config, xapian-config, no)
-if test "x$XAPIAN_CONFIG" = "xno"; then
-    AC_MSG_ERROR("xapian could not be found")
-fi
-
-XAPIAN_VERSION=$($XAPIAN_CONFIG --version | sed -e 's/.* //')
-AS_CASE([$XAPIAN_VERSION],
-    [1.[[4-9]].[[0-9]]*],
-    [AC_DEFINE([XAPIAN_HAVE_OP_WILDCARD],[1],[Xapian::Query::OP_WILDCARD?])],
-    [AC_MSG_ERROR("xapian version >= 1.4 needed; version $XAPIAN_VERSION found.")])
-
-XAPIAN_CXXFLAGS="$($XAPIAN_CONFIG --cxxflags)"
-XAPIAN_LIBS="$($XAPIAN_CONFIG --libs)"
-
-AC_SUBST(XAPIAN_CXXFLAGS)
-AC_SUBST(XAPIAN_LIBS)
+XO_LIB_XAPIAN
+XO_REQUIRE(1.4)
 
 if test "$DOVECOT_INSTALLED" != "yes"; then
     DOVECOT_FTS_PLUGIN="$abs_dovecotdir/src/plugins/fts/lib20_fts_plugin.la"
