@@ -474,7 +474,7 @@ struct fts_flatcurve_xapian_query_iterate_context
 	} else {
 		ctx->enquire->set_query(*query->xapian->query);
 	}
-	ctx->enquire->set_docid_order(Xapian::Enquire::ASCENDING);
+	ctx->enquire->set_docid_order(Xapian::Enquire::DONT_CARE);
 	ctx->result = i_new(struct fts_flatcurve_xapian_query_result, 1);
 
 	return ctx;
