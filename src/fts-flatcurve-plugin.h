@@ -15,7 +15,7 @@
 	MODULE_CONTEXT_REQUIRE(obj, fts_flatcurve_user_module)
 
 #define FTS_FLATCURVE_AUTO_OPTIMIZE_DEFAULT 100
-#define FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT 100
+#define FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT 0
 
 struct fts_flatcurve_settings {
 	unsigned int auto_optimize;

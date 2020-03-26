@@ -97,8 +97,10 @@ Options for the `fts_flatcurve` plugin setting:
  - `auto_optimize` - The number of database revisions that occur before the
                      index is automatically optimized in the background
                      (integer, set to 0 to disable; DEFAULT: 500)
- - `commit_limit` - Commit a database after this many documents are updated
-		    (integer; DEFAULT: 100)
+ - `commit_limit` - Commit a database after this many documents are updated;
+		    This is normally handled internally automatically within
+		    Xapian so it is disabled by default
+		    (integer, set to 0 to disable; DEFAULT: 0)
  - `no_position` - Do not generate positional data (greatly reduces xapian
 		   storage, but does not allow phrase searching)
 		   (integer [0 for no, 1 for yes]; DEFAULT: 0)
@@ -107,7 +109,7 @@ Example:
 
 ```
 plugin {
-  fts_flatcurve = commit_limit=100 no_position=0
+  fts_flatcurve = auto_optimize=500 commit_limit=0 no_position=0
 }
 ```
 

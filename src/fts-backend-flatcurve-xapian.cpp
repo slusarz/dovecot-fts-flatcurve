@@ -64,7 +64,8 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 		return;
 
 	xapian->db_write->replace_document(xapian->doc_uid, *xapian->doc);
-	if (++xapian->doc_updates >= backend->fuser->set.commit_limit) {
+	if ((backend->fuser->set.commit_limit > 0) &&
+	    (++xapian->doc_updates >= backend->fuser->set.commit_limit)) {
 		xapian->db_write->commit();
 		xapian->doc_updates = 0;
 		e_debug(backend->event, "Committing DB as update "
