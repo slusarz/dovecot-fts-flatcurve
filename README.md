@@ -85,6 +85,12 @@ sudo make install
 Configuration
 -------------
 
+See https://doc.dovecot.org/configuration_manual/fts/ for configuration
+information regarding general FTS plugin options.  Note: flatcurve requires
+the core Dovecot FTS stemming feature.
+
+Flatcurve provies a single plugin option for configuration: `fts_flatcurve`.
+
 Options for the `fts_flatcurve` plugin setting:
 
  - `commit_limit` - Commit a database after this many documents are updated
