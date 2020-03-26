@@ -358,6 +358,12 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		}
 		*s += "(";
 		break;
+	case SEARCH_MAILBOX:
+		/* doveadm will pass this through in 'doveadm search'
+		 * commands with a 'mailbox' search argument. The code has
+		 * already handled setting the proper mailbox by this point
+		 * so just ignore this. */
+		return TRUE;
 	default:
 		return FALSE;
 	}
