@@ -429,6 +429,9 @@ fts_backend_flatcurve_lookup_multi(struct fts_backend *_backend,
 			ret = -1;
 			break;
 		}
+
+		e_debug(backend->event, "Query complete mailbox=%s matches=%d",
+			r->box->vname, array_count(&r->definite_uids));
 	}
 
 	if (ret == 0) {
