@@ -93,6 +93,9 @@ Flatcurve provies a single plugin option for configuration: `fts_flatcurve`.
 
 Options for the `fts_flatcurve` plugin setting:
 
+ - `auto_optimize` - The number of database revisions that occur before the
+                     index is automatically optimized in the background
+                     (integer, set to 0 to disable; DEFAULT: 500)
  - `commit_limit` - Commit a database after this many documents are updated
 		    (integer; DEFAULT: 100)
  - `no_position` - Do not generate positional data (greatly reduces xapian
@@ -117,5 +120,4 @@ This plugin emits events with the category `fts_flatcurve`.
 TODOs
 -----
 
-- Auto-optimize?
 - Escape " (and other characters?) when creating search query

@@ -82,9 +82,26 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 {
 	struct flatcurve_xapian *xapian = backend->xapian;
+	bool need_optimize = FALSE;
+	uint32_t rev;
 
 	if (xapian->db_write != NULL) {
 		fts_flatcurve_xapian_clear_document(backend);
+		/* Only need to check if db_write was active, as db_read
+		 * would not have incremented DB revision. */
+		if (backend->fuser->set.auto_optimize > 0) {
+			try {
+				rev = xapian->db_write->get_revision();
+				if (rev >= backend->fuser->set.auto_optimize) {
+					need_optimize = TRUE;
+					e_debug(backend->event,
+						"Triggering auto optimize; "
+						"db_revision=%d", rev);
+				}
+			} catch (Xapian::Error e) {
+				/* Ignore error */
+			}
+		}
 		xapian->db_write->close();
 		delete(xapian->db_write);
 		xapian->db_write = NULL;
@@ -96,6 +113,9 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 		delete(xapian->db_read);
 		xapian->db_read = NULL;
 	}
+
+	if (need_optimize)
+		fts_flatcurve_xapian_optimize_box(backend);
 }
 
 static bool
