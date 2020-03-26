@@ -315,7 +315,7 @@ end:
 
 		/* Check for expunged mails. */
 		iter = fts_flatcurve_xapian_query_iter_init(backend, NULL);
-		while ((result = fts_flatcurve_xapian_query_iter_next(iter)) != 0) {
+		while ((result = fts_flatcurve_xapian_query_iter_next(iter)) != NULL) {
 			if (!seq_range_exists(&uids, result->uid)) {
 				fts_flatcurve_xapian_expunge(backend, result->uid);
 				nodupes = FALSE;

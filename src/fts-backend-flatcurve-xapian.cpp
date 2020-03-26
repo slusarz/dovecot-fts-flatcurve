@@ -471,6 +471,7 @@ struct fts_flatcurve_xapian_query_iterate_context
 		ctx->enquire->set_query(*query->xapian->query);
 	}
 	ctx->enquire->set_docid_order(Xapian::Enquire::ASCENDING);
+	ctx->result = i_new(struct fts_flatcurve_xapian_query_result, 1);
 
 	return ctx;
 }
@@ -480,14 +481,10 @@ struct fts_flatcurve_xapian_query_result
 {
 	uint32_t uid = 0;
 
-	if (ctx->result == NULL) {
-		ctx->result =
-			i_new(struct fts_flatcurve_xapian_query_result, 1);
-	} else if (ctx->i == ctx->m.end()) {
+	if (ctx->i == ctx->m.end()) {
 		ctx->m = ctx->enquire->get_mset(ctx->offset, 10);
 		if (ctx->m.size() == 0)
-			ctx->result->score = ctx->result->uid = 0;
-			return ctx->result;
+			return NULL;
 		ctx->i = ctx->m.begin();
 		ctx->offset += 10;
 	}
@@ -517,7 +514,7 @@ bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_backend *backend,
 
 	if ((iter = fts_flatcurve_xapian_query_iter_init(backend, query)) == NULL)
 		return FALSE;
-	while ((result = fts_flatcurve_xapian_query_iter_next(iter)) != 0) {
+	while ((result = fts_flatcurve_xapian_query_iter_next(iter)) != NULL) {
 		seq_range_array_add(&r->definite_uids, result->uid);
 		score = array_append_space(&r->scores);
 		score->score = (float)result->score;
