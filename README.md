@@ -101,5 +101,4 @@ TODOs
 -----
 
 - Auto-optimize?
-- Fuzzy search support?
 - Escape " (and other characters?) when creating search query
