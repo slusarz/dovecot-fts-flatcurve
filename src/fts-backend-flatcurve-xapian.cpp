@@ -85,7 +85,6 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 
 	if (xapian->db_write != NULL) {
 		fts_flatcurve_xapian_clear_document(backend);
-		xapian->db_write->commit();
 		xapian->db_write->close();
 		delete(xapian->db_write);
 		xapian->db_write = NULL;
