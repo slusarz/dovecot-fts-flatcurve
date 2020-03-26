@@ -509,7 +509,7 @@ struct fts_flatcurve_xapian_query_result
 {
 	uint32_t uid = 0;
 
-	if (ctx->i == ctx->m.end()) {
+	if ((ctx->offset == 0) || (ctx->i == ctx->m.end())) {
 		ctx->m = ctx->enquire->get_mset(ctx->offset, 10);
 		if (ctx->m.size() == 0)
 			return NULL;
