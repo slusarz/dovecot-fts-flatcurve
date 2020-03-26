@@ -85,7 +85,7 @@ Configuration
 Options for the `fts_flatcurve` plugin setting:
 
  - `commit_limit` - Commit a database after this many documents are updated
-		    (integer; DEFAULT: 50)
+		    (integer; DEFAULT: 100)
  - `no_position` - Do not generate positional data (greatly reduces xapian
 		   storage, but does not allow phrase searching)
 		   (boolean; DEFAULT: off)
