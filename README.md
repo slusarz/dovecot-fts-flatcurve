@@ -31,7 +31,8 @@ Requirements
     - Requires stemmer support (--with-stemmer)
     - Optional libtextcat support (--with-textcat)
     - Optional icu support (--with-icu)
-* Xapian 1.4.x (tested on Xapian 1.4.11)
+* Xapian 1.2.x+ (tested on Xapian 1.2.22, 1.4.11)
+  - 1.4+ is required for optimization support
 
 
 Compilation

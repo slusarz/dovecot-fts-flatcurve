@@ -79,29 +79,41 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 	xapian->tg = NULL;
 }
 
+static bool
+fts_flatcurve_xapian_need_optimize(struct flatcurve_fts_backend *backend)
+{
+#ifdef XAPIAN_HAS_COMPACT
+	uint32_t rev;
+
+	/* Only need to check if db_write was active, as db_read would not
+	 * have incremented DB revision. */
+	if ((xapian->db_write != NULL) &&
+	    (backend->fuser->set.auto_optimize > 0)) {
+		try {
+			rev = backend->xapian->db_write->get_revision();
+			if (rev >= backend->fuser->set.auto_optimize) {
+				e_debug(backend->event,
+					"Triggering auto optimize; "
+					"db_revision=%d", rev);
+				return TRUE;
+			}
+		} catch (Xapian::Error e) {
+			/* Ignore error */
+		}
+	}
+#endif
+	return FALSE;
+}
+
 void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 {
+	bool optimize = FALSE;
 	struct flatcurve_xapian *xapian = backend->xapian;
-	bool need_optimize = FALSE;
-	uint32_t rev;
 
 	if (xapian->db_write != NULL) {
 		fts_flatcurve_xapian_clear_document(backend);
-		/* Only need to check if db_write was active, as db_read
-		 * would not have incremented DB revision. */
-		if (backend->fuser->set.auto_optimize > 0) {
-			try {
-				rev = xapian->db_write->get_revision();
-				if (rev >= backend->fuser->set.auto_optimize) {
-					need_optimize = TRUE;
-					e_debug(backend->event,
-						"Triggering auto optimize; "
-						"db_revision=%d", rev);
-				}
-			} catch (Xapian::Error e) {
-				/* Ignore error */
-			}
-		}
+		optimize = fts_flatcurve_xapian_need_optimize(backend);
+
 		xapian->db_write->close();
 		delete(xapian->db_write);
 		xapian->db_write = NULL;
@@ -114,7 +126,7 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 		xapian->db_read = NULL;
 	}
 
-	if (need_optimize)
+	if (optimize)
 		fts_flatcurve_xapian_optimize_box(backend);
 }
 
@@ -140,6 +152,12 @@ fts_flatcurve_xapian_open_read(struct flatcurve_fts_backend *backend)
 static bool
 fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend)
 {
+	int db_flags =
+#ifdef XAPIAN_HAS_RETRY_LOCK
+		Xapian::DB_CREATE_OR_OPEN | Xapian::DB_RETRY_LOCK;
+#else
+		Xapian::DB_CREATE_OR_OPEN;
+#endif
 	struct flatcurve_xapian *xapian = backend->xapian;
 
 	if (xapian->db_write != NULL)
@@ -147,8 +165,7 @@ fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend)
 
 	try {
 		xapian->db_write = new Xapian::WritableDatabase(
-			backend->db,
-			Xapian::DB_CREATE_OR_OPEN | Xapian::DB_RETRY_LOCK);
+			backend->db, db_flags);
 		e_debug(backend->event, "Opened DB (RW) (%s); %s",
 			backend->boxname, backend->db);
 	} catch (Xapian::Error e) {
@@ -312,6 +329,7 @@ bool fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend)
 
 void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 {
+#ifdef XAPIAN_HAS_COMPACT
 	if (!fts_flatcurve_xapian_open_read(backend))
 		return;
 
@@ -334,6 +352,7 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 			s.c_str(), backend->db);
 		fts_flatcurve_xapian_delete_index_real(backend, s.c_str());
 	}
+#endif
 }
 
 static bool

@@ -27,7 +27,10 @@ LIBS="$DOVECOT_LIBS"
 AC_SUBST(LIBDOVECOT_INCLUDE)
 
 XO_LIB_XAPIAN
-XO_REQUIRE(1.4)
+AS_VERSION_COMPARE([1.3.2], [$XAPIAN_VERSION],
+		   AC_DEFINE([XAPIAN_HAS_RETRY_LOCK],[1],[Xapian DB_RETRY_LOCK support (1.3.3+)]))
+AS_VERSION_COMPARE([1.3.99], [$XAPIAN_VERSION],
+		   AC_DEFINE([XAPIAN_HAS_COMPACT],[1],[Xapian compaction support (1.4+)]))
 
 if test "$DOVECOT_INSTALLED" != "yes"; then
     DOVECOT_FTS_PLUGIN="$abs_dovecotdir/src/plugins/fts/lib20_fts_plugin.la"
