@@ -32,11 +32,12 @@ fts_flatcurve_plugin_init_settings(struct fts_flatcurve_settings *set,
 
 	for (tmp = t_strsplit_spaces(str, " "); *tmp != NULL; tmp++) {
 		if (str_begins(*tmp, "no_position=")) {
-			set->no_position = TRUE;
+			if (str_to_uint(*tmp + 12, &val) < 0)
+				i_fatal("Invalid no_position: %s", *tmp + 12);
+			set->no_position = (val > 0);
 		} else if (str_begins(*tmp, "commit_limit=")) {
-			if (str_to_uint(*tmp + 13, &val) < 0 || val == 0) {
+			if (str_to_uint(*tmp + 13, &val) < 0 || val == 0)
 				i_fatal("Invalid commit_limit: %s", *tmp + 13);
-			}
 			set->commit_limit = val;
 		}
 	}

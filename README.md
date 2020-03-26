@@ -97,7 +97,15 @@ Options for the `fts_flatcurve` plugin setting:
 		    (integer; DEFAULT: 100)
  - `no_position` - Do not generate positional data (greatly reduces xapian
 		   storage, but does not allow phrase searching)
-		   (boolean; DEFAULT: off)
+		   (integer [0 for no, 1 for yes]; DEFAULT: 0)
+
+Example:
+
+```
+plugin {
+  fts_flatcurve = commit_limit=100 no_position=0
+}
+```
 
 
 Logging/Events
