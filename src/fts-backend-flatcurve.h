@@ -10,9 +10,15 @@
 #define FLATCURVE_INDEX_NAME "flatcurve-index"
 #define FLATCURVE_INDEX_OPTIMIZE_SUFFIX ".optimize"
 
-#define FLATCURVE_ALL_HEADERS_PREFIX "XA"
-#define FLATCURVE_BODYTEXT_PREFIX "XB"
-#define FLATCURVE_HEADER_PREFIX "XH"
+/* Xapian "recommendations" are that you begin your local prefix identifier
+ * with "X" for data that doesn't match with a data type listed as a Xapian
+ * "convention". However, this recommendation is for maintaining
+ * compatability with the search front-end (Omega) that they provide. We don't
+ * care about compatability, so save storage space by using single letter
+ * prefixes. Bodytext is stored without prefixes, as it is expected to be the
+ * single largest storage pool. */
+#define FLATCURVE_ALL_HEADERS_PREFIX "A"
+#define FLATCURVE_HEADER_PREFIX "H"
 
 #define FTS_FLATCURVE_DEBUG_PREFIX "fts_flatcurve: "
 

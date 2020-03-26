@@ -14,7 +14,6 @@ extern "C" {
 
 #define FLATCURVE_ALL_HEADERS_QP "allhdrs"
 #define FLATCURVE_HEADER_QP "hdr_"
-#define FLATCURVE_BODYTEXT_QP "bodytext"
 
 struct flatcurve_xapian {
 	Xapian::Database *db_read;
@@ -282,10 +281,9 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 		return;
 
 	if (backend->fuser->set.no_position) {
-		xapian->tg->index_text_without_positions(s, 1,
-							 FLATCURVE_BODYTEXT_PREFIX);
+		xapian->tg->index_text_without_positions(s);
 	} else {
-		xapian->tg->index_text(s, 1, FLATCURVE_BODYTEXT_PREFIX);
+		xapian->tg->index_text(s);
 	}
 }
 
@@ -373,25 +371,17 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		*s += FLATCURVE_ALL_HEADERS_QP;
 		*s += ":\"";
 		*s += arg->value.str;
-		*s += "\" OR ";
-		*s += FLATCURVE_BODYTEXT_QP;
-		*s += ":\"";
+		*s += "\" OR \"";
 		*s += arg->value.str;
 		*s += "\"";
 
 		hash_table_update(x->prefixes, FLATCURVE_ALL_HEADERS_QP,
 				  FLATCURVE_ALL_HEADERS_PREFIX);
-		hash_table_update(x->prefixes, FLATCURVE_BODYTEXT_QP,
-				  FLATCURVE_BODYTEXT_PREFIX);
 		break;
 	case SEARCH_BODY:
-		*s += FLATCURVE_BODYTEXT_QP;
-		*s += ":\"";
+		*s += "\"";
 		*s += arg->value.str;
 		*s += "\"";
-
-		hash_table_update(x->prefixes, FLATCURVE_BODYTEXT_QP,
-				  FLATCURVE_BODYTEXT_PREFIX);
 		break;
 	case SEARCH_HEADER:
 	case SEARCH_HEADER_ADDRESS:
