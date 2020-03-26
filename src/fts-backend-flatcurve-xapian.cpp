@@ -10,6 +10,7 @@ extern "C" {
 #include "unlink-directory.h"
 #include "fts-backend-flatcurve.h"
 #include "fts-backend-flatcurve-xapian.h"
+#include <stdio.h>
 };
 
 #define FLATCURVE_ALL_HEADERS_QP "allhdrs"
