@@ -153,7 +153,11 @@ fts_backend_flatcurve_update_set_mailbox(struct fts_backend_update_context *_ctx
 	struct flatcurve_fts_backend *backend =
 		(struct flatcurve_fts_backend *)ctx->ctx.backend;
 
-	fts_backend_flatcurve_set_mailbox(backend, box);
+	if (box == NULL) {
+		fts_backend_flatcurve_close_box(backend);
+	} else {
+		fts_backend_flatcurve_set_mailbox(backend, box);
+	}
 }
 
 static void
