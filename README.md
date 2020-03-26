@@ -11,6 +11,9 @@ The plugin relies on Dovecot to do the necessary stemming. It is intended
 to act as a simple interface to the Xapian storage/search query
 functionality.
 
+This driver supports phrase searching and match scoring.  This driver does
+NOT support fuzzy searches.
+
 
 Why Flatcurve?
 --------------

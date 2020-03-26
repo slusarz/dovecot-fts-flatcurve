@@ -256,14 +256,14 @@ static bool
 fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
 				 struct mailbox *box)
 {
-	struct fts_flatcurve_xapian_uid_iterate_context *iter;
+	struct fts_flatcurve_xapian_query_iterate_context *iter;
 	struct mail *mail;
 	ARRAY_TYPE(seq_range) missing, uids;
 	bool dbexist = TRUE, nodupes = TRUE;
+	struct fts_flatcurve_xapian_query_result *result;
 	struct mail_search_args *search_args;
 	struct mail_search_context *search_ctx;
 	struct mailbox_transaction_context *trans;
-	uint32_t uid;
 
 	/* Check for non-indexed mails. */
 	if (mailbox_sync(box, MAILBOX_SYNC_FLAG_FULL_READ) < 0)
@@ -314,18 +314,18 @@ end:
 			"mailbox=%s", box->name);
 
 		/* Check for expunged mails. */
-		iter = fts_flatcurve_xapian_uid_iter_init(backend, NULL);
-		while ((uid = fts_flatcurve_xapian_uid_iter_next(iter)) != 0) {
-			if (!seq_range_exists(&uids, uid)) {
-				fts_flatcurve_xapian_expunge(backend, uid);
+		iter = fts_flatcurve_xapian_query_iter_init(backend, NULL);
+		while ((result = fts_flatcurve_xapian_query_iter_next(iter)) != 0) {
+			if (!seq_range_exists(&uids, result->uid)) {
+				fts_flatcurve_xapian_expunge(backend, result->uid);
 				nodupes = FALSE;
 				e_debug(backend->event,
 					"Rescan: Missing expunged "
 					"message; deleting mailbox=%s "
-					"uid=%d", box->name, uid);
+					"uid=%d", box->name, result->uid);
 			}
 		}
-		fts_flatcurve_xapian_uid_iter_deinit(&iter);
+		fts_flatcurve_xapian_query_iter_deinit(&iter);
 
 		if (nodupes)
 			e_debug(backend->event,
@@ -421,6 +421,7 @@ fts_backend_flatcurve_lookup_multi(struct fts_backend *_backend,
 		r = array_append_space(&box_results);
 		r->box = boxes[i];
 		p_array_init(&r->definite_uids, result->pool, 16);
+		p_array_init(&r->scores, result->pool, 16);
 
 		fts_backend_flatcurve_set_mailbox(backend, r->box);
 
@@ -455,7 +456,7 @@ fts_backend_flatcurve_lookup(struct fts_backend *_backend, struct mailbox *box,
 	boxes[1] = NULL;
 
 	i_zero(&multi_result);
-	multi_result.pool = pool_alloconly_create("results pool", 1024);
+	multi_result.pool = pool_alloconly_create("results pool", 2048);
 	ret = fts_backend_flatcurve_lookup_multi(_backend, boxes, args,
 						 flags, &multi_result);
 
@@ -464,9 +465,9 @@ fts_backend_flatcurve_lookup(struct fts_backend *_backend, struct mailbox *box,
 	    (multi_result.box_results[0].box != NULL)) {
 		br = &multi_result.box_results[0];
 		result->box = br->box;
-		if (array_is_created(&br->definite_uids))
-			array_append_array(&result->definite_uids,
-					   &br->definite_uids);
+		array_append_array(&result->definite_uids, &br->definite_uids);
+		array_append_array(&result->scores, &br->scores);
+		result->scores_sorted = br->scores_sorted;
 	}
 	pool_unref(&multi_result.pool);
 
