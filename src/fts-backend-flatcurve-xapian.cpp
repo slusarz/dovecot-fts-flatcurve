@@ -56,10 +56,14 @@ void fts_flatcurve_xapian_deinit(struct flatcurve_xapian *xapian)
 }
 
 static void
-fts_flatcurve_xapian_periodic_commit(struct flatcurve_fts_backend *backend)
+fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 {
 	struct flatcurve_xapian *xapian = backend->xapian;
 
+	if (xapian->doc == NULL)
+		return;
+
+	xapian->db_write->replace_document(xapian->doc_uid, *xapian->doc);
 	if (++xapian->doc_updates >= backend->fuser->set.commit_limit) {
 		xapian->db_write->commit();
 		xapian->doc_updates = 0;
@@ -68,23 +72,11 @@ fts_flatcurve_xapian_periodic_commit(struct flatcurve_fts_backend *backend)
 			backend->boxname,
 			backend->fuser->set.commit_limit);
 	}
-}
 
-static void
-fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
-{
-	struct flatcurve_xapian *xapian = backend->xapian;
-
-	if (xapian->doc != NULL) {
-		xapian->db_write->replace_document(xapian->doc_uid,
-						   *xapian->doc);
-		fts_flatcurve_xapian_periodic_commit(backend);
-
-		delete(xapian->tg);
-		xapian->doc = NULL;
-		xapian->doc_uid = 0;
-		xapian->tg = NULL;
-	}
+	delete(xapian->tg);
+	xapian->doc = NULL;
+	xapian->doc_uid = 0;
+	xapian->tg = NULL;
 }
 
 void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
@@ -188,7 +180,6 @@ void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 
 	try {
 		backend->xapian->db_write->delete_document(uid);
-		fts_flatcurve_xapian_periodic_commit(backend);
 	} catch (Xapian::Error e) {
 		e_debug(backend->event, "update_expunge (%s)",
 			e.get_msg().c_str());
