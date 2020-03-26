@@ -362,6 +362,10 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		return FALSE;
 	}
 
+	/* Required by FTS API to avoid this argument being looked up via
+	 * regular search code. */
+	arg->match_always = TRUE;
+
 	if (arg->match_not) {
 		*s += "NOT ";
 	}
