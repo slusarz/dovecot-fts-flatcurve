@@ -350,7 +350,9 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	case SEARCH_HEADER_ADDRESS:
 	case SEARCH_HEADER_COMPRESS_LWSP:
 		if (s->size() > 0) {
-			if (query->and_search) {
+			if (arg->match_not) {
+				*s += " NOT ";
+			} else if (query->and_search) {
 				*s += " AND ";
 			} else {
 				*s += " OR ";
@@ -371,10 +373,6 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	/* Required by FTS API to avoid this argument being looked up via
 	 * regular search code. */
 	arg->match_always = TRUE;
-
-	if (arg->match_not) {
-		*s += "NOT ";
-	}
 
 	switch (arg->type) {
 	case SEARCH_TEXT:
