@@ -96,7 +96,7 @@ Options for the `fts_flatcurve` plugin setting:
 
  - `auto_optimize` - The number of database revisions that occur before the
                      index is automatically optimized in the background
-                     (integer, set to 0 to disable; DEFAULT: 500)
+                     (integer, set to 0 to disable; DEFAULT: 100)
  - `commit_limit` - Commit database changes after this many documents are
                     updated
 		    (integer, set to 0 to disable; DEFAULT: 100)
@@ -108,7 +108,7 @@ Example:
 
 ```
 plugin {
-  fts_flatcurve = auto_optimize=500 commit_limit=0 no_position=0
+  fts_flatcurve = auto_optimize=100 commit_limit=100 no_position=0
 }
 ```
 
