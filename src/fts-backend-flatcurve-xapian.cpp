@@ -24,6 +24,7 @@ struct flatcurve_xapian {
 
 	uint32_t doc_uid;
 	unsigned int doc_updates;
+	bool doc_created:1;
 };
 
 struct flatcurve_fts_query_xapian {
@@ -74,8 +75,11 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 			backend->fuser->set.commit_limit);
 	}
 
+	if (xapian->doc_created)
+		delete(xapian->doc);
 	delete(xapian->tg);
 	xapian->doc = NULL;
+	xapian->doc_created = FALSE;
 	xapian->doc_uid = 0;
 	xapian->tg = NULL;
 }
@@ -244,6 +248,7 @@ fts_flatcurve_xapian_get_document(struct flatcurve_fts_backend_update_context *c
 		xapian->doc = &doc;
 	} catch (Xapian::DocNotFoundError e) {
 		xapian->doc = new Xapian::Document();
+		xapian->doc_created = TRUE;
 	} catch (Xapian::Error e) {
 		ctx->ctx.failed = TRUE;
 		return FALSE;
