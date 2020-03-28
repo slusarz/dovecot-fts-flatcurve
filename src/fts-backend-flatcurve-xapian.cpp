@@ -460,8 +460,10 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 			  str_hash, strcmp);
 
 	for (; args != NULL ; args = args->next) {
-		if (!fts_flatcurve_build_query_arg(query, args))
+		if (!fts_flatcurve_build_query_arg(query, args)) {
+			hash_table_destroy(&query->xapian->prefixes);
 			return FALSE;
+		}
 	}
 
 	e_debug(backend->event, "Search query generated: %s",
