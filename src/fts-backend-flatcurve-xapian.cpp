@@ -278,18 +278,17 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 	if (ctx->hdr_name != NULL) {
 		p += FLATCURVE_HEADER_PREFIX;
 		p += str_ucase(ctx->hdr_name);
-		if (backend->fuser->set.no_position) {
-			xapian->tg->index_text_without_positions(s, 1, p);
-		} else {
+		if (backend->fuser->set.save_position) {
 			xapian->tg->index_text(s, 1, p);
+		} else {
+			xapian->tg->index_text_without_positions(s, 1, p);
 		}
 	}
 
-	if (backend->fuser->set.no_position) {
-		xapian->tg->index_text_without_positions(s, 1,
-							 FLATCURVE_ALL_HEADERS_PREFIX);
-	} else {
+	if (backend->fuser->set.save_position) {
 		xapian->tg->index_text(s, 1, FLATCURVE_ALL_HEADERS_PREFIX);
+	} else {
+		xapian->tg->index_text_without_positions(s, 1, FLATCURVE_ALL_HEADERS_PREFIX);
 	}
 }
 
@@ -304,10 +303,10 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 	if (!fts_flatcurve_xapian_get_document(ctx, backend))
 		return;
 
-	if (backend->fuser->set.no_position) {
-		xapian->tg->index_text_without_positions(s);
-	} else {
+	if (backend->fuser->set.save_position) {
 		xapian->tg->index_text(s);
+	} else {
+		xapian->tg->index_text_without_positions(s);
 	}
 }
 
@@ -362,7 +361,8 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 }
 
 static bool
-fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
+fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
+			      struct flatcurve_fts_query *query,
 			      struct mail_search_arg *arg)
 {
 	char * hdr;
@@ -377,14 +377,14 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	case SEARCH_HEADER_COMPRESS_LWSP:
 		if (s->size() > 0) {
 			if (arg->match_not) {
-				*s += " NOT ";
+				t += " NOT ";
 			} else if ((query->flags & FTS_LOOKUP_FLAG_AND_ARGS) != 0) {
-				*s += " AND ";
+				t += " AND ";
 			} else {
-				*s += " OR ";
+				t += " OR ";
 			}
 		}
-		*s += "(";
+		t += "(";
 		break;
 	case SEARCH_MAILBOX:
 		/* doveadm will pass this through in 'doveadm search'
@@ -409,10 +409,18 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	/* Prepare search string. Phrases should be surrounding by double
 	 * quotes. Single words should not be quoted. */
 	if (strchr(arg->value.str, ' ') != NULL) {
+		if (!fts_flatcurve_xapian_open_read(backend))
+			return TRUE;
+		if (!backend->xapian->db_read->has_positions()) {
+			/* Phrase searching not available. */
+			return TRUE;
+		}
+		*s += t;
 		t = "\"";
 		t += arg->value.str;
 		t += "\"";
 	} else {
+		*s += t;
 		t = arg->value.str;
 	}
 
@@ -466,7 +474,7 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 			  str_hash, strcmp);
 
 	for (; args != NULL ; args = args->next) {
-		if (!fts_flatcurve_build_query_arg(query, args)) {
+		if (!fts_flatcurve_build_query_arg(backend, query, args)) {
 			hash_table_destroy(&query->xapian->prefixes);
 			return FALSE;
 		}

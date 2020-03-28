@@ -100,15 +100,16 @@ Options for the `fts_flatcurve` plugin setting:
  - `commit_limit` - Commit database changes after this many documents are
                     updated
 		    (integer, set to 0 to disable; DEFAULT: 100)
- - `no_position` - Do not generate positional data (greatly reduces xapian
-		   storage, but does not allow phrase searching)
-		   (integer [0 for no, 1 for yes]; DEFAULT: 0)
+ - `save_position` - Track position data in Xapian; allows native Xapian
+                     phrase searching BUT requires substantial additional
+                     resources to index and store
+                     (integer [0 for no, 1 for yes]; DEFAULT: 0)
 
 Example:
 
 ```
 plugin {
-  fts_flatcurve = auto_optimize=100 commit_limit=100 no_position=0
+  fts_flatcurve = auto_optimize=100 commit_limit=100 save_position=0
 }
 ```
 
