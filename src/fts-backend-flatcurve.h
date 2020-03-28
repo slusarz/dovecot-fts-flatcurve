@@ -47,8 +47,6 @@ struct flatcurve_fts_query {
 	struct flatcurve_fts_query_xapian *xapian;
 
 	pool_t pool;
-
-	bool and_search:1;
 };
 
 #endif

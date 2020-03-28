@@ -378,7 +378,7 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		if (s->size() > 0) {
 			if (arg->match_not) {
 				*s += " NOT ";
-			} else if (query->and_search) {
+			} else if ((query->flags & FTS_LOOKUP_FLAG_AND_ARGS) != 0) {
 				*s += " AND ";
 			} else {
 				*s += " OR ";
@@ -453,7 +453,6 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 	struct hash_iterate_context *iter;
 	Xapian::QueryParser qp;
 
-	query->and_search = (query->flags & FTS_LOOKUP_FLAG_AND_ARGS) != 0;
 	query->xapian = p_new(query->pool,
 			      struct flatcurve_fts_query_xapian, 1);
 	query->xapian->str = new std::string();
