@@ -392,6 +392,12 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		 * already handled setting the proper mailbox by this point
 		 * so just ignore this. */
 		return TRUE;
+
+	case SEARCH_OR:
+	case SEARCH_SUB:
+		/* FTS API says to ignore these. */
+		return TRUE;
+
 	default:
 		return FALSE;
 	}
