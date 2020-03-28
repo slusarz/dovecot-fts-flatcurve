@@ -365,9 +365,9 @@ static bool
 fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 			      struct mail_search_arg *arg)
 {
-	char *hdr, *key;
+	char * hdr;
 	struct flatcurve_fts_query_xapian *x = query->xapian;
-	std::string *s = x->str;
+	std::string *s = x->str, t;
 
 	switch (arg->type) {
 	case SEARCH_TEXT:
@@ -406,22 +406,29 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	 * regular search code. */
 	arg->match_always = TRUE;
 
+	/* Prepare search string. Phrases should be surrounding by double
+	 * quotes. Single words should not be quoted. */
+	if (strchr(arg->value.str, ' ') != NULL) {
+		t = "\"";
+		t += arg->value.str;
+		t += "\"";
+	} else {
+		t = arg->value.str;
+	}
+
 	switch (arg->type) {
 	case SEARCH_TEXT:
 		*s += FLATCURVE_ALL_HEADERS_QP;
-		*s += ":\"";
-		*s += arg->value.str;
-		*s += "\" OR \"";
-		*s += arg->value.str;
-		*s += "\"";
+		*s += ":";
+		*s += t;
+		*s += " OR ";
+		*s += t;
 
 		hash_table_update(x->prefixes, FLATCURVE_ALL_HEADERS_QP,
 				  FLATCURVE_ALL_HEADERS_PREFIX);
 		break;
 	case SEARCH_BODY:
-		*s += "\"";
-		*s += arg->value.str;
-		*s += "\"";
+		*s += t;
 		break;
 	case SEARCH_HEADER:
 	case SEARCH_HEADER_ADDRESS:
@@ -429,11 +436,10 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		if (!fts_header_want_indexed(arg->hdr_field_name))
 			return FALSE;
 		hdr = str_lcase(p_strconcat(query->pool, FLATCURVE_HEADER_QP,
-				  arg->hdr_field_name));
+				arg->hdr_field_name));
 		*s += hdr;
-		*s += ":\"";
-		*s += arg->value.str;
-		*s += "\"";
+		*s += ":";
+		*s += t;
 
 		hash_table_update(x->prefixes, hdr,
 				  FLATCURVE_HEADER_PREFIX);
