@@ -466,6 +466,14 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 		}
 	}
 
+	/* Empty Query. Optimize by not creating a query and returning no
+	 * results when we go through the iteration later. */
+	if (query->xapian->str->size() == 0) {
+		e_debug(backend->event, "Empty search query generated");
+		hash_table_destroy(&query->xapian->prefixes);
+		return TRUE;
+	}
+
 	e_debug(backend->event, "Search query generated: %s",
 		query->xapian->str->c_str());
 
@@ -500,18 +508,21 @@ struct fts_flatcurve_xapian_query_iterate_context
 				      struct flatcurve_fts_query *query)
 {
 	struct fts_flatcurve_xapian_query_iterate_context *ctx;
+	bool empty_query = ((query != NULL) && (query->xapian->query == NULL));
 
-	if (!fts_flatcurve_xapian_open_read(backend))
+	if (!empty_query && !fts_flatcurve_xapian_open_read(backend))
 		return NULL;
 
 	ctx = i_new(struct fts_flatcurve_xapian_query_iterate_context, 1);
-	ctx->enquire = new Xapian::Enquire(*backend->xapian->db_read);
-	if (query == NULL) {
-		ctx->enquire->set_query(Xapian::Query::MatchAll);
-	} else {
-		ctx->enquire->set_query(*query->xapian->query);
+	if (!empty_query) {
+		ctx->enquire = new Xapian::Enquire(*backend->xapian->db_read);
+		ctx->enquire->set_docid_order(Xapian::Enquire::DONT_CARE);
+		if (query == NULL) {
+			ctx->enquire->set_query(Xapian::Query::MatchAll);
+		} else {
+			ctx->enquire->set_query(*query->xapian->query);
+		}
 	}
-	ctx->enquire->set_docid_order(Xapian::Enquire::DONT_CARE);
 	ctx->result = i_new(struct fts_flatcurve_xapian_query_result, 1);
 
 	return ctx;
@@ -523,6 +534,8 @@ struct fts_flatcurve_xapian_query_result
 	uint32_t uid = 0;
 
 	if ((ctx->offset == 0) || (ctx->i == ctx->m.end())) {
+		if (ctx->enquire == NULL)
+			return NULL;
 		ctx->m = ctx->enquire->get_mset(ctx->offset, 10);
 		if (ctx->m.size() == 0)
 			return NULL;
