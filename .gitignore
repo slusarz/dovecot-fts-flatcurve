@@ -19,6 +19,7 @@ Makefile.in
 /depcomp
 /dummy-config.h
 /dummy-config.h.in
+/dummy-config.h.in~
 /libtool
 /missing
 /install-sh
