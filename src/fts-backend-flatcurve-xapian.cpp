@@ -2,6 +2,7 @@
  * See the included COPYING file */
 
 #include <xapian.h>
+#include <algorithm>
 extern "C" {
 #include "lib.h"
 #include "hash.h"
@@ -365,9 +366,9 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 			      struct flatcurve_fts_query *query,
 			      struct mail_search_arg *arg)
 {
-	char * hdr;
+	char *hdr;
 	struct flatcurve_fts_query_xapian *x = query->xapian;
-	std::string *s = x->str, t;
+	std::string *s = x->str, t, t2;
 
 	switch (arg->type) {
 	case SEARCH_TEXT:
@@ -407,8 +408,12 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 	arg->match_always = TRUE;
 
 	/* Prepare search string. Phrases should be surrounding by double
-	 * quotes. Single words should not be quoted. */
-	if (strchr(arg->value.str, ' ') != NULL) {
+	 * quotes. Single words should not be quoted. Quotes should be
+	 * removed from original input. */
+	t2 = arg->value.str;
+	t2.erase(std::remove(t2.begin(), t2.end(), '"'), t2.end());
+
+	if (t2.find_first_of(' ') != std::string::npos) {
 		if (!fts_flatcurve_xapian_open_read(backend))
 			return TRUE;
 		if (!backend->xapian->db_read->has_positions()) {
@@ -416,12 +421,10 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 			return TRUE;
 		}
 		*s += t;
-		t = "\"";
-		t += arg->value.str;
-		t += "\"";
+		t = "\"" + t2 + "\"";
 	} else {
 		*s += t;
-		t = arg->value.str;
+		t = t2;
 	}
 
 	switch (arg->type) {

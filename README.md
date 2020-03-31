@@ -123,5 +123,4 @@ This plugin emits events with the category `fts_flatcurve`.
 TODOs
 -----
 
-- Escape " (and other characters?) when creating search query
 - Improve NOT handling for multiple terms
