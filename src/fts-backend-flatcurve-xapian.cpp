@@ -144,10 +144,10 @@ fts_flatcurve_xapian_open_read(struct flatcurve_fts_backend *backend)
 
 	try {
 		backend->xapian->db_read = new Xapian::Database(backend->db);
-		e_debug(backend->event, "Opened DB (RO) (%s); %s",
+		e_debug(backend->event, "Opened DB (RO) mailbox=%s; %s",
 			backend->boxname, backend->db);
 	} catch (Xapian::Error e) {
-		e_debug(backend->event, "Cannot open DB RO (%s); %s",
+		e_debug(backend->event, "Cannot open DB RO mailbox=%s; %s",
 			backend->boxname, e.get_msg().c_str());
 		return FALSE;
 	}
@@ -172,10 +172,10 @@ fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend)
 	try {
 		xapian->db_write = new Xapian::WritableDatabase(
 			backend->db, db_flags);
-		e_debug(backend->event, "Opened DB (RW) (%s); %s",
+		e_debug(backend->event, "Opened DB (RW) mailbox=%s; %s",
 			backend->boxname, backend->db);
 	} catch (Xapian::Error e) {
-		e_debug(backend->event, "Cannot open DB RW (%s); %s",
+		e_debug(backend->event, "Cannot open DB RW mailbox=%s; %s",
 			backend->boxname, e.get_msg().c_str());
 		return FALSE;
 	}
