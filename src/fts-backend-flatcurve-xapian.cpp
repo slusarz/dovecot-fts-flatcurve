@@ -459,6 +459,10 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 			str_printfa(a->value, "%s:%s",
 				    FLATCURVE_ALL_HEADERS_QP, t.c_str(),
 				    t.c_str());
+			/* We can only match if it appears in the pool of
+			 * header terms, not to a specific header, so this
+			 * is a maybe match. */
+			query->maybe = TRUE;
 		}
 		break;
 	}
@@ -605,7 +609,7 @@ fts_flatcurve_xapian_query_iter_deinit(struct fts_flatcurve_xapian_query_iterate
 
 bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_backend *backend,
 				    struct flatcurve_fts_query *query,
-				    struct fts_result *r)
+				    struct flatcurve_fts_result *r)
 {
 	struct fts_flatcurve_xapian_query_iterate_context *iter;
 	struct fts_flatcurve_xapian_query_result *result;
@@ -614,13 +618,12 @@ bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_backend *backend,
 	if ((iter = fts_flatcurve_xapian_query_iter_init(backend, query)) == NULL)
 		return FALSE;
 	while ((result = fts_flatcurve_xapian_query_iter_next(iter)) != NULL) {
-		seq_range_array_add(&r->definite_uids, result->uid);
+		seq_range_array_add(&r->uids, result->uid);
 		score = array_append_space(&r->scores);
 		score->score = (float)result->score;
 		score->uid = result->uid;
 	}
 	fts_flatcurve_xapian_query_iter_deinit(&iter);
-	r->scores_sorted = TRUE;
 	return TRUE;
 }
 

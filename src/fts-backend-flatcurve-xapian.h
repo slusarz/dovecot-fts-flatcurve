@@ -34,7 +34,7 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 				      struct flatcurve_fts_query *query);
 bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_backend *backend,
 				    struct flatcurve_fts_query *query,
-				    struct fts_result *r);
+				    struct flatcurve_fts_result *r);
 void fts_flatcurve_xapian_destroy_query(struct flatcurve_fts_query *query);
 bool fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend);
 

@@ -403,6 +403,7 @@ fts_backend_flatcurve_lookup_multi(struct fts_backend *_backend,
 	struct flatcurve_fts_backend *backend =
 		(struct flatcurve_fts_backend *)_backend;
 	ARRAY(struct fts_result) box_results;
+	struct flatcurve_fts_result *fresult;
 	unsigned int i;
 	struct flatcurve_fts_query *query;
 	struct fts_result *r;
@@ -416,22 +417,33 @@ fts_backend_flatcurve_lookup_multi(struct fts_backend *_backend,
 	if (!fts_flatcurve_xapian_build_query(backend, query))
 		return -1;
 
-	p_array_init(&box_results, result->pool, 32);
+	p_array_init(&box_results, result->pool, 8);
 	for (i = 0; boxes[i] != NULL; i++) {
 		r = array_append_space(&box_results);
 		r->box = boxes[i];
-		p_array_init(&r->definite_uids, result->pool, 16);
-		p_array_init(&r->scores, result->pool, 16);
+
+		fresult = p_new(result->pool, struct flatcurve_fts_result, 1);
+		p_array_init(&fresult->scores, result->pool, 32);
+		p_array_init(&fresult->uids, result->pool, 32);
 
 		fts_backend_flatcurve_set_mailbox(backend, r->box);
 
-		if (!fts_flatcurve_xapian_run_query(backend, query, r)) {
+		if (!fts_flatcurve_xapian_run_query(backend, query, fresult)) {
 			ret = -1;
 			break;
 		}
 
-		e_debug(backend->event, "Query complete mailbox=%s matches=%d",
-			r->box->vname, array_count(&r->definite_uids));
+		if (query->maybe)
+			r->maybe_uids = fresult->uids;
+		else
+			r->definite_uids = fresult->uids;
+		r->scores = fresult->scores;
+
+		e_debug(backend->event,
+			"Query complete mailbox=%s %smatches=%d",
+			r->box->vname,
+			query->maybe ? "maybe_" : "",
+			array_count(&fresult->uids));
 	}
 
 	if (ret == 0) {
@@ -468,9 +480,14 @@ fts_backend_flatcurve_lookup(struct fts_backend *_backend, struct mailbox *box,
 	    (multi_result.box_results[0].box != NULL)) {
 		br = &multi_result.box_results[0];
 		result->box = br->box;
-		array_append_array(&result->definite_uids, &br->definite_uids);
+		if (array_is_created(&br->definite_uids))
+			array_append_array(&result->definite_uids,
+					   &br->definite_uids);
+		if (array_is_created(&br->maybe_uids))
+			array_append_array(&result->maybe_uids,
+					   &br->maybe_uids);
 		array_append_array(&result->scores, &br->scores);
-		result->scores_sorted = br->scores_sorted;
+		result->scores_sorted = TRUE;
 	}
 	pool_unref(&multi_result.pool);
 
