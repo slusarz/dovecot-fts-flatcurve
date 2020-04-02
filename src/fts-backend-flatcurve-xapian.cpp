@@ -376,9 +376,9 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 			      struct mail_search_arg *arg)
 {
 	struct flatcurve_fts_query_arg *a;
-	char *hdr;
-	struct flatcurve_fts_query_xapian *x = query->xapian;
+	string_t *hdr, *hdr2;
 	std::string t;
+	struct flatcurve_fts_query_xapian *x = query->xapian;
 
 	a = p_new(query->pool, struct flatcurve_fts_query_arg, 1);
 	a->value = str_new(query->pool, 64);
@@ -444,13 +444,22 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 	case SEARCH_HEADER:
 	case SEARCH_HEADER_ADDRESS:
 	case SEARCH_HEADER_COMPRESS_LWSP:
-		if (!fts_header_want_indexed(arg->hdr_field_name))
-			return FALSE;
-		hdr = str_lcase(p_strconcat(query->pool,
-				FLATCURVE_HEADER_QP,
-				arg->hdr_field_name));
-		x->qp->add_prefix(hdr, FLATCURVE_HEADER_PREFIX);
-		str_printfa(a->value, "%s:%s", hdr, t.c_str());
+		if (fts_header_want_indexed(arg->hdr_field_name)) {
+			hdr = str_new(query->pool, 32);
+			str_printfa(hdr, "%s%s", FLATCURVE_HEADER_QP,
+				    t_str_lcase(arg->hdr_field_name));
+			hdr2 = str_new(query->pool, 32);
+			str_printfa(hdr2, "%s%s", FLATCURVE_HEADER_PREFIX,
+				    t_str_ucase(arg->hdr_field_name));
+			x->qp->add_prefix(str_c(hdr), str_c(hdr2));
+			str_printfa(a->value, "%s:%s", str_c(hdr), t.c_str());
+		} else {
+			x->qp->add_prefix(FLATCURVE_ALL_HEADERS_QP,
+					  FLATCURVE_ALL_HEADERS_PREFIX);
+			str_printfa(a->value, "%s:%s",
+				    FLATCURVE_ALL_HEADERS_QP, t.c_str(),
+				    t.c_str());
+		}
 		break;
 	}
 
