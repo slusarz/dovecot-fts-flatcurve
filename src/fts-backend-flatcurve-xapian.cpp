@@ -5,7 +5,7 @@
 #include <algorithm>
 extern "C" {
 #include "lib.h"
-#include "hash.h"
+#include "str.h"
 #include "mail-storage-private.h"
 #include "mail-search.h"
 #include "unlink-directory.h"
@@ -16,6 +16,8 @@ extern "C" {
 
 #define FLATCURVE_ALL_HEADERS_QP "allhdrs"
 #define FLATCURVE_HEADER_QP "hdr_"
+
+#define FLATCURVE_MSET_RANGE 10
 
 struct flatcurve_xapian {
 	Xapian::Database *db_read;
@@ -28,17 +30,24 @@ struct flatcurve_xapian {
 	bool doc_created:1;
 };
 
+struct flatcurve_fts_query_arg {
+	string_t *value;
+
+	bool is_and:1;
+	bool is_not:1;
+};
+ARRAY_DEFINE_TYPE(flatcurve_fts_query_arg, struct flatcurve_fts_query_arg);
+
 struct flatcurve_fts_query_xapian {
-	HASH_TABLE(char *, char *) prefixes;
 	Xapian::Query *query;
-	std::string *str;
+	Xapian::QueryParser *qp;
+	ARRAY_TYPE(flatcurve_fts_query_arg) args;
 };
 
 struct fts_flatcurve_xapian_query_iterate_context {
 	Xapian::Enquire *enquire;
 	Xapian::MSetIterator i;
-	Xapian::MSet m;
-	unsigned int offset;
+	unsigned int offset, size;
 	struct fts_flatcurve_xapian_query_result *result;
 };
 
@@ -366,9 +375,13 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 			      struct flatcurve_fts_query *query,
 			      struct mail_search_arg *arg)
 {
+	struct flatcurve_fts_query_arg *a;
 	char *hdr;
 	struct flatcurve_fts_query_xapian *x = query->xapian;
-	std::string *s = x->str, t, t2;
+	std::string t;
+
+	a = p_new(query->pool, struct flatcurve_fts_query_arg, 1);
+	a->value = str_new(query->pool, 64);
 
 	switch (arg->type) {
 	case SEARCH_TEXT:
@@ -376,16 +389,11 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 	case SEARCH_HEADER:
 	case SEARCH_HEADER_ADDRESS:
 	case SEARCH_HEADER_COMPRESS_LWSP:
-		if (s->size() > 0) {
-			if (arg->match_not) {
-				t += " NOT ";
-			} else if ((query->flags & FTS_LOOKUP_FLAG_AND_ARGS) != 0) {
-				t += " AND ";
-			} else {
-				t += " OR ";
-			}
-		}
-		t += "(";
+		if (arg->match_not)
+			a->is_not = TRUE;
+		else if ((query->flags & FTS_LOOKUP_FLAG_AND_ARGS) != 0)
+			a->is_and = TRUE;
+		/* Otherwise, absence of these means an OR search. */
 		break;
 	case SEARCH_MAILBOX:
 		/* doveadm will pass this through in 'doveadm search'
@@ -407,117 +415,122 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 	 * regular search code. */
 	arg->match_always = TRUE;
 
-	/* Prepare search string. Phrases should be surrounding by double
+	/* Prepare search value. Phrases should be surrounding by double
 	 * quotes. Single words should not be quoted. Quotes should be
 	 * removed from original input. */
-	t2 = arg->value.str;
-	t2.erase(std::remove(t2.begin(), t2.end(), '"'), t2.end());
+	t = arg->value.str;
+	t.erase(std::remove(t.begin(), t.end(), '"'), t.end());
 
-	if (t2.find_first_of(' ') != std::string::npos) {
+	if (t.find_first_of(' ') != std::string::npos) {
 		if (!fts_flatcurve_xapian_open_read(backend))
 			return TRUE;
 		if (!backend->xapian->db_read->has_positions()) {
 			/* Phrase searching not available. */
 			return TRUE;
 		}
-		*s += t;
-		t = "\"" + t2 + "\"";
-	} else {
-		*s += t;
-		t = t2;
+		t = "\"" + t + "\"";
 	}
 
 	switch (arg->type) {
 	case SEARCH_TEXT:
-		*s += FLATCURVE_ALL_HEADERS_QP;
-		*s += ":";
-		*s += t;
-		*s += " OR ";
-		*s += t;
-
-		hash_table_update(x->prefixes, FLATCURVE_ALL_HEADERS_QP,
+		x->qp->add_prefix(FLATCURVE_ALL_HEADERS_QP,
 				  FLATCURVE_ALL_HEADERS_PREFIX);
+		str_printfa(a->value, "%s:%s OR %s",
+			    FLATCURVE_ALL_HEADERS_QP, t.c_str(), t.c_str());
 		break;
 	case SEARCH_BODY:
-		*s += t;
+		str_append(a->value, t.c_str());
 		break;
 	case SEARCH_HEADER:
 	case SEARCH_HEADER_ADDRESS:
 	case SEARCH_HEADER_COMPRESS_LWSP:
 		if (!fts_header_want_indexed(arg->hdr_field_name))
 			return FALSE;
-		hdr = str_lcase(p_strconcat(query->pool, FLATCURVE_HEADER_QP,
+		hdr = str_lcase(p_strconcat(query->pool,
+				FLATCURVE_HEADER_QP,
 				arg->hdr_field_name));
-		*s += hdr;
-		*s += ":";
-		*s += t;
-
-		hash_table_update(x->prefixes, hdr,
-				  FLATCURVE_HEADER_PREFIX);
+		x->qp->add_prefix(hdr, FLATCURVE_HEADER_PREFIX);
+		str_printfa(a->value, "%s:%s", hdr, t.c_str());
 		break;
 	}
 
-	*s += ")";
+	array_push_back(&x->args, a);
 
 	return TRUE;
+}
+
+static void
+fts_flatcurve_xapian_build_query_deinit(struct flatcurve_fts_query *query)
+{
+	array_free(&query->xapian->args);
+	delete(query->xapian->qp);
 }
 
 bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 				      struct flatcurve_fts_query *query)
 {
+	const struct flatcurve_fts_query_arg *a, *prev;
 	struct mail_search_arg *args = query->args;
-	void *key, *val;
-	struct hash_iterate_context *iter;
-	Xapian::QueryParser qp;
+	bool ret = TRUE;
+	std::string str;
+	struct flatcurve_fts_query_xapian *x;
 
-	query->xapian = p_new(query->pool,
-			      struct flatcurve_fts_query_xapian, 1);
-	query->xapian->str = new std::string();
-	hash_table_create(&query->xapian->prefixes, query->pool, 0,
-			  str_hash, strcmp);
+	x = query->xapian = p_new(query->pool,
+				  struct flatcurve_fts_query_xapian, 1);
+	array_create(&x->args, query->pool,
+		     sizeof(struct flatcurve_fts_query_arg), 4);
+
+	x->qp = new Xapian::QueryParser();
+	x->qp->set_stemming_strategy(Xapian::QueryParser::STEM_NONE);
 
 	for (; args != NULL ; args = args->next) {
 		if (!fts_flatcurve_build_query_arg(backend, query, args)) {
-			hash_table_destroy(&query->xapian->prefixes);
+			fts_flatcurve_xapian_build_query_deinit(query);
 			return FALSE;
 		}
 	}
 
 	/* Empty Query. Optimize by not creating a query and returning no
 	 * results when we go through the iteration later. */
-	if (query->xapian->str->size() == 0) {
+	if (array_is_empty(&x->args)) {
 		e_debug(backend->event, "Empty search query generated");
-		hash_table_destroy(&query->xapian->prefixes);
+		fts_flatcurve_xapian_build_query_deinit(query);
 		return TRUE;
 	}
 
-	e_debug(backend->event, "Search query generated: %s",
-		query->xapian->str->c_str());
-
-	qp.set_stemming_strategy(Xapian::QueryParser::STEM_NONE);
-
-	iter = hash_table_iterate_init(query->xapian->prefixes);
-	while (hash_table_iterate(iter, query->xapian->prefixes, &key, &val)) {
-		qp.add_prefix((char *)key, (char *)val);
+	/* Generate the query. */
+	prev = NULL;
+	array_foreach(&x->args, a) {
+		if (prev == NULL) {
+			str += str_c(a->value);
+		} else if (!str_equals(a->value, prev->value)) {
+			if (a->is_and)
+				str += " AND ";
+			else if (a->is_not)
+				str += " NOT ";
+			else
+				str += " OR ";
+			str += str_c(a->value);
+		}
+		prev = a;
 	}
-	hash_table_iterate_deinit(&iter);
-	hash_table_destroy(&query->xapian->prefixes);
+	e_debug(backend->event, "Search query generated: %s", str.c_str());
 
 	try {
-		query->xapian->query = new Xapian::Query(
-			qp.parse_query(
-				*query->xapian->str,
-				Xapian::QueryParser::FLAG_BOOLEAN |
-				Xapian::QueryParser::FLAG_PHRASE
-			)
-		);
+		x->query = new Xapian::Query(x->qp->parse_query(
+			str,
+			Xapian::QueryParser::FLAG_BOOLEAN |
+			Xapian::QueryParser::FLAG_PHRASE
+		));
 	} catch (Xapian::QueryParserError e) {
 		e_error(backend->event, "Parsing query failed: %s",
 			e.get_msg().c_str());
-		return FALSE;
+		ret = FALSE;
 	}
 
-	return TRUE;
+	fts_flatcurve_xapian_build_query_deinit(query);
+
+	return ret;
 }
 
 struct fts_flatcurve_xapian_query_iterate_context
@@ -541,6 +554,7 @@ struct fts_flatcurve_xapian_query_iterate_context
 		}
 	}
 	ctx->result = i_new(struct fts_flatcurve_xapian_query_result, 1);
+	ctx->size = 0;
 
 	return ctx;
 }
@@ -548,21 +562,23 @@ struct fts_flatcurve_xapian_query_iterate_context
 struct fts_flatcurve_xapian_query_result
 *fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iterate_context *ctx)
 {
-	uint32_t uid = 0;
+	Xapian::MSet m;
 
-	if ((ctx->offset == 0) || (ctx->i == ctx->m.end())) {
+	if (ctx->size == 0) {
 		if (ctx->enquire == NULL)
 			return NULL;
-		ctx->m = ctx->enquire->get_mset(ctx->offset, 10);
-		if (ctx->m.size() == 0)
+		m = ctx->enquire->get_mset(ctx->offset, FLATCURVE_MSET_RANGE);
+		if (m.empty())
 			return NULL;
-		ctx->i = ctx->m.begin();
-		ctx->offset += 10;
+		ctx->i = m.begin();
+		ctx->offset += FLATCURVE_MSET_RANGE;
+		ctx->size = m.size();
 	}
 
 	ctx->result->score = ctx->i.get_weight();
 	ctx->result->uid = *(ctx->i);
 	++ctx->i;
+	--ctx->size;
 
 	return ctx->result;
 }
