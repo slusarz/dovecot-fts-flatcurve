@@ -586,6 +586,9 @@ struct fts_flatcurve_xapian_query_result
 void
 fts_flatcurve_xapian_query_iter_deinit(struct fts_flatcurve_xapian_query_iterate_context **ctx)
 {
+	/* Need to explicitly call dtor, or else MSet doesn't release memory
+	 * allocated internally. */
+	(*ctx)->i.~MSetIterator();
 	delete((*ctx)->enquire);
 	i_free((*ctx)->result);
 	i_free_and_null(*ctx);
