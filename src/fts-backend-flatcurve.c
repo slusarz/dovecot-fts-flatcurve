@@ -48,8 +48,6 @@ fts_backend_flatcurve_init(struct fts_backend *_backend, const char **error_r)
 	event_add_category(backend->event, &event_category_fts_flatcurve);
 	event_set_append_log_prefix(backend->event, FTS_FLATCURVE_DEBUG_PREFIX);
 
-	e_debug(backend->event, "Initialized");
-
 	return 0;
 }
 
@@ -76,8 +74,6 @@ static void fts_backend_flatcurve_deinit(struct fts_backend *_backend)
 {
 	struct flatcurve_fts_backend *backend =
 		(struct flatcurve_fts_backend *)_backend;
-
-	e_debug(backend->event, "Destroyed");
 
 	fts_backend_flatcurve_close_box(backend);
 	fts_flatcurve_xapian_deinit(backend->xapian);
