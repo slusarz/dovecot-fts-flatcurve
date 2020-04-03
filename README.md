@@ -134,3 +134,17 @@ TODOs
 -----
 
 - Improve NOT handling for multiple terms
+
+
+Acknowledgements
+----------------
+
+Thanks to:
+
+- Joan Moreau <jom@grosjo.net>; fts-xapian
+  (https://github.com/grosjo/fts-xapian) was the inspiration to use Xapian
+  as the FTS library, although fts-flatcurve is not directly based on that
+  code
+- Aki Tuomi <aki.tuomi@open-xchange.com> and Jeff
+  Sipek <jeff.sipek@open-xchange.com>; conversations with them directly
+  convinced me to pursue this project
