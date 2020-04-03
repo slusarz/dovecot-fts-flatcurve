@@ -112,7 +112,7 @@ fts_flatcurve_xapian_need_optimize(struct flatcurve_fts_backend *backend)
 					"db_revision=%d", rev);
 				return TRUE;
 			}
-		} catch (Xapian::Error e) {
+		} catch (Xapian::Error &e) {
 			/* Ignore error */
 		}
 	}
@@ -155,7 +155,7 @@ fts_flatcurve_xapian_open_read(struct flatcurve_fts_backend *backend)
 		backend->xapian->db_read = new Xapian::Database(backend->db);
 		e_debug(backend->event, "Opened DB (RO) mailbox=%s; %s",
 			backend->boxname, backend->db);
-	} catch (Xapian::Error e) {
+	} catch (Xapian::Error &e) {
 		e_debug(backend->event, "Cannot open DB RO mailbox=%s; %s",
 			backend->boxname, e.get_msg().c_str());
 		return FALSE;
@@ -183,7 +183,7 @@ fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend)
 			backend->db, db_flags);
 		e_debug(backend->event, "Opened DB (RW) mailbox=%s; %s",
 			backend->boxname, backend->db);
-	} catch (Xapian::Error e) {
+	} catch (Xapian::Error &e) {
 		e_debug(backend->event, "Cannot open DB RW mailbox=%s; %s",
 			backend->boxname, e.get_msg().c_str());
 		return FALSE;
@@ -202,7 +202,7 @@ void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 
 	try {
 		*last_uid_r = backend->xapian->db_read->get_lastdocid();
-	} catch (Xapian::Error e) {
+	} catch (Xapian::Error &e) {
 		e_debug(backend->event, "get_last_uid (%s); %s",
 			backend->boxname, e.get_msg().c_str());
 	}
@@ -216,7 +216,7 @@ int fts_flatcurve_xapian_uid_exists(struct flatcurve_fts_backend *backend,
 
 	try {
 		(void)backend->xapian->db_read->get_document(uid);
-	} catch (Xapian::DocNotFoundError e) {
+	} catch (Xapian::DocNotFoundError &e) {
 		return 0;
 	}
 
@@ -231,7 +231,7 @@ void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 
 	try {
 		backend->xapian->db_write->delete_document(uid);
-	} catch (Xapian::Error e) {
+	} catch (Xapian::Error &e) {
 		e_debug(backend->event, "update_expunge (%s)",
 			e.get_msg().c_str());
 	}
@@ -256,10 +256,10 @@ fts_flatcurve_xapian_get_document(struct flatcurve_fts_backend_update_context *c
 	try {
 		doc = xapian->db_write->get_document(ctx->uid);
 		xapian->doc = &doc;
-	} catch (Xapian::DocNotFoundError e) {
+	} catch (Xapian::DocNotFoundError &e) {
 		xapian->doc = new Xapian::Document();
 		xapian->doc_created = TRUE;
-	} catch (Xapian::Error e) {
+	} catch (Xapian::Error &e) {
 		ctx->ctx.failed = TRUE;
 		return FALSE;
 	}
@@ -354,7 +354,7 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 	try {
 		backend->xapian->db_read->compact(s,
 			Xapian::DBCOMPACT_NO_RENUMBER);
-	} catch (Xapian::Error e) {
+	} catch (Xapian::Error &e) {
 		e_error(backend->event, "Error optimizing DB: %s",
 			e.get_msg().c_str());
 		return;
@@ -535,7 +535,7 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 			Xapian::QueryParser::FLAG_BOOLEAN |
 			Xapian::QueryParser::FLAG_PHRASE
 		));
-	} catch (Xapian::QueryParserError e) {
+	} catch (Xapian::QueryParserError &e) {
 		e_error(backend->event, "Parsing query failed: %s",
 			e.get_msg().c_str());
 		ret = FALSE;
