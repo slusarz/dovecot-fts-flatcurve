@@ -114,6 +114,16 @@ plugin {
 ```
 
 
+Data Storage
+------------
+
+Xapian search data is stored separately for each mailbox.
+
+The data is stored under a 'flatcurve-index' directory in the Dovecot index
+file location for the mailbox.  The Xapian library is responsible for the
+data stored in that directory - no Dovecot code directly writes to any file.
+
+
 Logging/Events
 --------------
 
