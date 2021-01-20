@@ -310,18 +310,21 @@ end:
 			"mailbox=%s", box->name);
 
 		/* Check for expunged mails. */
-		iter = fts_flatcurve_xapian_query_iter_init(backend, NULL);
-		while ((result = fts_flatcurve_xapian_query_iter_next(iter)) != NULL) {
-			if (!seq_range_exists(&uids, result->uid)) {
-				fts_flatcurve_xapian_expunge(backend, result->uid);
-				nodupes = FALSE;
-				e_debug(backend->event,
-					"Rescan: Missing expunged "
-					"message; deleting mailbox=%s "
-					"uid=%d", box->name, result->uid);
+		if ((iter = fts_flatcurve_xapian_query_iter_init(backend, NULL)) != NULL) {
+			while ((result = fts_flatcurve_xapian_query_iter_next(iter)) != NULL) {
+				if (!seq_range_exists(&uids, result->uid)) {
+					fts_flatcurve_xapian_expunge(backend,
+								     result->uid);
+					nodupes = FALSE;
+					e_debug(backend->event,
+						"Rescan: Missing expunged "
+						"message; deleting mailbox=%s "
+						"uid=%d", box->name,
+						result->uid);
+				}
 			}
+			fts_flatcurve_xapian_query_iter_deinit(&iter);
 		}
-		fts_flatcurve_xapian_query_iter_deinit(&iter);
 
 		if (nodupes)
 			e_debug(backend->event,
