@@ -18,6 +18,7 @@
  * prefixes. Bodytext is stored without prefixes, as it is expected to be the
  * single largest storage pool. */
 #define FLATCURVE_ALL_HEADERS_PREFIX "A"
+#define FLATCURVE_BOOLEAN_FIELD_PREFIX "B"
 #define FLATCURVE_HEADER_PREFIX "H"
 
 #define FTS_FLATCURVE_DEBUG_PREFIX "fts_flatcurve: "

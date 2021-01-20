@@ -15,6 +15,7 @@ extern "C" {
 };
 
 #define FLATCURVE_ALL_HEADERS_QP "allhdrs"
+#define FLATCURVE_HEADER_BOOL_QP "hdr_bool"
 #define FLATCURVE_HEADER_QP "hdr_"
 
 #define FLATCURVE_MSET_RANGE 10
@@ -293,6 +294,8 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 		} else {
 			xapian->tg->index_text_without_positions(s, 1, p);
 		}
+
+		xapian->tg->index_text(str_ucase(ctx->hdr_name), 1, FLATCURVE_BOOLEAN_FIELD_PREFIX);
 	}
 
 	if (backend->fuser->set.save_position) {
@@ -428,7 +431,8 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 			/* Phrase searching not available. */
 			return TRUE;
 		}
-		t = "\"" + t + "\"";
+		if (t.size() > 0)
+			t = "\"" + t + "\"";
 	}
 
 	switch (arg->type) {
@@ -445,14 +449,21 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 	case SEARCH_HEADER_ADDRESS:
 	case SEARCH_HEADER_COMPRESS_LWSP:
 		if (fts_header_want_indexed(arg->hdr_field_name)) {
-			hdr = str_new(query->pool, 32);
-			str_printfa(hdr, "%s%s", FLATCURVE_HEADER_QP,
-				    t_str_lcase(arg->hdr_field_name));
-			hdr2 = str_new(query->pool, 32);
-			str_printfa(hdr2, "%s%s", FLATCURVE_HEADER_PREFIX,
-				    t_str_ucase(arg->hdr_field_name));
-			x->qp->add_prefix(str_c(hdr), str_c(hdr2));
-			str_printfa(a->value, "%s:%s", str_c(hdr), t.c_str());
+			if (t.size() > 0) {
+				hdr = str_new(query->pool, 32);
+				str_printfa(hdr, "%s%s", FLATCURVE_HEADER_QP,
+					    t_str_lcase(arg->hdr_field_name));
+				hdr2 = str_new(query->pool, 32);
+				str_printfa(hdr2, "%s%s", FLATCURVE_HEADER_PREFIX,
+					    t_str_ucase(arg->hdr_field_name));
+				x->qp->add_prefix(str_c(hdr), str_c(hdr2));
+				str_printfa(a->value, "%s:%s", str_c(hdr), t.c_str());
+			} else {
+				x->qp->add_boolean_prefix(FLATCURVE_HEADER_BOOL_QP,
+							  FLATCURVE_BOOLEAN_FIELD_PREFIX);
+				str_printfa(a->value, "%s:%s", FLATCURVE_HEADER_BOOL_QP,
+					    t_str_lcase(arg->hdr_field_name));
+			}
 		} else {
 			x->qp->add_prefix(FLATCURVE_ALL_HEADERS_QP,
 					  FLATCURVE_ALL_HEADERS_PREFIX);
