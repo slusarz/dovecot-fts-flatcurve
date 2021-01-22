@@ -144,3 +144,74 @@ Thanks to:
 - Aki Tuomi <aki.tuomi@open-xchange.com> and Jeff
   Sipek <jeff.sipek@open-xchange.com>; conversations with them directly
   convinced me to pursue this project
+
+
+Benchmarking
+------------
+```
+Linux ... 5.4.73-1-pve #1 SMP PVE 5.4.73-1 ... x86_64 GNU/Linux
+CentOS 7; Dovecot 2.3.13; Xapian 1.2.22
+Using fts_flatcurve as of 22 January 2021
+
+
+-- Indexing Trash Mailbox w/43120 messages
+-- (e.g. this is "legitimate" mail; it does not include Spam)
+$ time doveadm index Trash
+doveadm(): Info: Trash: Caching mails seq=1..43120
+43120/43120
+
+real    2m3.947s
+user    1m47.174s
+sys     0m2.083s
+
+
+-- Listing Xapian files for the mailbox
+$ ls -la flatcurve-index/
+total 280508
+drwx------ 2 vmail vmail      4096 Jan 21 23:39 .
+drwx------ 3 vmail vmail      4096 Jan 21 23:39 ..
+-rw------- 1 vmail vmail         0 Jan 21 23:37 flintlock
+-rw------- 1 vmail vmail        28 Jan 21 23:37 iamchert
+-rw------- 1 vmail vmail 206168064 Jan 21 23:39 postlist.DB
+-rw------- 1 vmail vmail      2779 Jan 21 23:39 postlist.baseA
+-rw------- 1 vmail vmail      3164 Jan 21 23:39 postlist.baseB
+-rw------- 1 vmail vmail    548864 Jan 21 23:39 record.DB
+-rw------- 1 vmail vmail        23 Jan 21 23:39 record.baseA
+-rw------- 1 vmail vmail        24 Jan 21 23:39 record.baseB
+-rw------- 1 vmail vmail  80478208 Jan 21 23:39 termlist.DB
+-rw------- 1 vmail vmail      1156 Jan 21 23:39 termlist.baseA
+-rw------- 1 vmail vmail      1246 Jan 21 23:39 termlist.baseB
+
+
+-- Compacting mailbox (Xapian 1.2 does not support auto-compaction)
+$ xapian-compact flatcurve-index flatcurve-index-compact
+postlist: Reduced by 63% 127584K (201336K -> 73752K)
+record: Reduced by 5% 32K (536K -> 504K)
+termlist: Reduced by 6% 5056K (78592K -> 73536K)
+position: doesn't exist
+spelling: doesn't exist
+synonym: doesn't exist
+$ ls -la flatcurve-index-compact/
+total 147828
+drwx------ 2 root  root      4096 Jan 21 23:45 .
+drwx------ 4 vmail vmail     4096 Jan 21 23:45 ..
+-rw------- 1 root  root        28 Jan 21 23:45 iamchert
+-rw------- 1 root  root  75522048 Jan 21 23:45 postlist.DB
+-rw------- 1 root  root        13 Jan 21 23:45 postlist.baseA
+-rw------- 1 root  root      1171 Jan 21 23:45 postlist.baseB
+-rw------- 1 root  root    516096 Jan 21 23:45 record.DB
+-rw------- 1 root  root        13 Jan 21 23:45 record.baseA
+-rw------- 1 root  root        23 Jan 21 23:45 record.baseB
+-rw------- 1 root  root  75300864 Jan 21 23:45 termlist.DB
+-rw------- 1 root  root        13 Jan 21 23:45 termlist.baseA
+-rw------- 1 root  root      1167 Jan 21 23:45 termlist.baseB
+
+
+-- Comparing to size of Trash mailbox
+$ doveadm mailbox status vsize Trash
+Trash vsize=1712148272
+$ echo "scale=3; (147828 * 1024) / 1712148272" | bc
+.088
+
+-- So: indexing is about **9%** the size of the total mailbox size
+```
