@@ -195,9 +195,8 @@ fts_backend_flatcurve_update_set_build_key(struct fts_backend_update_context *_c
 	switch (key->type) {
 	case FTS_BACKEND_BUILD_KEY_HDR:
 		i_assert(key->hdr_name != NULL);
-		if (fts_header_want_indexed(key->hdr_name)) {
-			ctx->hdr_name = i_strdup(key->hdr_name);
-		}
+		ctx->hdr_name = i_strdup(key->hdr_name);
+		ctx->indexed_hdr = fts_header_want_indexed(key->hdr_name);
 		break;
 	case FTS_BACKEND_BUILD_KEY_MIME_HDR:
 	case FTS_BACKEND_BUILD_KEY_BODY_PART:

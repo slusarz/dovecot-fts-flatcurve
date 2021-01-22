@@ -39,6 +39,8 @@ struct flatcurve_fts_backend_update_context {
 	enum fts_backend_build_key_type type;
 	char *hdr_name;
 	uint32_t uid;
+
+	bool indexed_hdr:1;
 };
 
 struct flatcurve_fts_query {

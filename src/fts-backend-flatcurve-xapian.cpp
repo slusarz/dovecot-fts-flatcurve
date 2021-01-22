@@ -279,13 +279,13 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 	if (!fts_flatcurve_xapian_get_document(ctx, backend))
 		return;
 
-	if (ctx->hdr_name != NULL) {
+	if (ctx->indexed_hdr) {
 		h = str_ucase(ctx->hdr_name);
 		xapian->doc->add_term(FLATCURVE_HEADER_PREFIX + h + s);
-		h = str_lcase(ctx->hdr_name);
-		xapian->doc->add_boolean_term(FLATCURVE_BOOLEAN_FIELD_PREFIX +
-					      h);
 	}
+
+	h = str_lcase(ctx->hdr_name);
+	xapian->doc->add_boolean_term(FLATCURVE_BOOLEAN_FIELD_PREFIX + h);
 
 	xapian->doc->add_term(FLATCURVE_ALL_HEADERS_PREFIX + s);
 }
@@ -429,8 +429,8 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 	case SEARCH_HEADER:
 	case SEARCH_HEADER_ADDRESS:
 	case SEARCH_HEADER_COMPRESS_LWSP:
-		if (fts_header_want_indexed(arg->hdr_field_name)) {
-			if (t.size() > 0) {
+		if (t.size() > 0) {
+			if (fts_header_want_indexed(arg->hdr_field_name)) {
 				hdr = str_new(query->pool, 32);
 				str_printfa(hdr, "%s%s", FLATCURVE_HEADER_QP,
 					    t_str_lcase(arg->hdr_field_name));
@@ -440,21 +440,22 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 				x->qp->add_prefix(str_c(hdr), str_c(hdr2));
 				str_printfa(a->value, "%s:%s", str_c(hdr), t.c_str());
 			} else {
-				x->qp->add_boolean_prefix(FLATCURVE_HEADER_BOOL_QP,
-							  FLATCURVE_BOOLEAN_FIELD_PREFIX);
-				str_printfa(a->value, "%s:%s", FLATCURVE_HEADER_BOOL_QP,
-					    t_str_lcase(arg->hdr_field_name));
+				x->qp->add_prefix(FLATCURVE_ALL_HEADERS_QP,
+						  FLATCURVE_ALL_HEADERS_PREFIX);
+				str_printfa(a->value, "%s:%s",
+					    FLATCURVE_ALL_HEADERS_QP, t.c_str(),
+					    t.c_str());
+				/* We can only match if it appears in the pool
+				 * of header terms, not to a specific header,
+				 * so this is a maybe match. */
+				/* FIXME: Add header names to search? */
+				query->maybe = TRUE;
 			}
 		} else {
-			x->qp->add_prefix(FLATCURVE_ALL_HEADERS_QP,
-					  FLATCURVE_ALL_HEADERS_PREFIX);
-			str_printfa(a->value, "%s:%s",
-				    FLATCURVE_ALL_HEADERS_QP, t.c_str(),
-				    t.c_str());
-			/* We can only match if it appears in the pool of
-			 * header terms, not to a specific header, so this
-			 * is a maybe match. */
-			query->maybe = TRUE;
+			x->qp->add_boolean_prefix(FLATCURVE_HEADER_BOOL_QP,
+						  FLATCURVE_BOOLEAN_FIELD_PREFIX);
+			str_printfa(a->value, "%s:%s", FLATCURVE_HEADER_BOOL_QP,
+				    t_str_lcase(arg->hdr_field_name));
 		}
 		break;
 	}
