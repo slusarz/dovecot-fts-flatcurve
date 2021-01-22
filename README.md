@@ -103,12 +103,15 @@ Options for the `fts_flatcurve` plugin setting:
 		     internal defaults])
  - `max_term_size` - The maximum number of characters in a term to index.
 		     (integer, maximum 200; DEFAULT: 30) 
+ - `min_term_size` - The minimum number of characters in a term to index.
+		     (integer; DEFAULT: 2)
 
 Example:
 
 ```
 plugin {
   fts_flatcurve = auto_optimize=500 commit_limit=0 max_term_size=30
+                  min_term_size=2
 }
 ```
 

@@ -18,11 +18,13 @@
 #define FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT 0
 #define FTS_FLATCURVE_MAX_TERM_SIZE_DEFAULT 30
 #define FTS_FLATCURVE_MAX_TERM_SIZE_MAX 200
+#define FTS_FLATCURVE_MIN_TERM_SIZE_DEFAULT 2
 
 struct fts_flatcurve_settings {
 	unsigned int auto_optimize;
 	unsigned int commit_limit;
 	unsigned int max_term_size;
+	unsigned int min_term_size;
 };
 
 struct fts_flatcurve_user {
