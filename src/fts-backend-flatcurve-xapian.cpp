@@ -24,7 +24,6 @@ struct flatcurve_xapian {
 	Xapian::Database *db_read;
 	Xapian::WritableDatabase *db_write;
 	Xapian::Document *doc;
-	Xapian::TermGenerator *tg;
 
 	uint32_t doc_uid;
 	unsigned int doc_updates;
@@ -88,11 +87,9 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 
 	if (xapian->doc_created)
 		delete(xapian->doc);
-	delete(xapian->tg);
 	xapian->doc = NULL;
 	xapian->doc_created = FALSE;
 	xapian->doc_uid = 0;
-	xapian->tg = NULL;
 }
 
 static bool
@@ -264,10 +261,6 @@ fts_flatcurve_xapian_get_document(struct flatcurve_fts_backend_update_context *c
 		ctx->ctx.failed = TRUE;
 		return FALSE;
 	}
-
-	xapian->tg = new Xapian::TermGenerator();
-	xapian->tg->set_stemming_strategy(Xapian::TermGenerator::STEM_NONE);
-	xapian->tg->set_document(*xapian->doc);
 
 	xapian->doc_uid = ctx->uid;
 
