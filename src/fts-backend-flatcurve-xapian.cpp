@@ -3,6 +3,7 @@
 
 #include <xapian.h>
 #include <algorithm>
+#include <sstream>
 #include <string>
 extern "C" {
 #include "lib.h"
@@ -159,6 +160,7 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 static void
 fts_flatcurve_xapian_read_db_version(struct flatcurve_xapian *xapian)
 {
+	std::ostringstream ss;
 	std::string ver;
 
 	if (xapian->db_version == 0) {
@@ -172,7 +174,7 @@ fts_flatcurve_xapian_read_db_version(struct flatcurve_xapian *xapian)
 				FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION;
 			xapian->db_version_need_update = TRUE;
 		} else {
-			xapian->db_version = stoi(ver);
+			xapian->db_version = std::atoi(ver.c_str());
 			/* Once we have more than one version, upgrade
 			 * checking will be needed here. For now, there can
 			 * only be one version so no need to update. */
@@ -180,10 +182,9 @@ fts_flatcurve_xapian_read_db_version(struct flatcurve_xapian *xapian)
 	}
 
 	if (xapian->db_version_need_update && (xapian->db_write != NULL)) {
+		ss << FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION;
 		xapian->db_write->set_metadata(
-			FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION_KEY,
-			std::to_string(
-				FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION));
+			FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION_KEY, ss.str());
 		xapian->db_version_need_update = FALSE;
 	}
 }
