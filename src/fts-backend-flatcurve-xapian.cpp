@@ -3,6 +3,7 @@
 
 #include <xapian.h>
 #include <algorithm>
+#include <string>
 extern "C" {
 #include "lib.h"
 #include "str.h"
@@ -26,7 +27,8 @@ struct flatcurve_xapian {
 	Xapian::Document *doc;
 
 	uint32_t doc_uid;
-	unsigned int doc_updates;
+	unsigned int db_version, doc_updates;
+	bool db_version_need_update:1;
 	bool doc_created:1;
 };
 
@@ -147,8 +149,43 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 		xapian->db_read = NULL;
 	}
 
+	xapian->db_version = 0;
+	xapian->db_version_need_update = FALSE;
+
 	if (optimize)
 		fts_flatcurve_xapian_optimize_box(backend);
+}
+
+static void
+fts_flatcurve_xapian_read_db_version(struct flatcurve_xapian *xapian)
+{
+	std::string ver;
+
+	if (xapian->db_version == 0) {
+		ver = (xapian->db_write != NULL)
+			? xapian->db_write->get_metadata(
+				FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION_KEY)
+			: xapian->db_read->get_metadata(
+				FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION_KEY);
+		if (ver.empty()) {
+			xapian->db_version =
+				FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION;
+			xapian->db_version_need_update = TRUE;
+		} else {
+			xapian->db_version = stoi(ver);
+			/* Once we have more than one version, upgrade
+			 * checking will be needed here. For now, there can
+			 * only be one version so no need to update. */
+		}
+	}
+
+	if (xapian->db_version_need_update && (xapian->db_write != NULL)) {
+		xapian->db_write->set_metadata(
+			FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION_KEY,
+			std::to_string(
+				FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION));
+		xapian->db_version_need_update = FALSE;
+	}
 }
 
 static bool
@@ -159,8 +196,10 @@ fts_flatcurve_xapian_open_read(struct flatcurve_fts_backend *backend)
 
 	try {
 		backend->xapian->db_read = new Xapian::Database(backend->db);
-		e_debug(backend->event, "Opened DB (RO) mailbox=%s; %s",
-			backend->boxname, backend->db);
+		fts_flatcurve_xapian_read_db_version(backend->xapian);
+		e_debug(backend->event, "Opened DB (RO) mailbox=%s "
+			"version=%u; %s", backend->boxname,
+			backend->xapian->db_version, backend->db);
 	} catch (Xapian::Error &e) {
 		e_debug(backend->event, "Cannot open DB RO mailbox=%s; %s",
 			backend->boxname, e.get_msg().c_str());
@@ -187,8 +226,10 @@ fts_flatcurve_xapian_open_write(struct flatcurve_fts_backend *backend)
 	try {
 		xapian->db_write = new Xapian::WritableDatabase(
 			backend->db, db_flags);
-		e_debug(backend->event, "Opened DB (RW) mailbox=%s; %s",
-			backend->boxname, backend->db);
+		fts_flatcurve_xapian_read_db_version(xapian);
+		e_debug(backend->event, "Opened DB (RW) mailbox=%s "
+			"version=%u; %s", backend->boxname,
+			xapian->db_version, backend->db);
 	} catch (Xapian::Error &e) {
 		e_debug(backend->event, "Cannot open DB RW mailbox=%s; %s",
 			backend->boxname, e.get_msg().c_str());
