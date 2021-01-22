@@ -279,7 +279,7 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 				  struct flatcurve_fts_backend *backend,
 				  const unsigned char *data, size_t size)
 {
-	std::string p;
+	std::string h;
 	std::string s((char *)data, size);
 	struct flatcurve_xapian *xapian = backend->xapian;
 
@@ -287,22 +287,14 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 		return;
 
 	if (ctx->hdr_name != NULL) {
-		p += FLATCURVE_HEADER_PREFIX;
-		p += str_ucase(ctx->hdr_name);
-		if (backend->fuser->set.save_position) {
-			xapian->tg->index_text(s, 1, p);
-		} else {
-			xapian->tg->index_text_without_positions(s, 1, p);
-		}
-
-		xapian->tg->index_text(str_ucase(ctx->hdr_name), 1, FLATCURVE_BOOLEAN_FIELD_PREFIX);
+		h = str_ucase(ctx->hdr_name);
+		xapian->doc->add_term(FLATCURVE_HEADER_PREFIX + h + s);
+		h = str_lcase(ctx->hdr_name);
+		xapian->doc->add_boolean_term(FLATCURVE_BOOLEAN_FIELD_PREFIX +
+					      h);
 	}
 
-	if (backend->fuser->set.save_position) {
-		xapian->tg->index_text(s, 1, FLATCURVE_ALL_HEADERS_PREFIX);
-	} else {
-		xapian->tg->index_text_without_positions(s, 1, FLATCURVE_ALL_HEADERS_PREFIX);
-	}
+	xapian->doc->add_term(FLATCURVE_ALL_HEADERS_PREFIX + s);
 }
 
 void
@@ -316,11 +308,7 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 	if (!fts_flatcurve_xapian_get_document(ctx, backend))
 		return;
 
-	if (backend->fuser->set.save_position) {
-		xapian->tg->index_text(s);
-	} else {
-		xapian->tg->index_text_without_positions(s);
-	}
+	xapian->doc->add_term(s);
 }
 
 static bool
