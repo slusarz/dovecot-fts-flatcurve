@@ -4,8 +4,8 @@ FTS Flatcurve plugin for Dovecot
 What?
 -----
 
-This is a Dovecot FTS plugin to enable message indexing using the Xapian
-Open Source Search Engine Library (https://xapian.org/).
+This is a Dovecot FTS plugin to enable message indexing using the
+[Xapian](https://xapian.org/) Open Source Search Engine Library.
 
 The plugin relies on Dovecot to do the necessary stemming. It is intended
 to act as a simple interface to the Xapian storage/search query
@@ -15,7 +15,7 @@ This driver supports match scoring.  This driver does NOT support substring
 matches (which means it is NOT strictly RFC 3501 compliant; this is a
 limitation of Xapian) or fuzzy searches.
 
-The driver passes all of the [https://imapwiki.org/ImapTest|imaptest] search
+The driver passes all of the [ImapTest](https://imapwiki.org/ImapTest) search
 tests except for the substring matching tests.
 
 
@@ -152,10 +152,9 @@ Acknowledgements
 
 Thanks to:
 
-- Joan Moreau <jom@grosjo.net>; fts-xapian
-  (https://github.com/grosjo/fts-xapian) was the inspiration to use Xapian
-  as the FTS library, although fts-flatcurve is not directly based on that
-  code
+- Joan Moreau <jom@grosjo.net>; [fts-xapian](https://github.com/grosjo/fts-xapian)
+  was the inspiration to use Xapian as the FTS library, although
+  fts-flatcurve is not based or derived from that code
 - Aki Tuomi <aki.tuomi@open-xchange.com> and Jeff
   Sipek <jeff.sipek@open-xchange.com>; conversations with them directly
   convinced me to pursue this project
