@@ -30,7 +30,7 @@ Get it?
 Requirements
 ------------
 
-* Dovecot 2.x+ (tested on Dovecot CE 2.3.10)
+* Dovecot 2.x+ (tested on Dovecot CE 2.3.10, 2.3.13)
   - Flatcurve relies on Dovecot's built-in FTS stemming library.
     - REQUIRES stemmer support (--with-stemmer)
     - Optional libtextcat support (--with-textcat)
@@ -152,9 +152,10 @@ Acknowledgements
 
 Thanks to:
 
-- Joan Moreau <jom@grosjo.net>; [fts-xapian](https://github.com/grosjo/fts-xapian)
-  was the inspiration to use Xapian as the FTS library, although
-  fts-flatcurve is not based or derived from that code
+- Joan Moreau <jom@grosjo.net>;
+  [fts-xapian](https://github.com/grosjo/fts-xapian) was the inspiration to
+  use Xapian as the FTS library, although fts-flatcurve is not based or
+  derived from that code
 - Aki Tuomi <aki.tuomi@open-xchange.com> and Jeff
   Sipek <jeff.sipek@open-xchange.com>; conversations with them directly
   convinced me to pursue this project
@@ -165,6 +166,9 @@ Benchmarking
 ```
 Linux ... 5.4.73-1-pve #1 SMP PVE 5.4.73-1 ... x86_64 GNU/Linux
 CentOS 7; Dovecot 2.3.13; Xapian 1.2.22
+VM:
+  - 2x Intel(R) Core(TM) i7-4770 CPU @ 3.40GHz
+  - 512 MB RAM
 Using fts_flatcurve as of 22 January 2021
 
 
@@ -174,7 +178,7 @@ $ time doveadm index Trash
 doveadm(): Info: Trash: Caching mails seq=1..43120
 43120/43120
 
-real    2m3.947s
+real    2m3.947s   [~347 msgs/second]
 user    1m47.174s
 sys     0m2.083s
 
@@ -225,7 +229,5 @@ drwx------ 4 vmail vmail     4096 Jan 21 23:45 ..
 $ doveadm mailbox status vsize Trash
 Trash vsize=1712148272
 $ echo "scale=3; (147828 * 1024) / 1712148272" | bc
-.088
-
--- So: indexing is about **9%** the size of the total mailbox size
+.088  [Index = ~9% the size of the total mailbox data size]
 ```
