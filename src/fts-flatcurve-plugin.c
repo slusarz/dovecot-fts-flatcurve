@@ -5,6 +5,7 @@
 #include "mail-storage-hooks.h"
 #include "fts-user.h"
 #include "fts-backend-flatcurve.h"
+#include "fts-backend-flatcurve-xapian.h"
 #include "fts-flatcurve-plugin.h"
 
 const char *fts_flatcurve_plugin_version = DOVECOT_ABI_VERSION;
@@ -81,6 +82,7 @@ void fts_flatcurve_plugin_init(struct module *module)
 {
 	fts_backend_register(&fts_backend_flatcurve);
 	mail_storage_hooks_add(module, &fts_backend_mail_storage_hooks);
+	fts_flatcurve_xapian_debug_output_version();
 }
 
 void fts_flatcurve_plugin_deinit(void)

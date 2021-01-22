@@ -625,3 +625,9 @@ void fts_flatcurve_xapian_destroy_query(struct flatcurve_fts_query *query)
 {
 	delete(query->xapian->query);
 }
+
+void fts_flatcurve_xapian_debug_output_version()
+{
+	i_debug("%sXapian library version: %s", FTS_FLATCURVE_DEBUG_PREFIX,
+		Xapian::version_string());
+}
