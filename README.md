@@ -96,10 +96,11 @@ Options for the `fts_flatcurve` plugin setting:
 
  - `auto_optimize` - The number of database revisions that occur before the
                      index is automatically optimized in the background
-                     (integer, set to 0 to disable; DEFAULT: 100)
+                     (integer, set to 0 to disable; DEFAULT: 500)
  - `commit_limit` - Commit database changes after this many documents are
                     updated
-		    (integer, set to 0 to disable; DEFAULT: 100)
+		    (integer, set to 0 to disable; DEFAULT: 0 [use Xapian
+		     internal defaults])
  - `max_term_size` - The maximum number of characters in a term to index.
 		     (integer, maximum 200; DEFAULT: 30) 
 
@@ -107,7 +108,7 @@ Example:
 
 ```
 plugin {
-  fts_flatcurve = auto_optimize=100 commit_limit=100 max_term_size=30
+  fts_flatcurve = auto_optimize=500 commit_limit=0 max_term_size=30
 }
 ```
 
