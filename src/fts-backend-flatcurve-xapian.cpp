@@ -284,8 +284,11 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 		xapian->doc->add_term(FLATCURVE_HEADER_PREFIX + h + s);
 	}
 
-	h = str_lcase(ctx->hdr_name);
-	xapian->doc->add_boolean_term(FLATCURVE_BOOLEAN_FIELD_PREFIX + h);
+	if (ctx->hdr_name != NULL) {
+		h = str_lcase(ctx->hdr_name);
+		xapian->doc->add_boolean_term(
+			FLATCURVE_BOOLEAN_FIELD_PREFIX + h);
+	}
 
 	xapian->doc->add_term(FLATCURVE_ALL_HEADERS_PREFIX + s);
 }
