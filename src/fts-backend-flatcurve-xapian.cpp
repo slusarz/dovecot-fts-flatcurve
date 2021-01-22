@@ -74,7 +74,15 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 	if (xapian->doc == NULL)
 		return;
 
-	xapian->db_write->replace_document(xapian->doc_uid, *xapian->doc);
+	try {
+		xapian->db_write->replace_document(xapian->doc_uid,
+						   *xapian->doc);
+	} catch (Xapian::Error &e) {
+		e_warning(backend->event, "Could not write message data: "
+			  "mailbox=%s uid=%u; %s", backend->boxname,
+			  xapian->doc_uid, e.get_msg().c_str());
+	}
+
 	if ((backend->fuser->set.commit_limit > 0) &&
 	    (++xapian->doc_updates >= backend->fuser->set.commit_limit)) {
 		xapian->db_write->commit();
