@@ -375,7 +375,7 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 	case SEARCH_HEADER_COMPRESS_LWSP:
 		if (arg->match_not)
 			a->is_not = TRUE;
-		else if ((query->flags & FTS_LOOKUP_FLAG_AND_ARGS) != 0)
+		if ((query->flags & FTS_LOOKUP_FLAG_AND_ARGS) != 0)
 			a->is_and = TRUE;
 		/* Otherwise, absence of these means an OR search. */
 		break;
@@ -507,13 +507,13 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 	/* Generate the query. */
 	prev = NULL;
 	array_foreach(&x->args, a) {
+		if (a->is_not)
+			str += "NOT ";
 		if (prev == NULL) {
 			str += str_c(a->value);
 		} else if (!str_equals(a->value, prev->value)) {
 			if (a->is_and)
 				str += " AND ";
-			else if (a->is_not)
-				str += " NOT ";
 			else
 				str += " OR ";
 			str += str_c(a->value);
@@ -526,7 +526,8 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 		x->query = new Xapian::Query(x->qp->parse_query(
 			str,
 			Xapian::QueryParser::FLAG_BOOLEAN |
-			Xapian::QueryParser::FLAG_PHRASE
+			Xapian::QueryParser::FLAG_PHRASE |
+			Xapian::QueryParser::FLAG_PURE_NOT
 		));
 	} catch (Xapian::QueryParserError &e) {
 		e_error(backend->event, "Parsing query failed: %s",

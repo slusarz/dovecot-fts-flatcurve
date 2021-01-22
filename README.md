@@ -126,12 +126,6 @@ Logging/Events
 This plugin emits events with the category `fts_flatcurve`.
 
 
-TODOs
------
-
-- Improve NOT handling for multiple terms
-
-
 Acknowledgements
 ----------------
 
