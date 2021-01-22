@@ -232,6 +232,13 @@ fts_backend_flatcurve_update_build_more(struct fts_backend_update_context *_ctx,
 	if (_ctx->failed)
 		return -1;
 
+	/* Xapian has a hard limit of "245 bytes", at least with the glass
+	 * and chert backends.  However, it is highly doubtful that people
+	 * are realistically going to search with more than 10s of
+	 * characters. Therefore, limit term size (via a configurable
+	 * value). */
+	size = I_MIN(size, backend->fuser->set.max_term_size);
+
 	switch (ctx->type) {
 	case FTS_BACKEND_BUILD_KEY_HDR:
 	case FTS_BACKEND_BUILD_KEY_MIME_HDR:

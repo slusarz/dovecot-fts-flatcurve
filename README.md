@@ -100,12 +100,14 @@ Options for the `fts_flatcurve` plugin setting:
  - `commit_limit` - Commit database changes after this many documents are
                     updated
 		    (integer, set to 0 to disable; DEFAULT: 100)
+ - `max_term_size` - The maximum number of characters in a term to index.
+		     (integer, maximum 200; DEFAULT: 30) 
 
 Example:
 
 ```
 plugin {
-  fts_flatcurve = auto_optimize=100 commit_limit=100
+  fts_flatcurve = auto_optimize=100 commit_limit=100 max_term_size=30
 }
 ```
 
