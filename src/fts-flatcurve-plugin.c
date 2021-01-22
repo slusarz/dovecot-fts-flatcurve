@@ -30,7 +30,6 @@ fts_flatcurve_plugin_init_settings(struct fts_flatcurve_settings *set,
 
 	set->auto_optimize = FTS_FLATCURVE_AUTO_OPTIMIZE_DEFAULT;
 	set->commit_limit = FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT;
-	set->save_position = FTS_FLATCURVE_SAVE_POSITION_DEFAULT;
 
 	for (tmp = t_strsplit_spaces(str, " "); *tmp != NULL; tmp++) {
 		if (str_begins(*tmp, "auto_optimize=")) {
@@ -41,10 +40,6 @@ fts_flatcurve_plugin_init_settings(struct fts_flatcurve_settings *set,
 			if (str_to_uint(*tmp + 13, &val) < 0)
 				i_fatal("Invalid commit_limit: %s", *tmp + 13);
 			set->commit_limit = val;
-		} else if (str_begins(*tmp, "save_position=")) {
-			if (str_to_uint(*tmp + 14, &val) < 0)
-				i_fatal("Invalid save_position: %s", *tmp + 14);
-			set->save_position = (val > 0);
 		}
 	}
 

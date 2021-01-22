@@ -16,12 +16,10 @@
 
 #define FTS_FLATCURVE_AUTO_OPTIMIZE_DEFAULT 100
 #define FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT 100
-#define FTS_FLATCURVE_SAVE_POSITION_DEFAULT FALSE
 
 struct fts_flatcurve_settings {
 	unsigned int auto_optimize;
 	unsigned int commit_limit;
-	bool save_position:1;
 };
 
 struct fts_flatcurve_user {
