@@ -11,8 +11,12 @@ The plugin relies on Dovecot to do the necessary stemming. It is intended
 to act as a simple interface to the Xapian storage/search query
 functionality.
 
-This driver supports phrase searching and match scoring.  This driver does
-NOT support fuzzy searches.
+This driver supports match scoring.  This driver does NOT support substring
+matches (which means it is NOT strictly RFC 3501 compliant; this is a
+limitation of Xapian) or fuzzy searches.
+
+The driver passes all of the [https://imapwiki.org/ImapTest|imaptest] search
+tests except for the substring matching tests.
 
 
 Why Flatcurve?
@@ -28,11 +32,13 @@ Requirements
 
 * Dovecot 2.x+ (tested on Dovecot CE 2.3.10)
   - Flatcurve relies on Dovecot's built-in FTS stemming library.
-    - Requires stemmer support (--with-stemmer)
+    - REQUIRES stemmer support (--with-stemmer)
     - Optional libtextcat support (--with-textcat)
     - Optional icu support (--with-icu)
 * Xapian 1.2.x+ (tested on Xapian 1.2.22, 1.4.11)
-  - 1.4+ is required for optimization support
+  - 1.4+ is required for automatic optimization support
+    - older versions require manual optimization (this is a limitation of the
+      Xapian library)
 
 
 Compilation
@@ -87,8 +93,9 @@ Configuration
 -------------
 
 See https://doc.dovecot.org/configuration_manual/fts/ for configuration
-information regarding general FTS plugin options.  Note: flatcurve requires
-the core Dovecot FTS stemming feature.
+information regarding general FTS plugin options.
+
+Note: flatcurve REQUIRES the core Dovecot FTS stemming feature.
 
 Flatcurve provies a single plugin option for configuration: `fts_flatcurve`.
 
@@ -130,6 +137,14 @@ Logging/Events
 --------------
 
 This plugin emits events with the category `fts_flatcurve`.
+
+Flatcurve outputs copious debug information.  To view, add this to
+`dovecot.conf`:
+
+```
+# This requires Dovecot v2.3.13+
+log_debug = category=fts_flatcurve
+```
 
 
 Acknowledgements
