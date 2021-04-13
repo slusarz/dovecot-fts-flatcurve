@@ -65,9 +65,9 @@ with the following parameters:
 
    Path to the dovecot-config file. This can either be a compiled dovecot
    source tree or point to the location where the dovecot-config file is
-   installed on your system (typically in the $prefix/lib/dovecot directory).
+   installed on your system (typically in the `$prefix/lib/dovecot` directory).
 
-When these paremeters are omitted, the configure script will try to find thex
+When these parameters are omitted, the configure script will try to find thex
 local Dovecot installation implicitly.
 
 For example, when compiling against compiled Dovecot sources:
@@ -82,7 +82,7 @@ Or when compiling against a Dovecot installation:
 ./configure --with-dovecot=/path/to/dovecot
 ```
 
-As usual, to compile and install, execute the following:
+To compile and install, execute the following:
 
 ```
 make
@@ -141,7 +141,8 @@ data stored in that directory - no Dovecot code directly writes to any file.
 Logging/Events
 --------------
 
-This plugin emits events with the category `fts_flatcurve`.
+This plugin emits [events](https://doc.dovecot.org/admin_manual/event_design/)
+with the category `fts_flatcurve`.
 
 Flatcurve outputs copious debug information.  To view, add this to
 `dovecot.conf`:
