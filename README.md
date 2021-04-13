@@ -116,8 +116,11 @@ Options for the `fts_flatcurve` plugin setting:
 Example:
 
 ```
+mail_plugins = $mail_plugins fts fts_flatcurve
+
 plugin {
-  fts_flatcurve = auto_optimize=500 commit_limit=0 max_term_size=30
+  fts = flatcurve
+  fts_flatcurve = auto_optimize=500 commit_limit=0 max_term_size=30 \
                   min_term_size=2
 }
 ```
