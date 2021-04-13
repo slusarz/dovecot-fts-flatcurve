@@ -95,7 +95,9 @@ Configuration
 See https://doc.dovecot.org/configuration_manual/fts/ for configuration
 information regarding general FTS plugin options.
 
-Note: flatcurve REQUIRES the core Dovecot FTS stemming feature.
+Note: flatcurve REQUIRES the core
+[Dovecot FTS stemming](https://doc.dovecot.org/configuration_manual/fts/tokenization/)
+feature.
 
 Flatcurve provies a single plugin option for configuration: `fts_flatcurve`.
 
