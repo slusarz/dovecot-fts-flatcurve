@@ -11,12 +11,12 @@ The plugin relies on Dovecot to do the necessary stemming. It is intended
 to act as a simple interface to the Xapian storage/search query
 functionality.
 
-This driver supports match scoring.  This driver does NOT support substring
-matches (which means it is NOT strictly RFC 3501 compliant; this is a
-limitation of Xapian) or fuzzy searches.
+This driver supports match scoring and substring matches (on by default),
+which means it is RFC 3501 (IMAP4rev1) compliant. This driver does not
+support fuzzy searches.
 
 The driver passes all of the [ImapTest](https://imapwiki.org/ImapTest) search
-tests except for the substring matching tests.
+tests.
 
 
 Why Flatcurve?
@@ -32,9 +32,9 @@ Requirements
 
 * Dovecot 2.x+ (tested on Dovecot CE 2.3.10, 2.3.13)
   - Flatcurve relies on Dovecot's built-in FTS stemming library.
+    - REQUIRES icu support (--with-icu)
     - REQUIRES stemmer support (--with-stemmer)
     - Optional libtextcat support (--with-textcat)
-    - Optional icu support (--with-icu)
 * Xapian 1.2.x+ (tested on Xapian 1.2.22, 1.4.11)
   - 1.4+ is required for automatic optimization support
     - older versions require manual optimization (this is a limitation of the
@@ -114,6 +114,11 @@ Options for the `fts_flatcurve` plugin setting:
 		     (integer, maximum 200; DEFAULT: 30) 
  - `min_term_size` - The minimum number of characters in a term to index.
 		     (integer; DEFAULT: 2)
+ - `substring_search` - If enabled, allows substring searches (RFC 3501
+                        compliant). However, this requires significant
+                        additional storage space, so substring searches can
+                        be disabled, if necessary. ("yes" or "no"; DEFAULT:
+                        "yes")
 
 Example:
 
@@ -123,7 +128,7 @@ mail_plugins = $mail_plugins fts fts_flatcurve
 plugin {
   fts = flatcurve
   fts_flatcurve = auto_optimize=500 commit_limit=0 max_term_size=30 \
-                  min_term_size=2
+                  min_term_size=2 substring_search=yes
 }
 ```
 
@@ -169,6 +174,9 @@ Thanks to:
 
 Benchmarking
 ------------
+
+### Indexing benchmark with substring matching DISABLED
+
 ```
 Linux ... 5.4.73-1-pve #1 SMP PVE 5.4.73-1 ... x86_64 GNU/Linux
 CentOS 7; Dovecot 2.3.13; Xapian 1.2.22

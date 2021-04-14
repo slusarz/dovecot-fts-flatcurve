@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <sstream>
 #include <string>
+#include <unicode/unistr.h>
 extern "C" {
 #include "lib.h"
 #include "str.h"
@@ -322,17 +323,12 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 				  struct flatcurve_fts_backend *backend,
 				  const unsigned char *data, size_t size)
 {
-	std::string h;
-	std::string s((char *)data, size);
+	std::string h, t;
+	icu::UnicodeString s;
 	struct flatcurve_xapian *xapian = backend->xapian;
 
 	if (!fts_flatcurve_xapian_get_document(ctx, backend))
 		return;
-
-	if (ctx->indexed_hdr) {
-		h = str_ucase(ctx->hdr_name);
-		xapian->doc->add_term(FLATCURVE_HEADER_PREFIX + h + s);
-	}
 
 	if (ctx->hdr_name != NULL) {
 		h = str_lcase(ctx->hdr_name);
@@ -340,7 +336,28 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 			FLATCURVE_BOOLEAN_FIELD_PREFIX + h);
 	}
 
-	xapian->doc->add_term(FLATCURVE_ALL_HEADERS_PREFIX + s);
+	/* Xapian does not support substring searches by default, so we
+	 * instead need to explicitly store all substrings of a string, up
+	 * to the point where the substring becomes smaller than
+	 * min_term_size. We need to use icu in order to correctly handle
+	 * multi-byte characters. */
+	s = icu::UnicodeString::fromUTF8(
+		icu::StringPiece((const char *)data, size));
+	if (ctx->indexed_hdr)
+		h = str_ucase(ctx->hdr_name);
+
+	do {
+		t.clear();
+		s.toUTF8String(t);
+
+		if (ctx->indexed_hdr) {
+			xapian->doc->add_term(FLATCURVE_HEADER_PREFIX + h + t);
+		}
+		xapian->doc->add_term(FLATCURVE_ALL_HEADERS_PREFIX + t);
+
+		s = icu::UnicodeString(s, 1);
+	} while (backend->fuser->set.substring_search &&
+		 (s.length() >= backend->fuser->set.min_term_size));
 }
 
 void
@@ -348,13 +365,28 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 				struct flatcurve_fts_backend *backend,
 				const unsigned char *data, size_t size)
 {
-	std::string s((char *)data, size);
+	icu::UnicodeString s;
+	std::string t;
 	struct flatcurve_xapian *xapian = backend->xapian;
 
 	if (!fts_flatcurve_xapian_get_document(ctx, backend))
 		return;
 
-	xapian->doc->add_term(s);
+	/* Xapian does not support substring searches by default, so we
+	 * instead need to explicitly store all substrings of a string, up
+	 * to the point where the substring becomes smaller than
+	 * min_term_size. We need to use icu in order to correctly handle
+	 * multi-byte characters. */
+	s = icu::UnicodeString::fromUTF8(
+		icu::StringPiece((const char *)data, size));
+
+	do {
+		t.clear();
+		s.toUTF8String(t);
+		xapian->doc->add_term(t);
+		s = icu::UnicodeString(s, 1);
+	} while (backend->fuser->set.substring_search &&
+		 (s.length() >= backend->fuser->set.min_term_size));
 }
 
 static bool

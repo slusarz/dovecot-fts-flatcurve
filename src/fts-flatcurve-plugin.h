@@ -19,12 +19,14 @@
 #define FTS_FLATCURVE_MAX_TERM_SIZE_DEFAULT 30
 #define FTS_FLATCURVE_MAX_TERM_SIZE_MAX 200
 #define FTS_FLATCURVE_MIN_TERM_SIZE_DEFAULT 2
+#define FTS_FLATCURVE_SUBSTRING_SEARCH_DEFAULT TRUE
 
 struct fts_flatcurve_settings {
 	unsigned int auto_optimize;
 	unsigned int commit_limit;
 	unsigned int max_term_size;
 	unsigned int min_term_size;
+	bool substring_search;
 };
 
 struct fts_flatcurve_user {
