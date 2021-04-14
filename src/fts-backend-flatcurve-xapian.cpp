@@ -473,11 +473,12 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 	case SEARCH_TEXT:
 		x->qp->add_prefix(FLATCURVE_ALL_HEADERS_QP,
 				  FLATCURVE_ALL_HEADERS_PREFIX);
-		str_printfa(a->value, "%s:%s OR %s",
+		str_printfa(a->value, "%s:%s* OR %s*",
 			    FLATCURVE_ALL_HEADERS_QP, t.c_str(), t.c_str());
 		break;
 	case SEARCH_BODY:
 		str_append(a->value, t.c_str());
+		str_append(a->value, "*");
 		break;
 	case SEARCH_HEADER:
 	case SEARCH_HEADER_ADDRESS:
@@ -491,11 +492,11 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 				str_printfa(hdr2, "%s%s", FLATCURVE_HEADER_PREFIX,
 					    t_str_ucase(arg->hdr_field_name));
 				x->qp->add_prefix(str_c(hdr), str_c(hdr2));
-				str_printfa(a->value, "%s:%s", str_c(hdr), t.c_str());
+				str_printfa(a->value, "%s:%s*", str_c(hdr), t.c_str());
 			} else {
 				x->qp->add_prefix(FLATCURVE_ALL_HEADERS_QP,
 						  FLATCURVE_ALL_HEADERS_PREFIX);
-				str_printfa(a->value, "%s:%s",
+				str_printfa(a->value, "%s:%s*",
 					    FLATCURVE_ALL_HEADERS_QP,
 					    t.c_str());
 				/* We can only match if it appears in the pool
@@ -580,7 +581,8 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 			str,
 			Xapian::QueryParser::FLAG_BOOLEAN |
 			Xapian::QueryParser::FLAG_PHRASE |
-			Xapian::QueryParser::FLAG_PURE_NOT
+			Xapian::QueryParser::FLAG_PURE_NOT |
+			Xapian::QueryParser::FLAG_WILDCARD
 		));
 	} catch (Xapian::QueryParserError &e) {
 		e_error(backend->event, "Parsing query failed: %s",
