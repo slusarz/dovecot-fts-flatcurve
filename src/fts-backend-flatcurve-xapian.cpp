@@ -496,7 +496,7 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 				x->qp->add_prefix(FLATCURVE_ALL_HEADERS_QP,
 						  FLATCURVE_ALL_HEADERS_PREFIX);
 				str_printfa(a->value, "%s:%s",
-					    FLATCURVE_ALL_HEADERS_QP, t.c_str(),
+					    FLATCURVE_ALL_HEADERS_QP,
 					    t.c_str());
 				/* We can only match if it appears in the pool
 				 * of header terms, not to a specific header,
