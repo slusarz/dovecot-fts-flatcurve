@@ -451,9 +451,12 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 	if (fts_flatcurve_xapian_delete_index(backend) &&
 	    (rename(s.c_str(), backend->db) < 0)) {
 		e_error(backend->event,
-			"Activating new index (%s -> %s) failed: %m",
+			"Activating new index (%s -> %s) failed",
 			s.c_str(), backend->db);
 		fts_flatcurve_xapian_delete_index_real(backend, s.c_str());
+	} else {
+		e_debug(backend->event, "Optimized DB; mailbox=%s",
+			backend->boxname);
 	}
 #endif
 }
