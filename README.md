@@ -153,14 +153,14 @@ Logging/Events
 --------------
 
 This plugin emits [events](https://doc.dovecot.org/admin_manual/event_design/)
-with the category `fts_flatcurve`.
+with the category `fts-flatcurve` (a child of the category `fts`).
 
 Flatcurve outputs copious debug information.  To view, add this to
 `dovecot.conf`:
 
 ```
 # This requires Dovecot v2.3.13+
-log_debug = category=fts_flatcurve
+log_debug = category=fts-flatcurve
 ```
 
 

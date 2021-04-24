@@ -15,7 +15,8 @@ enum fts_backend_flatcurve_action {
 };
 
 struct event_category event_category_fts_flatcurve = {
-	.name = "fts_flatcurve"
+	.name = "fts-flatcurve",
+	.parent = &event_category_fts
 };
 
 static struct fts_backend *fts_backend_flatcurve_alloc(void)
