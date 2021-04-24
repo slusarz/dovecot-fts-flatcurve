@@ -20,6 +20,7 @@ Makefile.in
 /dummy-config.h
 /dummy-config.h.in
 /dummy-config.h.in~
+/fts-flatcurve-config.h
 /libtool
 /missing
 /install-sh
@@ -27,5 +28,6 @@ Makefile.in
 /run-test.sh
 /stamp.h
 /stamp-h1
+/stamp-h2
 /m4/libtool.m4
 /m4/lt*.m4
