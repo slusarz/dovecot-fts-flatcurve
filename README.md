@@ -110,9 +110,12 @@ Optional parameters for the `fts_flatcurve` plugin setting:
                           transaction that will trigger an optimization
                           (integer, set to 0 to disable; DEFAULT: 1000)
  - `commit_limit` - Commit database changes after this many documents are
-                    updated
-		    (integer, set to 0 to disable; DEFAULT: 0 [use Xapian
-		     internal defaults])
+                    updated. Higher commit limits will result in faster
+                    indexing for large transactions (i.e. indexing a large
+                    mailbox) at the expense of high memory usage. The default
+                    value should be sufficient to allow indexing in a 256 MB
+                    maximum size process. (integer, set to 0 to use the
+                    Xapian default; DEFAULT: 500)
  - `max_term_size` - The maximum number of characters in a term to index.
 		     (integer, maximum 200; DEFAULT: 30) 
  - `min_term_size` - The minimum number of characters in a term to index.
@@ -130,7 +133,7 @@ mail_plugins = $mail_plugins fts fts_flatcurve
 
 plugin {
   fts = flatcurve
-  fts_flatcurve = auto_optimize=500 auto_optimize_msgs=1000 commit_limit=0 \
+  fts_flatcurve = auto_optimize=500 auto_optimize_msgs=1000 commit_limit=500 \
                   max_term_size=30 min_term_size=2 substring_search=yes
 }
 ```
