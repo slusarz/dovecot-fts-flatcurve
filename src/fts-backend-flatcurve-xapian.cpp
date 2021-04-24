@@ -81,6 +81,12 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 	try {
 		xapian->db_write->replace_document(xapian->doc_uid,
 						   *xapian->doc);
+	} catch (std::bad_alloc &b) {
+		i_fatal(FTS_FLATCURVE_DEBUG_PREFIX "Out of memory "
+			"when indexing mail (%s); mailbox=%s UID=%d "
+			"(Hint: increase indexing process vsz_limit or define "
+			"smaller commit_limit value in plugin config)",
+			b.what(), backend->boxname, xapian->doc_uid);
 	} catch (Xapian::Error &e) {
 		e_warning(backend->event, "Could not write message data: "
 			  "mailbox=%s uid=%u; %s", backend->boxname,
