@@ -504,9 +504,9 @@ fts_backend_flatcurve_lookup_multi(struct fts_backend *_backend,
 			add_str("mailbox", r->box->vname)->
 			add_str("maybe", query->maybe ? "yes" : "no")->
 			add_str("query", str_c(query->qtext))->
-			add_str("uids", u)->event(), "Query "
-			"mailbox=%s %smatches=%d uids=%s", r->box->vname,
-			query->maybe ? "maybe_" : "",
+			add_str("uids", u)->event(), "Query (%s)"
+			"mailbox=%s %smatches=%d uids=%s", str_c(query->qtext),
+			r->box->vname, query->maybe ? "maybe_" : "",
 			array_count(&fresult->uids), u);
 	}
 
