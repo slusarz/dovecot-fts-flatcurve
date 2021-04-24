@@ -3,6 +3,7 @@
 
 #include "lib.h"
 #include "array.h"
+#include "str.h"
 #include "mail-storage-private.h"
 #include "mail-search-build.h"
 #include "mailbox-list-iter.h"
@@ -113,8 +114,11 @@ fts_backend_flatcurve_get_last_uid(struct fts_backend *_backend,
 
 	fts_flatcurve_xapian_get_last_uid(backend, last_uid_r);
 
-	e_debug(backend->event, "Last UID mailbox=%s uid=%d",
-		backend->boxname, *last_uid_r);
+	e_debug(event_create_passthrough(backend->event)->
+		set_name("fts_flatcurve_last_uid")->
+		add_str("mailbox", backend->boxname)->
+		add_int("uid", *last_uid_r)->event(),
+		"Last UID mailbox=%s uid=%d", backend->boxname, *last_uid_r);
 
 	return 0;
 }
@@ -166,8 +170,11 @@ fts_backend_flatcurve_update_expunge(struct fts_backend_update_context *_ctx,
 	struct flatcurve_fts_backend *backend =
 		(struct flatcurve_fts_backend *)ctx->ctx.backend;
 
-	e_debug(backend->event, "Expunge mailbox=%s uid=%d",
-		backend->boxname, uid);
+	e_debug(event_create_passthrough(backend->event)->
+		set_name("fts_flatcurve_expunge")->
+		add_str("mailbox", backend->boxname)->
+		add_int("uid", uid)->event(),
+		"Expunge mailbox=%s uid=%d", backend->boxname, uid);
 
 	fts_flatcurve_xapian_expunge(backend, uid);
 }
@@ -187,8 +194,12 @@ fts_backend_flatcurve_update_set_build_key(struct fts_backend_update_context *_c
 		return FALSE;
 
 	if (ctx->uid != key->uid)
-		e_debug(backend->event, "Indexing mailbox=%s uid=%d",
-			backend->boxname, key->uid);
+		e_debug(event_create_passthrough(backend->event)->
+			set_name("fts_flatcurve_index")->
+			add_str("mailbox", backend->boxname)->
+			add_int("uid", key->uid)->event(),
+			"Indexing mailbox=%s uid=%d", backend->boxname,
+			key->uid);
 
 	ctx->type = key->type;
 	ctx->uid = key->uid;
@@ -258,6 +269,28 @@ fts_backend_flatcurve_update_build_more(struct fts_backend_update_context *_ctx,
 	return (_ctx->failed) ? -1 : 0;
 }
 
+static string_t
+*fts_backend_flatcurve_seq_range_string(ARRAY_TYPE(seq_range) *uids,
+					pool_t pool)
+{
+	unsigned int count, i;
+	const struct seq_range *range;
+	string_t *ret;
+
+	ret = str_new(pool, 256);
+
+	range = array_get(uids, &count);
+	for (i = 0; i < count; i++) {
+		if (i != 0)
+			str_append(ret, ",");
+		str_printfa(ret, "%u", range[i].seq1);
+		if (range[i].seq1 != range[i].seq2)
+			str_printfa(ret, "-%u", range[i].seq2);
+	}
+
+	return ret;
+}
+
 static bool
 fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
 				 struct mailbox *box)
@@ -265,24 +298,26 @@ fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
 	struct fts_flatcurve_xapian_query_iterate_context *iter;
 	struct mail *mail;
 	ARRAY_TYPE(seq_range) missing, uids;
-	bool dbexist = TRUE, nodupes = TRUE;
+	bool dbexist = TRUE;
+	struct event_passthrough *e;
+	pool_t pool;
 	struct fts_flatcurve_xapian_query_result *result;
 	struct mail_search_args *search_args;
 	struct mail_search_context *search_ctx;
 	struct mailbox_transaction_context *trans;
+	const char *u;
 
 	/* Check for non-indexed mails. */
 	if (mailbox_sync(box, MAILBOX_SYNC_FLAG_FULL_READ) < 0)
 		return FALSE;
 
-	e_debug(backend->event, "Rescanning mailbox=%s", box->name);
-
 	trans = mailbox_transaction_begin(box, 0, __func__);
 	search_args = mail_search_build_init();
 	mail_search_build_add_all(search_args);
 
-	i_array_init(&missing, 32);
-	i_array_init(&uids, 256);
+	pool = pool_alloconly_create("fts-flatcurve rescan pool", 2048);
+	p_array_init(&missing, pool, 32);
+	p_array_init(&uids, pool, 256);
 
 	search_ctx = mailbox_search_init(trans, search_args, NULL, 0, NULL);
 	while (mailbox_search_next(search_ctx, &mail)) {
@@ -294,9 +329,6 @@ fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
 			goto end;
 		case 0:
 			seq_range_array_add(&missing, mail->uid);
-			e_debug(backend->event,
-				"Rescan: Missing mailbox=%s uid=%d",
-				box->name, mail->uid);
 			break;
 		default:
 			break;
@@ -308,42 +340,54 @@ end:
 	mail_search_args_unref(&search_args);
 	(void)mailbox_transaction_commit(&trans);
 
+	e = event_create_passthrough(backend->event)->
+				     set_name("fts_flatcurve_rescan")->
+				     add_str("mailbox", box->name);
+
 	if (!array_is_empty(&missing)) {
 		/* There does not seem to be an easy way to indicate what
 		 * uids need to be indexed. Only solution is simply to delete
 		 * the index and rebuild at a later time. */
 		(void)fts_flatcurve_xapian_delete_index(backend);
-		e_debug(backend->event, "Rescan: Missing messages; "
-			"deleting index mailbox=%s", box->name);
+		u = str_c(fts_backend_flatcurve_seq_range_string(&missing,
+			  pool));
+		e_debug(e->add_str("status", "missing_msgs")->
+			add_str("uids", u)->event(),
+			"Rescan: Missing messages; deleting index "
+			"mailbox=%s uids=%s", box->name, u);
 	} else if (dbexist) {
-		e_debug(backend->event, "Rescan: No missing messages "
-			"mailbox=%s", box->name);
-
 		/* Check for expunged mails. */
 		if ((iter = fts_flatcurve_xapian_query_iter_init(backend, NULL)) != NULL) {
 			while ((result = fts_flatcurve_xapian_query_iter_next(iter)) != NULL) {
 				if (!seq_range_exists(&uids, result->uid)) {
 					fts_flatcurve_xapian_expunge(backend,
-								     result->uid);
-					nodupes = FALSE;
-					e_debug(backend->event,
+					     result->uid);
+					u = p_strdup_printf(pool, "%u",
+							    result->uid);
+					e_debug(e->add_str("status", "missing_msgs")->
+						add_str("uids", u)->event(),
 						"Rescan: Missing expunged "
 						"message; deleting mailbox=%s "
-						"uid=%d", box->name,
-						result->uid);
+						"uid=%s", box->name, u);
 				}
 			}
 			fts_flatcurve_xapian_query_iter_deinit(&iter);
 		}
 
-		if (nodupes)
-			e_debug(backend->event,
-				"Rescan: No expunged messages mailbox=%s",
+		if (array_is_empty(&missing)) {
+			e_debug(e->add_str("status", "ok")->event(),
+				"Rescan: no issues found mailbox=%s",
 				box->name);
+		} else {
+			u = str_c(fts_backend_flatcurve_seq_range_string(&missing, pool));
+			e_debug(e->add_str("status", "expunge_msgs")->
+				add_str("uids", u)->event(),
+				"Rescan: expunge messages mailbox=%s "
+				"uids=%s", box->name, u);
+		}
 	}
 
-	array_free(&missing);
-	array_free(&uids);
+	pool_unref(&pool);
 
 	return dbexist;
 }
@@ -363,7 +407,10 @@ fts_backend_flatcurve_box_action(struct flatcurve_fts_backend *backend,
 		optimize = fts_backend_flatcurve_rescan_box(backend, box);
 	}
 	if (optimize) {
-		e_debug(backend->event, "Optimizing mailbox=%s", box->vname);
+		e_debug(event_create_passthrough(backend->event)->
+			set_name("fts_flatcurve_optimize")->
+			add_str("mailbox", boxname)->event(),
+			"Optimizing mailbox=%s", boxname);
 		fts_flatcurve_xapian_optimize_box(backend);
 	}
 	mailbox_free(&box);
@@ -417,6 +464,7 @@ fts_backend_flatcurve_lookup_multi(struct fts_backend *_backend,
 	struct flatcurve_fts_query *query;
 	struct fts_result *r;
 	int ret = 0;
+	const char *u;
 
 	/* Create query */
 	query = p_new(result->pool, struct flatcurve_fts_query, 1);
@@ -448,11 +496,18 @@ fts_backend_flatcurve_lookup_multi(struct fts_backend *_backend,
 			r->definite_uids = fresult->uids;
 		r->scores = fresult->scores;
 
-		e_debug(backend->event,
-			"Query complete mailbox=%s %smatches=%d",
-			r->box->vname,
+		u = str_c(fts_backend_flatcurve_seq_range_string(&fresult->uids,
+								 query->pool));
+		e_debug(event_create_passthrough(backend->event)->
+			set_name("fts_flatcurve_query")->
+			add_int("count", array_count(&fresult->uids))->
+			add_str("mailbox", r->box->vname)->
+			add_str("maybe", query->maybe ? "yes" : "no")->
+			add_str("query", str_c(query->qtext))->
+			add_str("uids", u)->event(), "Query "
+			"mailbox=%s %smatches=%d uids=%s", r->box->vname,
 			query->maybe ? "maybe_" : "",
-			array_count(&fresult->uids));
+			array_count(&fresult->uids), u);
 	}
 
 	if (ret == 0) {

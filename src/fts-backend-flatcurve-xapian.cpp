@@ -607,7 +607,7 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 	/* Empty Query. Optimize by not creating a query and returning no
 	 * results when we go through the iteration later. */
 	if (array_is_empty(&x->args)) {
-		e_debug(backend->event, "Empty search query generated");
+		query->qtext = str_new_const(query->pool, "[Empty Query]", 13);
 		fts_flatcurve_xapian_build_query_deinit(query);
 		return TRUE;
 	}
@@ -628,7 +628,9 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 		}
 		prev = a;
 	}
-	e_debug(backend->event, "Search query generated: %s", str.c_str());
+
+	query->qtext = str_new(query->pool, 64);
+	str_append(query->qtext, str.c_str());
 
 	try {
 		x->query = new Xapian::Query(x->qp->parse_query(

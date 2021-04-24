@@ -46,6 +46,7 @@ struct flatcurve_fts_backend_update_context {
 struct flatcurve_fts_query {
 	struct mail_search_arg *args;
 	enum fts_lookup_flags flags;
+	string_t *qtext;
 
 	struct flatcurve_fts_query_xapian *xapian;
 
