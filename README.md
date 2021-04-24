@@ -202,7 +202,7 @@ Emitted when a query is completed.
 | --------- | -------------------------------------- |
 | `count`   | The number of messages matched         |
 | `mailbox` | The mailbox name                       |
-| `maybe`   | Are the results uncertain? [yes|no]    |
+| `maybe`   | Are the results uncertain? \[yes\|no\] |
 | `query`   | The query text sent to Xapian          |
 | `uids`    | The list of UIDs returned by the query |
 
@@ -213,7 +213,7 @@ Emitted when a rescan is completed.
 | Field     | Description                                              |
 | --------- | -------------------------------------------------------- |
 | `mailbox` | The mailbox name                                         |
-| `status`  | Status of rescan [expunge_msgs|missing_msgs|ok]          |
+| `status`  | Status of rescan \[expunge_msgs\|missing_msgs\|ok\]      |
 | `uids`    | The list of UIDs that triggered a non-ok status response |
 
 ### Debugging
