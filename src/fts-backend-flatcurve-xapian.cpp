@@ -29,7 +29,7 @@ struct flatcurve_xapian {
 	Xapian::Document *doc;
 
 	uint32_t doc_uid;
-	unsigned int db_version, doc_updates;
+	unsigned int db_version, doc_updates, total_updates;
 	bool db_version_need_update:1;
 	bool doc_created:1;
 };
@@ -93,6 +93,8 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 			  xapian->doc_uid, e.get_msg().c_str());
 	}
 
+	++xapian->total_updates;
+
 	if ((backend->fuser->set.commit_limit > 0) &&
 	    (++xapian->doc_updates >= backend->fuser->set.commit_limit)) {
 		xapian->db_write->commit();
@@ -115,22 +117,29 @@ fts_flatcurve_xapian_need_optimize(struct flatcurve_fts_backend *backend)
 {
 #ifdef XAPIAN_HAS_COMPACT
 	uint32_t rev;
+	struct flatcurve_xapian *xapian = backend->xapian;
+	struct fts_flatcurve_user *user = backend->fuser;
 
 	/* Only need to check if db_write was active, as db_read would not
-	 * have incremented DB revision. */
-	if ((xapian->db_write != NULL) &&
-	    (backend->fuser->set.auto_optimize > 0)) {
-		try {
-			rev = backend->xapian->db_write->get_revision();
-			if (rev >= backend->fuser->set.auto_optimize) {
-				e_debug(backend->event,
-					"Triggering auto optimize; "
-					"db_revision=%d", rev);
-				return TRUE;
+	 * have incremented DB revision or number of messages processed. */
+	if (xapian->db_write != NULL) {
+		if (user->set.auto_optimize > 0) {
+			try {
+				rev = xapian->db_write->get_revision();
+				if (rev >= user->set.auto_optimize) {
+					e_debug(backend->event,
+						"Triggering auto optimize; "
+						"db_revision=%d", rev);
+					return TRUE;
+				}
+			} catch (Xapian::Error &e) {
+				/* Ignore error */
 			}
-		} catch (Xapian::Error &e) {
-			/* Ignore error */
 		}
+
+		if ((user->set.auto_optimize_msgs > 0) &&
+		    (xapian->total_updates >= user->set.auto_optimize_msgs))
+			return TRUE;
 	}
 #endif
 	return FALSE;
@@ -148,7 +157,7 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 		xapian->db_write->close();
 		delete(xapian->db_write);
 		xapian->db_write = NULL;
-		xapian->doc_updates = 0;
+		xapian->doc_updates = xapian->total_updates = 0;
 	}
 
 	if (xapian->db_read != NULL) {

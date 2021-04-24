@@ -15,6 +15,7 @@
 	MODULE_CONTEXT_REQUIRE(obj, fts_flatcurve_user_module)
 
 #define FTS_FLATCURVE_AUTO_OPTIMIZE_DEFAULT 500
+#define FTS_FLATCURVE_AUTO_OPTIMIZE_MSGS_DEFAULT 1000
 #define FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT 0
 #define FTS_FLATCURVE_MAX_TERM_SIZE_DEFAULT 30
 #define FTS_FLATCURVE_MAX_TERM_SIZE_MAX 200
@@ -23,6 +24,7 @@
 
 struct fts_flatcurve_settings {
 	unsigned int auto_optimize;
+	unsigned int auto_optimize_msgs;
 	unsigned int commit_limit;
 	unsigned int max_term_size;
 	unsigned int min_term_size;
