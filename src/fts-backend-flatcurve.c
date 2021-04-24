@@ -285,7 +285,7 @@ static string_t
 			str_append(ret, ",");
 		str_printfa(ret, "%u", range[i].seq1);
 		if (range[i].seq1 != range[i].seq2)
-			str_printfa(ret, "-%u", range[i].seq2);
+			str_printfa(ret, ":%u", range[i].seq2);
 	}
 
 	return ret;
