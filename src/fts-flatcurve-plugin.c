@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 Michael Slusarz <slusarz@curecanti.org>
+/* Copyright (c) Michael Slusarz <slusarz@curecanti.org>
  * See the included COPYING file */
 
 #include "lib.h"

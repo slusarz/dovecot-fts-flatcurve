@@ -314,3 +314,9 @@ Trash vsize=1712148272
 $ echo "scale=3; (147828 * 1024) / 1712148272" | bc
 .088  [Index = ~9% the size of the total mailbox data size]
 ```
+
+Licensing
+---------
+
+LGPL v2.1 (see COPYING)
+(c) 2020-2021 Michael Slusarz
