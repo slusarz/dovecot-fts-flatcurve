@@ -3,8 +3,6 @@ AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_MACRO_DIR([m4])
 
-AC_CONFIG_HEADERS([dummy-config.h])
-
 AC_DEFINE_UNQUOTED(FTS_FLATCURVE_NAME, "$PACKAGE_NAME",
     [Define to the full name of Dovecot FTS Flatcurve.])
 AC_DEFINE_UNQUOTED(FTS_FLATCURVE_VERSION, "$PACKAGE_VERSION",
@@ -39,6 +37,7 @@ else
 fi
 AC_SUBST(DOVECOT_FTS_PLUGIN)
 
+AC_CONFIG_HEADERS([dummy-config.h fts-flatcurve-config.h])
 AC_CONFIG_FILES([
 Makefile
 src/Makefile
