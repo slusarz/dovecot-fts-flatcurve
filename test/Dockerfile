@@ -20,13 +20,16 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 	libicu-dev \
 	zlib1g-dev \
 	libxapian-dev \
-	xapian-tools
+	xapian-tools \
+	valgrind
 
 RUN mkdir /dovecot
 RUN git clone https://github.com/dovecot/core.git /dovecot/core
 WORKDIR /dovecot/core
 RUN ./autogen.sh && \
-	PANDOC=false ./configure --with-zlib --with-sqlite --with-lua --with-stemmer --with-textcat --with-icu --enable-maintainer-mode && \
+	PANDOC=false ./configure --with-zlib --with-sqlite --with-lua \
+	--with-stemmer --with-textcat --with-icu --enable-maintainer-mode \
+	--enable-devel-checks && \
 	make install
 
 RUN git clone https://github.com/slusarz/dovecot-fts-flatcurve.git /dovecot/fts-flatcurve
