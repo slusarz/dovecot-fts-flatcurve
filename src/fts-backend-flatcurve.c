@@ -69,7 +69,7 @@ static int fts_backend_flatcurve_refresh(struct fts_backend * _backend)
 	struct flatcurve_fts_backend *backend =
 		(struct flatcurve_fts_backend *)_backend;
 
-	fts_backend_flatcurve_close_box(backend);
+	fts_flatcurve_xapian_refresh(backend);
 
 	return 0;
 }

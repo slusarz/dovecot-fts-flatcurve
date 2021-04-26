@@ -146,6 +146,14 @@ fts_flatcurve_xapian_need_optimize(struct flatcurve_fts_backend *backend)
 	return FALSE;
 }
 
+void fts_flatcurve_xapian_refresh(struct flatcurve_fts_backend *backend)
+{
+	struct flatcurve_xapian *xapian = backend->xapian;
+
+	if (backend->xapian->db_read != NULL)
+		(void)backend->xapian->db_read->reopen();
+}
+
 void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 {
 	bool optimize = FALSE;
