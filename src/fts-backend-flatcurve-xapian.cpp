@@ -226,6 +226,10 @@ fts_flatcurve_xapian_open_read(struct flatcurve_fts_backend *backend)
 		e_debug(backend->event, "Opened DB (RO) mailbox=%s "
 			"version=%u; %s", backend->boxname,
 			backend->xapian->db_version, backend->db);
+	} catch (Xapian::DatabaseOpeningError &e) {
+		/* Ignore this error for debug purposes - this means the DB
+		 * has not been created yet. */
+		return FALSE;
 	} catch (Xapian::Error &e) {
 		e_debug(backend->event, "Cannot open DB RO mailbox=%s; %s",
 			backend->boxname, e.get_msg().c_str());
