@@ -226,6 +226,94 @@ Flatcurve outputs copious debug information.  To view, add this to
 log_debug = category=fts-flatcurve
 ```
 
+Example output (only showing selected log entries):
+
+```
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Xapian library version: 1.4.11
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: Mailbox opened because: DELETE
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: UID 1: Expunge requested
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: UID 2: Expunge requested
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: UID 3: Expunge requested
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: UID 4: Expunge requested
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Expunge mailbox=imaptest uid=1
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Opened DB (RW) mailbox=imaptest version=1; /dovecot/sdbox/foo/sdbox/mailboxes/imaptest/dbox-Mails/flatcurve-index
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: update_expunge (Document 1 not found)
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: UID 1: Mail expunged
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Expunge mailbox=imaptest uid=2
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: update_expunge (Document 2 not found)
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: UID 2: Mail expunged
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Expunge mailbox=imaptest uid=3
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: update_expunge (Document 3 not found)
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: UID 3: Mail expunged
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Expunge mailbox=imaptest uid=4
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: update_expunge (Document 4 not found)
+Apr 26 18:30:42 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: UID 4: Mail expunged
+Apr 26 18:30:43 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: Mailbox opened because: CREATE
+Apr 26 18:30:43 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: Mailbox opened because: APPEND
+Apr 26 18:30:43 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: Mailbox opened because: APPEND
+Apr 26 18:30:43 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: Mailbox opened because: APPEND
+Apr 26 18:30:43 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: Mailbox opened because: APPEND
+Apr 26 18:30:43 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: Mailbox imaptest: Mailbox opened because: SELECT
+Apr 26 18:30:43 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=0
+Apr 26 18:30:44 indexer-worker(20875 foo)<>: Debug: Module loaded: /usr/local/lib/dovecot/lib20_fts_plugin.so
+Apr 26 18:30:45 indexer-worker(20875 foo)<>: Debug: Module loaded: /usr/local/lib/dovecot/lib21_fts_flatcurve_plugin.so
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: fts_flatcurve: Xapian library version: 1.4.11
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: Mailbox imaptest: Mailbox opened because: indexing
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=0
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: Mailbox imaptest: UID 1: Opened mail because: prefetch
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: Mailbox imaptest: UID 1: Looked up field mime.parts from mail cache
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=0
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: fts_flatcurve: Indexing mailbox=imaptest uid=1
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: fts_flatcurve: Opened DB (RW) mailbox=imaptest version=1; /dovecot/sdbox/foo/sdbox/mailboxes/imaptest/dbox-Mails/flatcurve-index
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: Mailbox imaptest: UID 2: Opened mail because: prefetch
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: Mailbox imaptest: UID 2: Looked up field mime.parts from mail cache
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: fts_flatcurve: Indexing mailbox=imaptest uid=2
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: Mailbox imaptest: UID 3: Opened mail because: prefetch
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: Mailbox imaptest: UID 3: Looked up field mime.parts from mail cache
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: fts_flatcurve: Indexing mailbox=imaptest uid=3
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: Mailbox imaptest: UID 4: Opened mail because: prefetch
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: Mailbox imaptest: UID 4: Looked up field mime.parts from mail cache
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: fts_flatcurve: Indexing mailbox=imaptest uid=4
+Apr 26 18:30:45 indexer-worker(20875 foo)<kn+4V+TAJuN/AAAB:4MzdBtUGh2CLUQAABMskXQ>: Debug: Mailbox imaptest: Indexed 4 messages (UIDs 1..4)
+Apr 26 18:30:45 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Opened DB (RO) mailbox=imaptest version=1; /dovecot/sdbox/foo/sdbox/mailboxes/imaptest/dbox-Mails/flatcurve-index
+Apr 26 18:30:45 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Query (allhdrs:asdfghjkl* OR asdfghjkl*) mailbox=imaptest matches=1 uids=1:2
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Query (allhdrs:zxcvbnm* OR zxcvbnm*) mailbox=imaptest matches=2 uids=1,3:4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Query (allhdrs:qwertyuiop* OR qwertyuiop*) mailbox=imaptest matches=1 uids=2:4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Query (asdfghjkl*) mailbox=imaptest matches=1 uids=1:2
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Query (zxcvbnm*) mailbox=imaptest matches=2 uids=1,3:4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Query (qwertyuiop*) mailbox=imaptest matches=1 uids=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Query (allhdrs:sdfghjk* OR sdfghjk*) mailbox=imaptest matches=1 uids=1:2
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Query (allhdrs:xcvbn* OR xcvbn*) mailbox=imaptest matches=2 uids=1,3:4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Query (allhdrs:wertyuio* OR wertyuio*) mailbox=imaptest matches=1 uids=2:4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Query (sdfghjk*) mailbox=imaptest matches=1 uids=1:2
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Query (xcvbn*) mailbox=imaptest matches=2 uids=1,3:4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Last UID mailbox=imaptest uid=4
+Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Query (wertyuio*) mailbox=imaptest matches=1 uids=4
+
+```
+
 
 Acknowledgements
 ----------------
@@ -319,4 +407,5 @@ Licensing
 ---------
 
 LGPL v2.1 (see COPYING)
+
 (c) 2020-2021 Michael Slusarz
