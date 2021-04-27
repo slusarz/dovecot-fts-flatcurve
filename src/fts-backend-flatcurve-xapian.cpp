@@ -56,6 +56,10 @@ struct fts_flatcurve_xapian_query_iterate_context {
 	struct fts_flatcurve_xapian_query_result *result;
 };
 
+static void
+fts_flatcurve_xapian_compact(struct flatcurve_fts_backend *backend,
+			     unsigned int flags);
+
 
 struct flatcurve_xapian *fts_flatcurve_xapian_init()
 {
@@ -179,7 +183,8 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 	xapian->db_version_need_update = FALSE;
 
 	if (optimize)
-		fts_flatcurve_xapian_optimize_box(backend);
+		fts_flatcurve_xapian_compact(backend,
+					     Xapian::Compactor::STANDARD);
 }
 
 static void
@@ -442,7 +447,10 @@ bool fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend)
 	return fts_flatcurve_xapian_delete_index_real(backend, backend->db);
 }
 
-void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
+static void
+fts_flatcurve_xapian_compact(struct flatcurve_fts_backend *backend,
+			     unsigned int flags)
+
 {
 #ifdef XAPIAN_HAS_COMPACT
 	if (!fts_flatcurve_xapian_open_read(backend))
@@ -451,9 +459,10 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 	std::string s(backend->db);
 	s += FLATCURVE_INDEX_OPTIMIZE_SUFFIX;
 
+	flags |= Xapian::DBCOMPACT_NO_RENUMBER;
+
 	try {
-		backend->xapian->db_read->compact(s,
-			Xapian::DBCOMPACT_NO_RENUMBER);
+		backend->xapian->db_read->compact(s, flags);
 	} catch (Xapian::Error &e) {
 		e_error(backend->event, "Error optimizing DB: %s",
 			e.get_msg().c_str());
@@ -470,6 +479,13 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 		e_debug(backend->event, "Optimized DB; mailbox=%s",
 			backend->boxname);
 	}
+#endif
+}
+
+void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
+{
+#ifdef XAPIAN_HAS_COMPACT
+	fts_flatcurve_xapian_compact(backend, Xapian::Compactor::FULL);
 #endif
 }
 
