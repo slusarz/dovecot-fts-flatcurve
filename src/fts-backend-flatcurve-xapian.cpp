@@ -32,6 +32,7 @@ struct flatcurve_xapian {
 	uint32_t doc_uid;
 	unsigned int db_version, doc_updates, total_updates;
 	bool db_version_need_update:1;
+	bool dbw_opening:1;
 	bool doc_created:1;
 };
 
@@ -118,9 +119,9 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 		}
 	}
 
-	/* Metadata update is done in write DB open code, checking for
-	 * the db_version_need_update flag. */
-	if (xapian->db_version_need_update)
+	/* Version update is done in write DB open code; need to check for
+	 * dbw_opening flag to prevent infinite loop. */
+	if (!xapian->dbw_opening && xapian->db_version_need_update)
 		(void)fts_flatcurve_xapian_write_db(backend);
 
 	return xapian->db_read;
@@ -139,10 +140,13 @@ fts_flatcurve_xapian_write_db(struct flatcurve_fts_backend *backend)
 	struct flatcurve_xapian *xapian = backend->xapian;
 
 	if (xapian->db_write == NULL) {
+		/* Need to open DB read-only first, since we need to
+		 * check DB version. */
+		xapian->dbw_opening = TRUE;
+		(void)fts_flatcurve_xapian_read_db(backend);
+		xapian->dbw_opening = FALSE;
+
 		try {
-			/* Need to open DB read-only first, since we need to
-			 * check DB version. */
-			(void)fts_flatcurve_xapian_read_db(backend);
 			xapian->db_write = new Xapian::WritableDatabase(
 				backend->db, db_flags);
 		} catch (Xapian::Error &e) {
