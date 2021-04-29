@@ -222,8 +222,8 @@ void fts_flatcurve_xapian_refresh(struct flatcurve_fts_backend *backend)
 {
 	Xapian::Database *db;
 
-	/* TODO: commit dbw? */
-	if ((db = fts_flatcurve_xapian_read_db(backend)) != NULL)
+	if (backend->xapian->db_read &&
+	    ((db = fts_flatcurve_xapian_read_db(backend)) != NULL))
 		(void)db->reopen();
 }
 
