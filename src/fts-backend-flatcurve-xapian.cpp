@@ -31,8 +31,6 @@ struct flatcurve_xapian {
 
 	uint32_t doc_uid;
 	unsigned int db_version, doc_updates, total_updates;
-	bool db_version_need_update:1;
-	bool dbw_opening:1;
 	bool doc_created:1;
 };
 
@@ -63,6 +61,8 @@ fts_flatcurve_xapian_compact(struct flatcurve_fts_backend *backend,
 			     unsigned int flags);
 static Xapian::WritableDatabase *
 fts_flatcurve_xapian_write_db(struct flatcurve_fts_backend *backend);
+static bool
+fts_flatcurve_xapian_close_write_db(struct flatcurve_fts_backend *backend);
 
 
 struct flatcurve_xapian *fts_flatcurve_xapian_init()
@@ -79,10 +79,45 @@ void fts_flatcurve_xapian_deinit(struct flatcurve_xapian *xapian)
 	i_free(xapian);
 }
 
+static void
+fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
+				      Xapian::Database *db, bool write)
+{
+	Xapian::WritableDatabase *dbw;
+	std::ostringstream ss;
+	std::string ver;
+	bool write_ver = FALSE;
+	struct flatcurve_xapian *xapian = backend->xapian;
+
+	ver = db->get_metadata(FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION_KEY);
+	if (ver.empty()) {
+		xapian->db_version = FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION;
+		/* Upgrade from 0 to 1: store the DB version. */
+		write_ver = TRUE;
+
+	} else {
+		xapian->db_version = std::atoi(ver.c_str());
+		/* At the present time, we only have one DB version. Once we
+		 * have more than one version, we will need to compare the
+		 * version information whenever we open the DB - it is
+		 * possible we will need to upgrade schema before we can
+		 * begin working with the DB. For now, no need to do any of
+		 * this. */
+	}
+
+	if (write_ver &&
+	    ((dbw = fts_flatcurve_xapian_write_db(backend)) != NULL)) {
+		ss << FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION;
+		dbw->set_metadata(FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION_KEY,
+				  ss.str());
+		if (!write)
+			(void)fts_flatcurve_xapian_close_write_db(backend);
+	}
+}
+
 static Xapian::Database *
 fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 {
-	std::string ver;
 	struct flatcurve_xapian *xapian = backend->xapian;
 
 	if (xapian->db_read != NULL)
@@ -100,29 +135,10 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 		return NULL;
 	}
 
+	fts_flatcurve_xapian_check_db_version(backend, xapian->db_read, FALSE);
+
 	e_debug(backend->event, "Opened DB (RO) mailbox=%s version=%u; %s",
 		backend->boxname, xapian->db_version, backend->db);
-
-	if (xapian->db_version == 0) {
-		ver = xapian->db_read->get_metadata(
-			FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION_KEY);
-
-		if (ver.empty()) {
-			xapian->db_version =
-				FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION;
-			xapian->db_version_need_update = TRUE;
-		} else {
-			xapian->db_version = std::atoi(ver.c_str());
-			/* Once we have more than one version, upgrade
-			 * checking will be needed here. For now, there can
-			 * only be one version so no need to update. */
-		}
-	}
-
-	/* Version update is done in write DB open code; need to check for
-	 * dbw_opening flag to prevent infinite loop. */
-	if (!xapian->dbw_opening && xapian->db_version_need_update)
-		(void)fts_flatcurve_xapian_write_db(backend);
 
 	return xapian->db_read;
 }
@@ -136,37 +152,25 @@ fts_flatcurve_xapian_write_db(struct flatcurve_fts_backend *backend)
 #else
 		Xapian::DB_CREATE_OR_OPEN;
 #endif
-	std::ostringstream ss;
 	struct flatcurve_xapian *xapian = backend->xapian;
 
-	if (xapian->db_write == NULL) {
-		/* Need to open DB read-only first, since we need to
-		 * check DB version. */
-		xapian->dbw_opening = TRUE;
-		(void)fts_flatcurve_xapian_read_db(backend);
-		xapian->dbw_opening = FALSE;
+	if (xapian->db_write != NULL)
+		return xapian->db_write;
 
-		try {
-			xapian->db_write = new Xapian::WritableDatabase(
-				backend->db, db_flags);
-		} catch (Xapian::Error &e) {
-			e_debug(backend->event, "Cannot open DB RW "
-				"mailbox=%s; %s", backend->boxname,
-				e.get_msg().c_str());
-			return NULL;
-		}
-
-		e_debug(backend->event, "Opened DB (RW) mailbox=%s "
-			"version=%u; %s", backend->boxname,
-			xapian->db_version, backend->db);
+	try {
+		xapian->db_write = new Xapian::WritableDatabase(backend->db,
+								db_flags);
+	} catch (Xapian::Error &e) {
+		e_debug(backend->event, "Cannot open DB RW mailbox=%s; %s",
+			backend->boxname, e.get_msg().c_str());
+		return NULL;
 	}
 
-	if (xapian->db_version_need_update) {
-		ss << FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION;
-		xapian->db_write->set_metadata(
-			FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION_KEY, ss.str());
-		xapian->db_version_need_update = FALSE;
-	}
+	fts_flatcurve_xapian_check_db_version(backend, xapian->db_write, TRUE);
+
+	e_debug(backend->event, "Opened DB (RW) mailbox=%s "
+		"version=%u; %s", backend->boxname,
+		xapian->db_version, backend->db);
 
 	return xapian->db_write;
 }
@@ -214,39 +218,6 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 	xapian->doc_uid = 0;
 }
 
-static bool
-fts_flatcurve_xapian_need_optimize(struct flatcurve_fts_backend *backend)
-{
-#ifdef XAPIAN_HAS_COMPACT
-	Xapian::WritableDatabase *dbw;
-	uint32_t rev;
-	struct fts_flatcurve_user *user = backend->fuser;
-
-	/* Only need to check if db_write was active, as db_read would not
-	 * have incremented DB revision or number of messages processed. */
-	if ((dbw = fts_flatcurve_xapian_write_db(backend)) != NULL) {
-		if (user->set.auto_optimize > 0) {
-			try {
-				rev = dbw->get_revision();
-				if (rev >= user->set.auto_optimize) {
-					e_debug(backend->event,
-						"Triggering auto optimize; "
-						"db_revision=%d", rev);
-					return TRUE;
-				}
-			} catch (Xapian::Error &e) {
-				/* Ignore error */
-			}
-		}
-
-		if ((user->set.auto_optimize_msgs > 0) &&
-		    (backend->xapian->total_updates >= user->set.auto_optimize_msgs))
-			return TRUE;
-	}
-#endif
-	return FALSE;
-}
-
 void fts_flatcurve_xapian_refresh(struct flatcurve_fts_backend *backend)
 {
 	Xapian::Database *db;
@@ -256,29 +227,60 @@ void fts_flatcurve_xapian_refresh(struct flatcurve_fts_backend *backend)
 		(void)db->reopen();
 }
 
-void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
+static bool
+fts_flatcurve_xapian_close_write_db(struct flatcurve_fts_backend *backend)
 {
 	bool optimize = FALSE;
 	struct flatcurve_xapian *xapian = backend->xapian;
 
-	if (xapian->db_write != NULL) {
-		fts_flatcurve_xapian_clear_document(backend);
-		optimize = fts_flatcurve_xapian_need_optimize(backend);
+	if (xapian->db_write == NULL)
+		return optimize;
 
-		xapian->db_write->close();
-		delete(xapian->db_write);
-		xapian->db_write = NULL;
-		xapian->doc_updates = xapian->total_updates = 0;
+	fts_flatcurve_xapian_clear_document(backend);
+
+#ifdef XAPIAN_HAS_COMPACT
+	uint32_t rev;
+	struct fts_flatcurve_user *user = backend->fuser;
+
+	if (user->set.auto_optimize > 0) {
+		try {
+			rev = xapian->db_write->get_revision();
+			if (rev >= user->set.auto_optimize) {
+				e_debug(backend->event,
+					"Triggering auto optimize; "
+					"db_revision=%d", rev);
+				optimize = TRUE;
+			}
+		} catch (Xapian::Error &e) {
+			/* Ignore error */
+		}
 	}
+
+	if ((user->set.auto_optimize_msgs > 0) &&
+	    (backend->xapian->total_updates >= user->set.auto_optimize_msgs))
+		optimize = TRUE;
+#endif
+
+	xapian->db_write->close();
+	delete(xapian->db_write);
+	xapian->db_write = NULL;
+	xapian->doc_updates = xapian->total_updates = 0;
+
+	return optimize;
+}
+
+void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
+{
+	bool optimize;
+	struct flatcurve_xapian *xapian = backend->xapian;
+
+	optimize = fts_flatcurve_xapian_close_write_db(backend);
 
 	if (xapian->db_read != NULL) {
 		xapian->db_read->close();
 		delete(xapian->db_read);
 		xapian->db_read = NULL;
 	}
-
-	xapian->db_version = 0;
-	xapian->db_version_need_update = FALSE;
 
 	if (optimize)
 		fts_flatcurve_xapian_compact(backend,
