@@ -53,5 +53,5 @@ struct fts_flatcurve_xapian_query_result
 void
 fts_flatcurve_xapian_query_iter_deinit(struct fts_flatcurve_xapian_query_iterate_context **ctx);
 
-void fts_flatcurve_xapian_debug_output_version();
+const char *fts_flatcurve_xapian_library_version();
 #endif
