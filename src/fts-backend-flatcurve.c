@@ -16,7 +16,7 @@ enum fts_backend_flatcurve_action {
 };
 
 struct event_category event_category_fts_flatcurve = {
-	.name = "fts-flatcurve",
+	.name = FTS_FLATCURVE_LABEL,
 	.parent = &event_category_fts
 };
 
@@ -39,7 +39,7 @@ fts_backend_flatcurve_init(struct fts_backend *_backend, const char **error_r)
 
 	if (fuser == NULL) {
 		/* Invalid Settings */
-		*error_r = "Invalid fts_flatcurve settings";
+		*error_r = FTS_FLATCURVE_DEBUG_PREFIX "Invalid settings";
 		return -1;
 	}
 
@@ -320,7 +320,7 @@ fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
 	search_args = mail_search_build_init();
 	mail_search_build_add_all(search_args);
 
-	pool = pool_alloconly_create("fts-flatcurve rescan pool", 2048);
+	pool = pool_alloconly_create(FTS_FLATCURVE_LABEL " rescan pool", 2048);
 	p_array_init(&missing, pool, 32);
 	p_array_init(&uids, pool, 256);
 
@@ -540,7 +540,8 @@ fts_backend_flatcurve_lookup(struct fts_backend *_backend, struct mailbox *box,
 	boxes[1] = NULL;
 
 	i_zero(&multi_result);
-	multi_result.pool = pool_alloconly_create("results pool", 2048);
+	multi_result.pool = pool_alloconly_create(FTS_FLATCURVE_LABEL
+						  "results pool", 2048);
 	ret = fts_backend_flatcurve_lookup_multi(_backend, boxes, args,
 						 flags, &multi_result);
 

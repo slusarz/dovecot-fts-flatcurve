@@ -21,7 +21,8 @@
 #define FLATCURVE_BOOLEAN_FIELD_PREFIX "B"
 #define FLATCURVE_HEADER_PREFIX "H"
 
-#define FTS_FLATCURVE_DEBUG_PREFIX "fts_flatcurve: "
+#define FTS_FLATCURVE_LABEL "fts-flatcurve"
+#define FTS_FLATCURVE_DEBUG_PREFIX FTS_FLATCURVE_LABEL ": "
 
 struct flatcurve_fts_backend {
 	struct fts_backend backend;
