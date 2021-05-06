@@ -49,6 +49,7 @@ struct flatcurve_fts_query_xapian {
 };
 
 struct fts_flatcurve_xapian_query_iterate_context {
+	struct flatcurve_fts_backend *backend;
 	Xapian::Enquire *enquire;
 	Xapian::MSetIterator i;
 	unsigned int offset, size;
@@ -65,18 +66,9 @@ static bool
 fts_flatcurve_xapian_close_write_db(struct flatcurve_fts_backend *backend);
 
 
-struct flatcurve_xapian *fts_flatcurve_xapian_init()
+void fts_flatcurve_xapian_init(struct flatcurve_fts_backend *backend)
 {
-	struct flatcurve_xapian *xapian;
-
-	xapian = i_new(struct flatcurve_xapian, 1);
-
-	return xapian;
-}
-
-void fts_flatcurve_xapian_deinit(struct flatcurve_xapian *xapian)
-{
-	i_free(xapian);
+	backend->xapian = p_new(backend->pool, struct flatcurve_xapian, 1);
 }
 
 static void
@@ -713,7 +705,9 @@ struct fts_flatcurve_xapian_query_iterate_context
 	    ((db = fts_flatcurve_xapian_read_db(backend)) == NULL))
 		return NULL;
 
-	ctx = i_new(struct fts_flatcurve_xapian_query_iterate_context, 1);
+	ctx = p_new(backend->pool,
+		    struct fts_flatcurve_xapian_query_iterate_context, 1);
+	ctx->backend = backend;
 	if (!empty_query) {
 		ctx->enquire = new Xapian::Enquire(*db);
 		ctx->enquire->set_docid_order(Xapian::Enquire::DONT_CARE);
@@ -723,7 +717,8 @@ struct fts_flatcurve_xapian_query_iterate_context
 			ctx->enquire->set_query(*query->xapian->query);
 		}
 	}
-	ctx->result = i_new(struct fts_flatcurve_xapian_query_result, 1);
+	ctx->result = p_new(backend->pool,
+			    struct fts_flatcurve_xapian_query_result, 1);
 	ctx->size = 0;
 
 	return ctx;
@@ -760,8 +755,8 @@ fts_flatcurve_xapian_query_iter_deinit(struct fts_flatcurve_xapian_query_iterate
 	 * allocated internally. */
 	(*ctx)->i.~MSetIterator();
 	delete((*ctx)->enquire);
-	i_free((*ctx)->result);
-	i_free_and_null(*ctx);
+	p_free((*ctx)->backend->pool, (*ctx)->result);
+	p_free((*ctx)->backend->pool, *ctx);
 }
 
 bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_backend *backend,

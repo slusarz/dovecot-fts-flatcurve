@@ -32,6 +32,8 @@ struct flatcurve_fts_backend {
 
 	struct fts_flatcurve_user *fuser;
 	struct flatcurve_xapian *xapian;
+
+	pool_t pool;
 };
 
 struct flatcurve_fts_backend_update_context {

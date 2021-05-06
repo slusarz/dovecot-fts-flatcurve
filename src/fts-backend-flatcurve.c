@@ -23,9 +23,14 @@ struct event_category event_category_fts_flatcurve = {
 static struct fts_backend *fts_backend_flatcurve_alloc(void)
 {
 	struct flatcurve_fts_backend *backend;
+	pool_t pool;
 
-	backend = i_new(struct flatcurve_fts_backend, 1);
+	pool = pool_alloconly_create(FTS_FLATCURVE_LABEL " pool", 2048);
+
+	backend = p_new(pool, struct flatcurve_fts_backend, 1);
 	backend->backend = fts_backend_flatcurve;
+	backend->pool = pool;
+
 	return &backend->backend;
 }
 
@@ -44,7 +49,8 @@ fts_backend_flatcurve_init(struct fts_backend *_backend, const char **error_r)
 	}
 
 	backend->fuser = fuser;
-	backend->xapian = fts_flatcurve_xapian_init();
+
+	fts_flatcurve_xapian_init(backend);
 
 	backend->event = event_create(_backend->ns->user->event);
 	event_add_category(backend->event, &event_category_fts_flatcurve);
@@ -62,8 +68,8 @@ fts_backend_flatcurve_close_box(struct flatcurve_fts_backend *backend)
 	if (backend->boxname != NULL) {
 		fts_flatcurve_xapian_close(backend);
 
-		i_free_and_null(backend->boxname);
-		i_free_and_null(backend->db);
+		p_free(backend->pool, backend->boxname);
+		p_free(backend->pool, backend->db);
 	}
 }
 
@@ -83,10 +89,9 @@ static void fts_backend_flatcurve_deinit(struct fts_backend *_backend)
 		(struct flatcurve_fts_backend *)_backend;
 
 	fts_backend_flatcurve_close_box(backend);
-	fts_flatcurve_xapian_deinit(backend->xapian);
 	event_unref(&backend->event);
 
-	i_free(backend);
+	pool_unref(&backend->pool);
 }
 
 static void
@@ -104,8 +109,9 @@ fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
 	if (mailbox_get_path_to(box, MAILBOX_LIST_PATH_TYPE_INDEX, &path) <= 0)
 		i_unreached(); /* fts already checked this */
 
-	backend->boxname = i_strdup(box->vname);
-	backend->db = i_strdup_printf("%s/%s", path, FLATCURVE_INDEX_NAME);
+	backend->boxname = p_strdup(backend->pool, box->vname);
+	backend->db = p_strdup_printf(backend->pool, "%s/%s", path,
+				      FLATCURVE_INDEX_NAME);
 }
 
 static int
@@ -131,10 +137,14 @@ fts_backend_flatcurve_get_last_uid(struct fts_backend *_backend,
 static struct fts_backend_update_context
 *fts_backend_flatcurve_update_init(struct fts_backend *_backend)
 {
+	struct flatcurve_fts_backend *backend =
+		(struct flatcurve_fts_backend *)_backend;
 	struct flatcurve_fts_backend_update_context *ctx;
 
-	ctx = i_new(struct flatcurve_fts_backend_update_context, 1);
+	ctx = p_new(backend->pool,
+		    struct flatcurve_fts_backend_update_context, 1);
 	ctx->ctx.backend = _backend;
+
 	return &ctx->ctx;
 }
 
@@ -143,9 +153,11 @@ fts_backend_flatcurve_update_deinit(struct fts_backend_update_context *_ctx)
 {
 	struct flatcurve_fts_backend_update_context *ctx =
 		(struct flatcurve_fts_backend_update_context *)_ctx;
+	struct flatcurve_fts_backend *backend =
+		(struct flatcurve_fts_backend *)ctx->ctx.backend;
 	int ret = _ctx->failed ? -1 : 0;
 
-	i_free(ctx);
+	p_free(backend->pool, ctx);
 
 	return ret;
 }
@@ -212,7 +224,7 @@ fts_backend_flatcurve_update_set_build_key(struct fts_backend_update_context *_c
 	switch (key->type) {
 	case FTS_BACKEND_BUILD_KEY_HDR:
 		i_assert(key->hdr_name != NULL);
-		ctx->hdr_name = i_strdup(key->hdr_name);
+		ctx->hdr_name = p_strdup(backend->pool, key->hdr_name);
 		ctx->indexed_hdr = fts_header_want_indexed(key->hdr_name);
 		break;
 	case FTS_BACKEND_BUILD_KEY_MIME_HDR:
@@ -231,8 +243,10 @@ fts_backend_flatcurve_update_unset_build_key(struct fts_backend_update_context *
 {
 	struct flatcurve_fts_backend_update_context *ctx =
 		(struct flatcurve_fts_backend_update_context *)_ctx;
+	struct flatcurve_fts_backend *backend =
+		(struct flatcurve_fts_backend *)ctx->ctx.backend;
 
-	i_free_and_null(ctx->hdr_name);
+	p_free(backend->pool, ctx->hdr_name);
 }
 
 static int
