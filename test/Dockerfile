@@ -1,4 +1,4 @@
-FROM debian:buster
+FROM debian:buster-slim
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 	git \
@@ -21,7 +21,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 	zlib1g-dev \
 	libxapian-dev \
 	xapian-tools \
-	valgrind
+	valgrind && \
+	apt-get clean
 
 RUN mkdir /dovecot
 RUN git clone https://github.com/dovecot/core.git /dovecot/core
