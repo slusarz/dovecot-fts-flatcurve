@@ -564,7 +564,7 @@ fts_backend_flatcurve_lookup(struct fts_backend *_backend, struct mailbox *box,
 
 	i_zero(&multi_result);
 	multi_result.pool = pool_alloconly_create(FTS_FLATCURVE_LABEL
-						  "results pool", 2048);
+						  " results pool", 4096);
 	ret = fts_backend_flatcurve_lookup_multi(_backend, boxes, args,
 						 flags, &multi_result);
 
