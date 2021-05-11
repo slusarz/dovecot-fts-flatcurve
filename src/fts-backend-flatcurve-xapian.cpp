@@ -49,7 +49,7 @@ struct flatcurve_fts_query_xapian {
 };
 
 struct fts_flatcurve_xapian_query_iterate_context {
-	struct flatcurve_fts_backend *backend;
+	struct flatcurve_fts_query *query;
 	Xapian::Enquire *enquire;
 	Xapian::MSetIterator i;
 	unsigned int offset, size;
@@ -331,20 +331,19 @@ void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 }
 
 bool
-fts_flatcurve_xapian_init_msg(struct flatcurve_fts_backend_update_context *ctx,
-			      struct flatcurve_fts_backend *backend)
+fts_flatcurve_xapian_init_msg(struct flatcurve_fts_backend_update_context *ctx)
 {
 	Xapian::WritableDatabase *dbw;
 	Xapian::Document doc;
-	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian *xapian = ctx->backend->xapian;
 
 	if (ctx->uid == xapian->doc_uid) {
 		return TRUE;
 	}
 
-	fts_flatcurve_xapian_clear_document(backend);
+	fts_flatcurve_xapian_clear_document(ctx->backend);
 
-	if ((dbw = fts_flatcurve_xapian_write_db(backend)) == NULL)
+	if ((dbw = fts_flatcurve_xapian_write_db(ctx->backend)) == NULL)
 		return FALSE;
 
 	try {
@@ -365,15 +364,14 @@ fts_flatcurve_xapian_init_msg(struct flatcurve_fts_backend_update_context *ctx,
 
 void
 fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *ctx,
-				  struct flatcurve_fts_backend *backend,
 				  const unsigned char *data, size_t size)
 {
 	std::string h;
 	icu::UnicodeString s, temp;
 	int32_t i = 0;
-	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian *xapian = ctx->backend->xapian;
 
-	if (!fts_flatcurve_xapian_init_msg(ctx, backend))
+	if (!fts_flatcurve_xapian_init_msg(ctx))
 		return;
 
 	if (ctx->hdr_name != NULL) {
@@ -402,20 +400,19 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 			xapian->doc->add_term(FLATCURVE_HEADER_PREFIX + h + t);
 		}
 		xapian->doc->add_term(FLATCURVE_ALL_HEADERS_PREFIX + t);
-	} while (backend->fuser->set.substring_search &&
-		 (temp.length() >= backend->fuser->set.min_term_size));
+	} while (ctx->backend->fuser->set.substring_search &&
+		 (temp.length() >= ctx->backend->fuser->set.min_term_size));
 }
 
 void
 fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx,
-				struct flatcurve_fts_backend *backend,
 				const unsigned char *data, size_t size)
 {
 	int32_t i = 0;
 	icu::UnicodeString s, temp;
-	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian *xapian = ctx->backend->xapian;
 
-	if (!fts_flatcurve_xapian_init_msg(ctx, backend))
+	if (!fts_flatcurve_xapian_init_msg(ctx))
 		return;
 
 	/* Xapian does not support substring searches by default, so we
@@ -433,8 +430,8 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 		temp.toUTF8String(t);
 
 		xapian->doc->add_term(t);
-	} while (backend->fuser->set.substring_search &&
-		 (temp.length() >= backend->fuser->set.min_term_size));
+	} while (ctx->backend->fuser->set.substring_search &&
+		 (temp.length() >= ctx->backend->fuser->set.min_term_size));
 }
 
 static void
@@ -500,8 +497,7 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 }
 
 static bool
-fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
-			      struct flatcurve_fts_query *query,
+fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 			      struct mail_search_arg *arg)
 {
 	struct flatcurve_fts_query_arg *a;
@@ -552,7 +548,7 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_backend *backend,
 	t.erase(std::remove(t.begin(), t.end(), '"'), t.end());
 
 	if (t.find_first_of(' ') != std::string::npos) {
-		if (((db = fts_flatcurve_xapian_read_db(backend)) == NULL) ||
+		if (((db = fts_flatcurve_xapian_read_db(query->backend)) == NULL) ||
 		    !db->has_positions())
 			/* Phrase searching not available. */
 			return TRUE;
@@ -618,8 +614,7 @@ fts_flatcurve_xapian_build_query_deinit(struct flatcurve_fts_query *query)
 	delete(query->xapian->qp);
 }
 
-bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
-				      struct flatcurve_fts_query *query)
+bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query)
 {
 	const struct flatcurve_fts_query_arg *a, *prev;
 	struct mail_search_arg *args = query->args;
@@ -629,6 +624,12 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 
 	x = query->xapian = p_new(query->pool,
 				  struct flatcurve_fts_query_xapian, 1);
+	if (query->match_all) {
+		query->qtext = str_new_const(query->pool, "[Match All]", 11);
+		x->query = new Xapian::Query(Xapian::Query::MatchAll);
+		return TRUE;
+	}
+
 	array_create(&x->args, query->pool,
 		     sizeof(struct flatcurve_fts_query_arg), 4);
 
@@ -636,7 +637,7 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 	x->qp->set_stemming_strategy(Xapian::QueryParser::STEM_NONE);
 
 	for (; args != NULL ; args = args->next) {
-		if (!fts_flatcurve_build_query_arg(backend, query, args)) {
+		if (!fts_flatcurve_build_query_arg(query, args)) {
 			fts_flatcurve_xapian_build_query_deinit(query);
 			return FALSE;
 		}
@@ -679,7 +680,7 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 			Xapian::QueryParser::FLAG_WILDCARD
 		));
 	} catch (Xapian::QueryParserError &e) {
-		e_error(backend->event, "Parsing query failed: %s",
+		e_error(query->backend->event, "Parsing query failed: %s",
 			e.get_msg().c_str());
 		ret = FALSE;
 	}
@@ -690,30 +691,26 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_backend *backend,
 }
 
 struct fts_flatcurve_xapian_query_iterate_context
-*fts_flatcurve_xapian_query_iter_init(struct flatcurve_fts_backend *backend,
-				      struct flatcurve_fts_query *query)
+*fts_flatcurve_xapian_query_iter_init(struct flatcurve_fts_query *query)
 {
-	Xapian::Database *db;
 	struct fts_flatcurve_xapian_query_iterate_context *ctx;
-	bool empty_query = ((query != NULL) && (query->xapian->query == NULL));
+	Xapian::Database *db;
+
+	bool empty_query = (query->xapian->query == NULL);
 
 	if (!empty_query &&
-	    ((db = fts_flatcurve_xapian_read_db(backend)) == NULL))
+	    ((db = fts_flatcurve_xapian_read_db(query->backend)) == NULL))
 		return NULL;
 
-	ctx = p_new(backend->pool,
+	ctx = p_new(query->pool,
 		    struct fts_flatcurve_xapian_query_iterate_context, 1);
-	ctx->backend = backend;
+	ctx->query = query;
 	if (!empty_query) {
 		ctx->enquire = new Xapian::Enquire(*db);
 		ctx->enquire->set_docid_order(Xapian::Enquire::DONT_CARE);
-		if (query == NULL) {
-			ctx->enquire->set_query(Xapian::Query::MatchAll);
-		} else {
-			ctx->enquire->set_query(*query->xapian->query);
-		}
+		ctx->enquire->set_query(*query->xapian->query);
 	}
-	ctx->result = p_new(backend->pool,
+	ctx->result = p_new(query->pool,
 			    struct fts_flatcurve_xapian_query_result, 1);
 	ctx->size = 0;
 
@@ -751,19 +748,18 @@ fts_flatcurve_xapian_query_iter_deinit(struct fts_flatcurve_xapian_query_iterate
 	 * allocated internally. */
 	(*ctx)->i.~MSetIterator();
 	delete((*ctx)->enquire);
-	p_free((*ctx)->backend->pool, (*ctx)->result);
-	p_free((*ctx)->backend->pool, *ctx);
+	p_free((*ctx)->query->pool, (*ctx)->result);
+	p_free((*ctx)->query->pool, *ctx);
 }
 
-bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_backend *backend,
-				    struct flatcurve_fts_query *query,
+bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_query *query,
 				    struct flatcurve_fts_result *r)
 {
 	struct fts_flatcurve_xapian_query_iterate_context *iter;
 	struct fts_flatcurve_xapian_query_result *result;
 	struct fts_score_map *score;
 
-	if ((iter = fts_flatcurve_xapian_query_iter_init(backend, query)) == NULL)
+	if ((iter = fts_flatcurve_xapian_query_iter_init(query)) == NULL)
 		return FALSE;
 	while ((result = fts_flatcurve_xapian_query_iter_next(iter)) != NULL) {
 		seq_range_array_add(&r->uids, result->uid);

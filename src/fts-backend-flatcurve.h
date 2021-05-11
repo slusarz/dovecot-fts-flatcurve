@@ -39,6 +39,7 @@ struct flatcurve_fts_backend {
 struct flatcurve_fts_backend_update_context {
 	struct fts_backend_update_context ctx;
 
+	struct flatcurve_fts_backend *backend;
 	enum fts_backend_build_key_type type;
 	char *hdr_name;
 	uint32_t uid;
@@ -51,10 +52,12 @@ struct flatcurve_fts_query {
 	enum fts_lookup_flags flags;
 	string_t *qtext;
 
+	struct flatcurve_fts_backend *backend;
 	struct flatcurve_fts_query_xapian *xapian;
 
 	pool_t pool;
 
+	bool match_all:1;
 	bool maybe:1;
 };
 
