@@ -49,6 +49,7 @@ fts_backend_flatcurve_init(struct fts_backend *_backend, const char **error_r)
 	}
 
 	backend->boxname = str_new(backend->pool, 128);
+	backend->db_path = str_new(backend->pool, 256);
 	backend->fuser = fuser;
 
 	fts_flatcurve_xapian_init(backend);
@@ -70,7 +71,7 @@ fts_backend_flatcurve_close_box(struct flatcurve_fts_backend *backend)
 		fts_flatcurve_xapian_close(backend);
 
 		str_truncate(backend->boxname, 0);
-		p_free(backend->pool, backend->db_path);
+		str_truncate(backend->db_path, 0);
 	}
 }
 
@@ -111,8 +112,7 @@ fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
 		i_unreached(); /* fts already checked this */
 
 	str_append(backend->boxname, box->vname);
-	backend->db_path = p_strdup_printf(backend->pool, "%s/%s/", path,
-					   FTS_FLATCURVE_LABEL);
+	str_printfa(backend->db_path, "%s/%s/", path, FTS_FLATCURVE_LABEL);
 }
 
 static int

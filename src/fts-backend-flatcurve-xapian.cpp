@@ -111,12 +111,13 @@ static struct fts_flatcurve_xapian_db_iter
 	struct fts_flatcurve_xapian_db_iter *iter;
 	DIR *dirp;
 
-	dirp = opendir(backend->db_path);
+	dirp = opendir(str_c(backend->db_path));
 	if (dirp == NULL) {
 		if (errno != ENOENT)
 			e_debug(backend->event, "Cannot open DB RO "
 				"mailbox=%s; opendir(%s) failed: %m",
-				str_c(backend->boxname), backend->db_path);
+				str_c(backend->boxname),
+				str_c(backend->db_path));
 		return NULL;
 	}
 
@@ -258,7 +259,8 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 
 	e_debug(backend->event, "Opened DB (RO) mailbox=%s version=%u; %s",
 		str_c(backend->boxname),
-		FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION, backend->db_path);
+		FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION,
+		str_c(backend->db_path));
 
 	return xapian->db_read;
 }
@@ -279,13 +281,13 @@ fts_flatcurve_xapian_write_db(struct flatcurve_fts_backend *backend)
 		return xapian->db_write;
 
 	if (mailbox_list_mkdir_root(backend->backend.ns->list,
-	    backend->db_path, MAILBOX_LIST_PATH_TYPE_INDEX) < 0) {
+	    str_c(backend->db_path), MAILBOX_LIST_PATH_TYPE_INDEX) < 0) {
 		e_debug(backend->event, "Cannot create DB mailbox=%s; %s",
-			str_c(backend->boxname), backend->db_path);
+			str_c(backend->boxname), str_c(backend->db_path));
 		return NULL;
 	}
 
-	path = backend->db_path;
+	path = str_c(backend->db_path);
 	path += FTS_FLATCURVE_DB_PREFIX FTS_FLATCURVE_DB_WRITE_SUFFIX;
 
 	try {
@@ -549,7 +551,7 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 void fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend)
 {
 	fts_flatcurve_xapian_close(backend);
-	fts_flatcurve_xapian_delete_db_dir(backend, backend->db_path);
+	fts_flatcurve_xapian_delete_db_dir(backend, str_c(backend->db_path));
 }
 
 static void
@@ -567,7 +569,7 @@ fts_flatcurve_xapian_compact(struct flatcurve_fts_backend *backend,
 	if ((db = fts_flatcurve_xapian_read_db(backend)) == NULL)
 		return;
 
-	o = backend->db_path;
+	o = str_c(backend->db_path);
 	o += FTS_FLATCURVE_DB_OPTIMIZE_PREFIX;
 
 	flags |= Xapian::DBCOMPACT_NO_RENUMBER;
@@ -582,7 +584,7 @@ fts_flatcurve_xapian_compact(struct flatcurve_fts_backend *backend,
 
 	for (;;) {
 		n.clear();
-		n = backend->db_path;
+		n = str_c(backend->db_path);
 		n += FTS_FLATCURVE_DB_PREFIX;
 		ss << i_rand_limit(1024);
 		n += ss.str();
