@@ -101,7 +101,7 @@ fts_flatcurve_xapian_delete_db_dir(struct flatcurve_fts_backend *backend,
 
 	if (unlink_directory(dir, unlink_flags, &error) < 0)
 		e_debug(backend->event, "Deleting index failed mailbox=%s; %s",
-			backend->boxname, error);
+			str_c(backend->boxname), error);
 }
 
 static struct fts_flatcurve_xapian_db_iter
@@ -116,7 +116,7 @@ static struct fts_flatcurve_xapian_db_iter
 		if (errno != ENOENT)
 			e_debug(backend->event, "Cannot open DB RO "
 				"mailbox=%s; opendir(%s) failed: %m",
-				backend->boxname, backend->db_path);
+				str_c(backend->boxname), backend->db_path);
 		return NULL;
 	}
 
@@ -250,15 +250,15 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 			xapian->db_read->add_database(*(xdb->db));
 		} catch (Xapian::Error &e) {
 			e_debug(backend->event, "Cannot open DB RO mailbox=%s; %s",
-				backend->boxname, e.get_msg().c_str());
+				str_c(backend->boxname), e.get_msg().c_str());
 		}
 	}
 
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
 	e_debug(backend->event, "Opened DB (RO) mailbox=%s version=%u; %s",
-		backend->boxname, FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION,
-		backend->db_path);
+		str_c(backend->boxname),
+		FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION, backend->db_path);
 
 	return xapian->db_read;
 }
@@ -281,7 +281,7 @@ fts_flatcurve_xapian_write_db(struct flatcurve_fts_backend *backend)
 	if (mailbox_list_mkdir_root(backend->backend.ns->list,
 	    backend->db_path, MAILBOX_LIST_PATH_TYPE_INDEX) < 0) {
 		e_debug(backend->event, "Cannot create DB mailbox=%s; %s",
-			backend->boxname, backend->db_path);
+			str_c(backend->boxname), backend->db_path);
 		return NULL;
 	}
 
@@ -292,15 +292,15 @@ fts_flatcurve_xapian_write_db(struct flatcurve_fts_backend *backend)
 		xapian->db_write = new Xapian::WritableDatabase(path, db_flags);
 	} catch (Xapian::Error &e) {
 		e_debug(backend->event, "Cannot open DB RW mailbox=%s; %s",
-			backend->boxname, e.get_msg().c_str());
+			str_c(backend->boxname), e.get_msg().c_str());
 		return NULL;
 	}
 
 	fts_flatcurve_xapian_check_db_version(backend, xapian->db_write, TRUE);
 
 	e_debug(backend->event, "Opened DB (RW) mailbox=%s version=%u; %s",
-		backend->boxname, FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION,
-		path.c_str());
+		str_c(backend->boxname),
+		FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION, path.c_str());
 
 	return xapian->db_write;
 }
@@ -322,10 +322,10 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 			"when indexing mail (%s); mailbox=%s UID=%d "
 			"(Hint: increase indexing process vsz_limit or define "
 			"smaller commit_limit value in plugin config)",
-			b.what(), backend->boxname, xapian->doc_uid);
+			b.what(), str_c(backend->boxname), xapian->doc_uid);
 	} catch (Xapian::Error &e) {
 		e_warning(backend->event, "Could not write message data: "
-			  "mailbox=%s uid=%u; %s", backend->boxname,
+			  "mailbox=%s uid=%u; %s", str_c(backend->boxname),
 			  xapian->doc_uid, e.get_msg().c_str());
 	}
 
@@ -335,7 +335,7 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 		xapian->doc_updates = 0;
 		e_debug(backend->event, "Committing DB as update "
 			"limit was reached; mailbox=%s limit=%d",
-			backend->boxname,
+			str_c(backend->boxname),
 			backend->fuser->set.commit_limit);
 	}
 
@@ -405,7 +405,7 @@ void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 		*last_uid_r = db->get_lastdocid();
 	} catch (Xapian::Error &e) {
 		e_debug(backend->event, "get_last_uid (%s); %s",
-			backend->boxname, e.get_msg().c_str());
+			str_c(backend->boxname), e.get_msg().c_str());
 	}
 }
 
@@ -576,7 +576,7 @@ fts_flatcurve_xapian_compact(struct flatcurve_fts_backend *backend,
 		db->compact(o, flags);
 	} catch (Xapian::Error &e) {
 		e_error(backend->event, "Error optimizing DB mailbox=%s; %s",
-			backend->boxname, e.get_msg().c_str());
+			str_c(backend->boxname), e.get_msg().c_str());
 		return;
 	}
 
@@ -594,7 +594,7 @@ fts_flatcurve_xapian_compact(struct flatcurve_fts_backend *backend,
 				e_error(backend->event, "Activating new index "
 					"(%s -> %s) failed mailbox=%s; %m",
 					o.c_str(), n.c_str(),
-					backend->boxname);
+					str_c(backend->boxname));
 				fts_flatcurve_xapian_delete_db_dir(backend,
 								   o.c_str());
 				return;
@@ -613,7 +613,7 @@ fts_flatcurve_xapian_compact(struct flatcurve_fts_backend *backend,
 	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, FTS_FLATCURVE_XAPIAN_DB_ITER_IGNORE_OPTIMIZE)) == NULL) {
 		e_error(backend->event, "Activating new index (%s -> %s) "
 			"failed mailbox=%s; %m", o.c_str(), n.c_str(),
-			backend->boxname);
+			str_c(backend->boxname));
 		fts_flatcurve_xapian_delete_db_dir(backend, n.c_str());
 		return;
 	}
@@ -624,7 +624,8 @@ fts_flatcurve_xapian_compact(struct flatcurve_fts_backend *backend,
 	}
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
-	e_debug(backend->event, "Optimized DB; mailbox=%s", backend->boxname);
+	e_debug(backend->event, "Optimized DB; mailbox=%s",
+		str_c(backend->boxname));
 #endif
 }
 

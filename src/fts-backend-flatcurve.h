@@ -28,7 +28,8 @@
 
 struct flatcurve_fts_backend {
 	struct fts_backend backend;
-	char *boxname, *db_path;
+	string_t *boxname;
+	char *db_path;
 
 	struct event *event;
 
