@@ -330,9 +330,9 @@ void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 	}
 }
 
-static bool
-fts_flatcurve_xapian_get_document(struct flatcurve_fts_backend_update_context *ctx,
-				  struct flatcurve_fts_backend *backend)
+bool
+fts_flatcurve_xapian_init_msg(struct flatcurve_fts_backend_update_context *ctx,
+			      struct flatcurve_fts_backend *backend)
 {
 	Xapian::WritableDatabase *dbw;
 	Xapian::Document doc;
@@ -373,7 +373,7 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 	int32_t i = 0;
 	struct flatcurve_xapian *xapian = backend->xapian;
 
-	if (!fts_flatcurve_xapian_get_document(ctx, backend))
+	if (!fts_flatcurve_xapian_init_msg(ctx, backend))
 		return;
 
 	if (ctx->hdr_name != NULL) {
@@ -415,7 +415,7 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 	icu::UnicodeString s, temp;
 	struct flatcurve_xapian *xapian = backend->xapian;
 
-	if (!fts_flatcurve_xapian_get_document(ctx, backend))
+	if (!fts_flatcurve_xapian_init_msg(ctx, backend))
 		return;
 
 	/* Xapian does not support substring searches by default, so we

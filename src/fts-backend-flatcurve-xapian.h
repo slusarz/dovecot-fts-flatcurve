@@ -27,6 +27,9 @@ int fts_flatcurve_xapian_uid_exists(struct flatcurve_fts_backend *backend,
 				    uint32_t uid);
 void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 				  uint32_t uid);
+bool
+fts_flatcurve_xapian_init_msg(struct flatcurve_fts_backend_update_context *ctx,
+                              struct flatcurve_fts_backend *backend);
 void
 fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *ctx,
 				  struct flatcurve_fts_backend *backend,

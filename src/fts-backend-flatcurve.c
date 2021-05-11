@@ -200,6 +200,7 @@ static bool
 fts_backend_flatcurve_update_set_build_key(struct fts_backend_update_context *_ctx,
 					   const struct fts_backend_build_key *key)
 {
+	bool changed = FALSE;
 	struct flatcurve_fts_backend_update_context *ctx =
 		(struct flatcurve_fts_backend_update_context *)_ctx;
 	struct flatcurve_fts_backend *backend =
@@ -210,16 +211,24 @@ fts_backend_flatcurve_update_set_build_key(struct fts_backend_update_context *_c
 	if (_ctx->failed)
 		return FALSE;
 
-	if (ctx->uid != key->uid)
+	if (ctx->uid != key->uid) {
 		e_debug(event_create_passthrough(backend->event)->
 			set_name("fts_flatcurve_index")->
 			add_str("mailbox", backend->boxname)->
 			add_int("uid", key->uid)->event(),
 			"Indexing mailbox=%s uid=%d", backend->boxname,
 			key->uid);
+		changed = TRUE;
+	}
 
 	ctx->type = key->type;
 	ctx->uid = key->uid;
+
+	/* Specifically init message, as there is a chance that there
+	 * is no valid search info in a message so the message will
+	 * not be saved to DB after processing. */
+	if (changed)
+		fts_flatcurve_xapian_init_msg(ctx, backend);
 
 	switch (key->type) {
 	case FTS_BACKEND_BUILD_KEY_HDR:
