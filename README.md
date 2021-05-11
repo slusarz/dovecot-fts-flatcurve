@@ -103,12 +103,6 @@ Flatcurve provies a single plugin option for configuration: `fts_flatcurve`.
 
 Optional parameters for the `fts_flatcurve` plugin setting:
 
- - `auto_optimize` - The number of database revisions that occur before the
-                     index is automatically optimized in the background
-                     (integer, set to 0 to disable; DEFAULT: 500)
- - `auto_optimize_msgs` - The number of messages processed in a single
-                          transaction that will trigger an optimization
-                          (integer, set to 0 to disable; DEFAULT: 1000)
  - `commit_limit` - Commit database changes after this many documents are
                     updated. Higher commit limits will result in faster
                     indexing for large transactions (i.e. indexing a large
@@ -133,8 +127,8 @@ mail_plugins = $mail_plugins fts fts_flatcurve
 
 plugin {
   fts = flatcurve
-  fts_flatcurve = auto_optimize=500 auto_optimize_msgs=1000 commit_limit=500 \
-                  max_term_size=30 min_term_size=2 substring_search=yes
+  fts_flatcurve = commit_limit=500 max_term_size=30 min_term_size=2 \
+                  substring_search=yes
 }
 ```
 

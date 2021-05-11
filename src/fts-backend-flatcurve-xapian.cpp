@@ -39,7 +39,7 @@ struct flatcurve_xapian {
 	ARRAY_TYPE(xapian_database) read_dbs;
 
 	uint32_t doc_uid;
-	unsigned int doc_updates, total_updates;
+	unsigned int doc_updates;
 	bool doc_created:1;
 };
 
@@ -80,12 +80,9 @@ struct fts_flatcurve_xapian_db_iter {
 };
 
 
-static void
-fts_flatcurve_xapian_compact(struct flatcurve_fts_backend *backend,
-			     unsigned int flags);
 static Xapian::WritableDatabase *
 fts_flatcurve_xapian_write_db(struct flatcurve_fts_backend *backend);
-static bool
+static void
 fts_flatcurve_xapian_close_write_db(struct flatcurve_fts_backend *backend);
 
 
@@ -206,7 +203,7 @@ fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 		dbw->set_metadata(FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION_KEY,
 				  ss.str());
 		if (!write)
-			(void)fts_flatcurve_xapian_close_write_db(backend);
+			fts_flatcurve_xapian_close_write_db(backend);
 	}
 }
 
@@ -332,8 +329,6 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 			  xapian->doc_uid, e.get_msg().c_str());
 	}
 
-	++xapian->total_updates;
-
 	if ((backend->fuser->set.commit_limit > 0) &&
 	    (++xapian->doc_updates >= backend->fuser->set.commit_limit)) {
 		dbw->commit();
@@ -355,76 +350,46 @@ void fts_flatcurve_xapian_refresh(struct flatcurve_fts_backend *backend)
 {
 	Xapian::Database *db;
 
-	(void)fts_flatcurve_xapian_close_write_db(backend);
+	fts_flatcurve_xapian_close_write_db(backend);
 	if (backend->xapian->db_read &&
 	    ((db = fts_flatcurve_xapian_read_db(backend)) != NULL))
 		(void)db->reopen();
 }
 
-static bool
+static void
 fts_flatcurve_xapian_close_write_db(struct flatcurve_fts_backend *backend)
 {
-	bool optimize = FALSE;
 	struct flatcurve_xapian *xapian = backend->xapian;
 
 	if (xapian->db_write == NULL)
-		return optimize;
+		return;
 
 	fts_flatcurve_xapian_clear_document(backend);
-
-#ifdef XAPIAN_HAS_COMPACT
-	uint32_t rev;
-	struct fts_flatcurve_user *user = backend->fuser;
-
-	if (user->set.auto_optimize > 0) {
-		try {
-			rev = xapian->db_write->get_revision();
-			if (rev >= user->set.auto_optimize) {
-				e_debug(backend->event,
-					"Triggering auto optimize; "
-					"db_revision=%d", rev);
-				optimize = TRUE;
-			}
-		} catch (Xapian::Error &e) {
-			/* Ignore error */
-		}
-	}
-
-	if ((user->set.auto_optimize_msgs > 0) &&
-	    (backend->xapian->total_updates >= user->set.auto_optimize_msgs))
-		optimize = TRUE;
-#endif
 
 	xapian->db_write->close();
 	delete(xapian->db_write);
 	xapian->db_write = NULL;
-	xapian->doc_updates = xapian->total_updates = 0;
-
-	return optimize;
+	xapian->doc_updates = 0;
 }
 
 void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 {
 	struct flatcurve_xapian_db *xdb;
-	bool optimize;
 	struct flatcurve_xapian *xapian = backend->xapian;
 
-	optimize = fts_flatcurve_xapian_close_write_db(backend);
+	fts_flatcurve_xapian_close_write_db(backend);
 
-	if (xapian->db_read != NULL) {
-		array_foreach_modifiable(&xapian->read_dbs, xdb) {
-			delete(xdb->db);
-			p_free(backend->pool, xdb->path);
-		}
-		array_clear(&xapian->read_dbs);
-		xapian->db_read->close();
-		delete(xapian->db_read);
-		xapian->db_read = NULL;
+	if (xapian->db_read == NULL)
+		return;
+
+	array_foreach_modifiable(&xapian->read_dbs, xdb) {
+		delete(xdb->db);
+		p_free(backend->pool, xdb->path);
 	}
-
-	if (optimize)
-		fts_flatcurve_xapian_compact(backend,
-					     Xapian::Compactor::STANDARD);
+	array_clear(&xapian->read_dbs);
+	xapian->db_read->close();
+	delete(xapian->db_read);
+	xapian->db_read = NULL;
 }
 
 void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,

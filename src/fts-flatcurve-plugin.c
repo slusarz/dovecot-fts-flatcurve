@@ -29,31 +29,13 @@ fts_flatcurve_plugin_init_settings(struct fts_flatcurve_settings *set,
 	const char *const *tmp;
 	unsigned int val;
 
-	set->auto_optimize = FTS_FLATCURVE_AUTO_OPTIMIZE_DEFAULT;
-	set->auto_optimize_msgs = FTS_FLATCURVE_AUTO_OPTIMIZE_MSGS_DEFAULT;
 	set->commit_limit = FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT;
 	set->max_term_size = FTS_FLATCURVE_MAX_TERM_SIZE_DEFAULT;
 	set->min_term_size = FTS_FLATCURVE_MIN_TERM_SIZE_DEFAULT;
 	set->substring_search = FTS_FLATCURVE_SUBSTRING_SEARCH_DEFAULT;
 
 	for (tmp = t_strsplit_spaces(str, " "); *tmp != NULL; tmp++) {
-		if (str_begins(*tmp, "auto_optimize=")) {
-			if (str_to_uint(*tmp + 14, &val) < 0) {
-				i_warning(FTS_FLATCURVE_DEBUG_PREFIX
-					  "Invalid auto_optimize: %s",
-					  *tmp + 14);
-				return -1;
-			}
-			set->auto_optimize = val;
-		} else if (str_begins(*tmp, "auto_optimize_msgs=")) {
-			if (str_to_uint(*tmp + 19, &val) < 0) {
-				i_warning(FTS_FLATCURVE_DEBUG_PREFIX
-					  "Invalid auto_optimize_msgs: %s",
-					  *tmp + 19);
-				return -1;
-			}
-			set->auto_optimize_msgs = val;
-		} else if (str_begins(*tmp, "commit_limit=")) {
+		if (str_begins(*tmp, "commit_limit=")) {
 			if (str_to_uint(*tmp + 13, &val) < 0) {
 				i_warning(FTS_FLATCURVE_DEBUG_PREFIX
 					  "Invalid commit_limit: %s",
