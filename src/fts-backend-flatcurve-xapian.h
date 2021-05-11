@@ -42,7 +42,7 @@ bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_backend *backend,
 				    struct flatcurve_fts_query *query,
 				    struct flatcurve_fts_result *r);
 void fts_flatcurve_xapian_destroy_query(struct flatcurve_fts_query *query);
-bool fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend);
+void fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend);
 
 /* if query absent, all documents are matched */
 struct fts_flatcurve_xapian_query_iterate_context

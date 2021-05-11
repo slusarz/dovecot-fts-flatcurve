@@ -437,26 +437,22 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 		 (temp.length() >= backend->fuser->set.min_term_size));
 }
 
-static bool
+static void
 fts_flatcurve_xapian_delete_index_real(struct flatcurve_fts_backend *backend,
 				       const char *dir)
 {
 	const char *error;
 	enum unlink_directory_flags unlink_flags = UNLINK_DIRECTORY_FLAG_RMDIR;
 
-	if (unlink_directory(dir, unlink_flags, &error) < 0) {
-		e_error(backend->event, "Deleting index (%s) failed: %s",
-			dir, error);
-		return FALSE;
-	}
-
-	return TRUE;
+	if (unlink_directory(dir, unlink_flags, &error) < 0)
+		e_error(backend->event, "Deleting index failed mailbox=%s; %s",
+			backend->boxname, error);
 }
 
-bool fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend)
+void fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend)
 {
 	fts_flatcurve_xapian_close(backend);
-	return fts_flatcurve_xapian_delete_index_real(backend, backend->db);
+	fts_flatcurve_xapian_delete_index_real(backend, backend->db);
 }
 
 static void
@@ -483,8 +479,8 @@ fts_flatcurve_xapian_compact(struct flatcurve_fts_backend *backend,
 		return;
 	}
 
-	if (fts_flatcurve_xapian_delete_index(backend) &&
-	    (rename(s.c_str(), backend->db) < 0)) {
+	fts_flatcurve_xapian_delete_index(backend);
+	if (rename(s.c_str(), backend->db) < 0) {
 		e_error(backend->event,
 			"Activating new index (%s -> %s) failed",
 			s.c_str(), backend->db);

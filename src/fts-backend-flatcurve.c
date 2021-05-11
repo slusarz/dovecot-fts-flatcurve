@@ -367,7 +367,7 @@ end:
 		/* There does not seem to be an easy way to indicate what
 		 * uids need to be indexed. Only solution is simply to delete
 		 * the index and rebuild at a later time. */
-		(void)fts_flatcurve_xapian_delete_index(backend);
+		fts_flatcurve_xapian_delete_index(backend);
 		u = str_c(fts_backend_flatcurve_seq_range_string(&missing,
 			  pool));
 		e_debug(e->add_str("status", "missing_msgs")->
