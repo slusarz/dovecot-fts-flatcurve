@@ -43,7 +43,7 @@ struct flatcurve_fts_backend_update_context {
 
 	struct flatcurve_fts_backend *backend;
 	enum fts_backend_build_key_type type;
-	char *hdr_name;
+	string_t *hdr_name;
 	uint32_t uid;
 
 	bool indexed_hdr:1;

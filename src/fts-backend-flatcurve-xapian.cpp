@@ -486,8 +486,8 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 	if (!fts_flatcurve_xapian_init_msg(ctx))
 		return;
 
-	if (ctx->hdr_name != NULL) {
-		h = str_lcase(ctx->hdr_name);
+	if (str_len(ctx->hdr_name)) {
+		h = str_lcase(str_c_modifiable(ctx->hdr_name));
 		xapian->doc->add_boolean_term(
 			FLATCURVE_BOOLEAN_FIELD_PREFIX + h);
 	}
@@ -500,7 +500,7 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 	s = icu::UnicodeString::fromUTF8(
 		icu::StringPiece((const char *)data, size));
 	if (ctx->indexed_hdr)
-		h = str_ucase(ctx->hdr_name);
+		h = str_ucase(str_c_modifiable(ctx->hdr_name));
 
 	do {
 		std::string t;

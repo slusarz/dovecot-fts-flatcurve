@@ -145,6 +145,7 @@ static struct fts_backend_update_context
 		    struct flatcurve_fts_backend_update_context, 1);
 	ctx->ctx.backend = _backend;
 	ctx->backend = backend;
+	ctx->hdr_name = str_new(backend->pool, 128);
 
 	return &ctx->ctx;
 }
@@ -156,6 +157,7 @@ fts_backend_flatcurve_update_deinit(struct fts_backend_update_context *_ctx)
 		(struct flatcurve_fts_backend_update_context *)_ctx;
 	int ret = _ctx->failed ? -1 : 0;
 
+	str_free(&ctx->hdr_name);
 	p_free(ctx->backend->pool, ctx);
 
 	return ret;
@@ -226,7 +228,7 @@ fts_backend_flatcurve_update_set_build_key(struct fts_backend_update_context *_c
 	switch (key->type) {
 	case FTS_BACKEND_BUILD_KEY_HDR:
 		i_assert(key->hdr_name != NULL);
-		ctx->hdr_name = p_strdup(ctx->backend->pool, key->hdr_name);
+		str_append(ctx->hdr_name, key->hdr_name);
 		ctx->indexed_hdr = fts_header_want_indexed(key->hdr_name);
 		break;
 	case FTS_BACKEND_BUILD_KEY_MIME_HDR:
@@ -246,7 +248,7 @@ fts_backend_flatcurve_update_unset_build_key(struct fts_backend_update_context *
 	struct flatcurve_fts_backend_update_context *ctx =
 		(struct flatcurve_fts_backend_update_context *)_ctx;
 
-	p_free(ctx->backend->pool, ctx->hdr_name);
+	str_truncate(ctx->hdr_name, 0);
 }
 
 static int
