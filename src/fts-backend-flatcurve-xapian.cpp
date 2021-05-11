@@ -680,7 +680,7 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	std::string t;
 	struct flatcurve_fts_query_xapian *x = query->xapian;
 
-	a = p_new(query->pool, struct flatcurve_fts_query_arg, 1);
+	a = array_append_space(&x->args);
 	a->value = str_new(query->pool, 64);
 
 	switch (arg->type) {
@@ -700,14 +700,17 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		 * commands with a 'mailbox' search argument. The code has
 		 * already handled setting the proper mailbox by this point
 		 * so just ignore this. */
+		array_pop_back(&x->args);
 		return TRUE;
 
 	case SEARCH_OR:
 	case SEARCH_SUB:
 		/* FTS API says to ignore these. */
+		array_pop_back(&x->args);
 		return TRUE;
 
 	default:
+		array_pop_back(&x->args);
 		return FALSE;
 	}
 
@@ -725,6 +728,7 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		if (((db = fts_flatcurve_xapian_read_db(query->backend)) == NULL) ||
 		    !db->has_positions())
 			/* Phrase searching not available. */
+			array_pop_back(&x->args);
 			return TRUE;
 
 		if (t.size() > 0)
@@ -776,8 +780,6 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		break;
 	}
 
-	array_push_back(&x->args, a);
-
 	return TRUE;
 }
 
@@ -804,8 +806,7 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query)
 		return TRUE;
 	}
 
-	array_create(&x->args, query->pool,
-		     sizeof(struct flatcurve_fts_query_arg), 4);
+	p_array_init(&x->args, query->pool, 4);
 
 	x->qp = new Xapian::QueryParser();
 	x->qp->set_stemming_strategy(Xapian::QueryParser::STEM_NONE);
