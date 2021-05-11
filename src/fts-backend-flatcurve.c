@@ -69,7 +69,7 @@ fts_backend_flatcurve_close_box(struct flatcurve_fts_backend *backend)
 		fts_flatcurve_xapian_close(backend);
 
 		p_free(backend->pool, backend->boxname);
-		p_free(backend->pool, backend->db);
+		p_free(backend->pool, backend->db_path);
 	}
 }
 
@@ -110,8 +110,8 @@ fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
 		i_unreached(); /* fts already checked this */
 
 	backend->boxname = p_strdup(backend->pool, box->vname);
-	backend->db = p_strdup_printf(backend->pool, "%s/%s", path,
-				      FLATCURVE_INDEX_NAME);
+	backend->db_path = p_strdup_printf(backend->pool, "%s/%s/", path,
+					   FTS_FLATCURVE_LABEL);
 }
 
 static int

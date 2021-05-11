@@ -7,8 +7,9 @@
 #include "lib.h"
 #include "fts-flatcurve-plugin.h"
 
-#define FLATCURVE_INDEX_NAME "flatcurve-index"
-#define FLATCURVE_INDEX_OPTIMIZE_SUFFIX ".optimize"
+#define FTS_FLATCURVE_DB_PREFIX "index."
+#define FTS_FLATCURVE_DB_WRITE_SUFFIX "current"
+#define FTS_FLATCURVE_DB_OPTIMIZE_PREFIX "optimize"
 
 /* Xapian "recommendations" are that you begin your local prefix identifier
  * with "X" for data that doesn't match with a data type listed as a Xapian
@@ -27,7 +28,7 @@
 
 struct flatcurve_fts_backend {
 	struct fts_backend backend;
-	char *boxname, *db;
+	char *boxname, *db_path;
 
 	struct event *event;
 
