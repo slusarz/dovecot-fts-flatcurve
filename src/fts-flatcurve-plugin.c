@@ -107,7 +107,7 @@ static void fts_flatcurve_mail_user_created(struct mail_user *user)
 	}
 
 	fuser = p_new(user->pool, struct fts_flatcurve_user, 1);
-	env = mail_user_plugin_getenv(user, FTS_FLATCURVE_LABEL);
+	env = mail_user_plugin_getenv(user, FTS_FLATCURVE_PLUGIN_LABEL);
 	if (env == NULL)
 		env = "";
 
