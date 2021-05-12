@@ -313,16 +313,16 @@ static string_t
 	return ret;
 }
 
-static bool
+static void
 fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
-				 struct mailbox *box)
+				 struct mailbox *box,
+				 pool_t pool)
 {
 	struct fts_flatcurve_xapian_query_iter *iter;
 	struct mail *mail;
 	ARRAY_TYPE(seq_range) missing, uids;
 	bool dbexist = TRUE;
 	struct event_passthrough *e;
-	pool_t pool;
 	struct flatcurve_fts_query *query;
 	struct fts_flatcurve_xapian_query_result *result;
 	struct mail_search_args *search_args;
@@ -332,13 +332,12 @@ fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
 
 	/* Check for non-indexed mails. */
 	if (mailbox_sync(box, MAILBOX_SYNC_FLAG_FULL_READ) < 0)
-		return FALSE;
+		return;
 
 	trans = mailbox_transaction_begin(box, 0, __func__);
 	search_args = mail_search_build_init();
 	mail_search_build_add_all(search_args);
 
-	pool = pool_alloconly_create(FTS_FLATCURVE_LABEL " rescan pool", 2048);
 	p_array_init(&missing, pool, 32);
 	p_array_init(&uids, pool, 256);
 
@@ -416,34 +415,6 @@ end:
 				"uids=%s", box->name, u);
 		}
 	}
-
-	pool_unref(&pool);
-
-	return dbexist;
-}
-
-static void
-fts_backend_flatcurve_box_action(struct flatcurve_fts_backend *backend,
-				 const char *boxname,
-				 enum fts_backend_flatcurve_action act)
-{
-	struct mailbox *box;
-	enum mailbox_flags mbox_flags = 0;
-	bool optimize = TRUE;
-
-	box = mailbox_alloc(backend->backend.ns->list, boxname, mbox_flags);
-	fts_backend_flatcurve_set_mailbox(backend, box);
-	if (act == FTS_BACKEND_FLATCURVE_ACTION_RESCAN) {
-		optimize = fts_backend_flatcurve_rescan_box(backend, box);
-	}
-	if (optimize) {
-		e_debug(event_create_passthrough(backend->event)->
-			set_name("fts_flatcurve_optimize")->
-			add_str("mailbox", boxname)->event(),
-			"Optimizing mailbox=%s", boxname);
-		fts_flatcurve_xapian_optimize_box(backend);
-	}
-	mailbox_free(&box);
 }
 
 static int
@@ -452,17 +423,48 @@ fts_backend_flatcurve_iterate_ns(struct fts_backend *_backend,
 {
 	struct flatcurve_fts_backend *backend =
 		(struct flatcurve_fts_backend *)_backend;
+	struct mailbox *box;
 	const struct mailbox_info *info;
 	struct mailbox_list_iterate_context *iter;
 	const enum mailbox_list_iter_flags iter_flags =
 		MAILBOX_LIST_ITER_NO_AUTO_BOXES |
 		MAILBOX_LIST_ITER_RETURN_NO_FLAGS;
+	enum mailbox_flags mbox_flags = 0;
+	pool_t pool;
+	bool pool_alloc = FALSE;
 
 	iter = mailbox_list_iter_init(_backend->ns->list, "*", iter_flags);
 	while ((info = mailbox_list_iter_next(iter)) != NULL) {
-		fts_backend_flatcurve_box_action(backend, info->vname, act);
+		box = mailbox_alloc(backend->backend.ns->list, info->vname,
+				    mbox_flags);
+		fts_backend_flatcurve_set_mailbox(backend, box);
+
+		switch (act) {
+		case FTS_BACKEND_FLATCURVE_ACTION_OPTIMIZE:
+			e_debug(event_create_passthrough(backend->event)->
+				set_name("fts_flatcurve_optimize")->
+				add_str("mailbox", info->vname)->event(),
+				"Optimizing mailbox=%s", info->vname);
+			fts_flatcurve_xapian_optimize_box(backend);
+			break;
+		case FTS_BACKEND_FLATCURVE_ACTION_RESCAN:
+			if (!pool_alloc) {
+				pool = pool_alloconly_create(
+					FTS_FLATCURVE_LABEL " rescan pool",
+					4096);
+				pool_alloc = TRUE;
+			}
+			fts_backend_flatcurve_rescan_box(backend, box, pool);
+			p_clear(pool);
+			break;
+		}
+
+		mailbox_free(&box);
 	}
 	(void)mailbox_list_iter_deinit(&iter);
+
+	if (pool_alloc)
+		pool_unref(&pool);
 
 	return 0;
 }
