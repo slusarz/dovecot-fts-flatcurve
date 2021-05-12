@@ -38,6 +38,8 @@ struct flatcurve_xapian {
 
 	ARRAY_TYPE(xapian_database) read_dbs;
 
+	struct fts_flatcurve_xapian_db_iter *db_iter;
+
 	uint32_t doc_uid;
 	unsigned int doc_updates;
 	bool doc_created:1;
@@ -108,8 +110,8 @@ static struct fts_flatcurve_xapian_db_iter
 *fts_flatcurve_xapian_db_iter_init(struct flatcurve_fts_backend *backend,
 				   enum fts_flatcurve_xapian_db_iter_options opts)
 {
-	struct fts_flatcurve_xapian_db_iter *iter;
 	DIR *dirp;
+	struct fts_flatcurve_xapian_db_iter *iter;
 
 	dirp = opendir(str_c(backend->db_path));
 	if (dirp == NULL) {
@@ -121,11 +123,21 @@ static struct fts_flatcurve_xapian_db_iter
 		return NULL;
 	}
 
-	iter = p_new(backend->pool, struct fts_flatcurve_xapian_db_iter, 1);
-	iter->backend = backend;
+	if (backend->xapian->db_iter == NULL) {
+		iter = p_new(backend->pool,
+			     struct fts_flatcurve_xapian_db_iter, 1);
+		iter->backend = backend;
+		iter->path = str_new(backend->pool, 128);
+		backend->xapian->db_iter = iter;
+	} else {
+		iter = backend->xapian->db_iter;
+	}
+
 	iter->dirp = dirp;
+	iter->ignore = NULL;
 	iter->options = opts;
-	iter->path = str_new(backend->pool, 128);
+
+	str_truncate(iter->path, 0);
 	str_append_str(iter->path, backend->db_path);
 	iter->path_len = str_len(iter->path);
 
@@ -171,7 +183,6 @@ fts_flatcurve_xapian_db_iter_deinit(struct fts_flatcurve_xapian_db_iter **_iter)
 
 	*_iter = NULL;
 	(void)closedir(iter->dirp);
-	p_free(iter->backend->pool, iter);
 }
 
 static void
