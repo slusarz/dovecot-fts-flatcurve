@@ -15,7 +15,7 @@ struct fts_flatcurve_xapian_query_result {
 	uint32_t uid;
 };
 
-struct fts_flatcurve_xapian_query_iterate_context;
+struct fts_flatcurve_xapian_query_iter;
 
 void fts_flatcurve_xapian_init(struct flatcurve_fts_backend *backend);
 void fts_flatcurve_xapian_refresh(struct flatcurve_fts_backend *backend);
@@ -42,13 +42,12 @@ bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_query *query,
 void fts_flatcurve_xapian_destroy_query(struct flatcurve_fts_query *query);
 void fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend);
 
-/* if query absent, all documents are matched */
-struct fts_flatcurve_xapian_query_iterate_context
+struct fts_flatcurve_xapian_query_iter
 *fts_flatcurve_xapian_query_iter_init(struct flatcurve_fts_query *query);
 struct fts_flatcurve_xapian_query_result
-*fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iterate_context *ctx);
+*fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iter *iter);
 void
-fts_flatcurve_xapian_query_iter_deinit(struct fts_flatcurve_xapian_query_iterate_context **ctx);
+fts_flatcurve_xapian_query_iter_deinit(struct fts_flatcurve_xapian_query_iter **_iter);
 
 const char *fts_flatcurve_xapian_library_version();
 #endif

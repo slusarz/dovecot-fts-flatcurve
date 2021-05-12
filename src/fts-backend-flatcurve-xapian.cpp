@@ -59,7 +59,7 @@ struct flatcurve_fts_query_xapian {
 	ARRAY_TYPE(flatcurve_fts_query_arg) args;
 };
 
-struct fts_flatcurve_xapian_query_iterate_context {
+struct fts_flatcurve_xapian_query_iter {
 	struct flatcurve_fts_query *query;
 	Xapian::Enquire *enquire;
 	Xapian::MSetIterator i;
@@ -844,11 +844,11 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query)
 	return ret;
 }
 
-struct fts_flatcurve_xapian_query_iterate_context
+struct fts_flatcurve_xapian_query_iter
 *fts_flatcurve_xapian_query_iter_init(struct flatcurve_fts_query *query)
 {
-	struct fts_flatcurve_xapian_query_iterate_context *ctx;
 	Xapian::Database *db;
+	struct fts_flatcurve_xapian_query_iter *iter;
 
 	bool empty_query = (query->xapian->query == NULL);
 
@@ -856,60 +856,62 @@ struct fts_flatcurve_xapian_query_iterate_context
 	    ((db = fts_flatcurve_xapian_read_db(query->backend)) == NULL))
 		return NULL;
 
-	ctx = p_new(query->pool,
-		    struct fts_flatcurve_xapian_query_iterate_context, 1);
-	ctx->query = query;
+	iter = p_new(query->pool, struct fts_flatcurve_xapian_query_iter, 1);
+	iter->query = query;
 	if (!empty_query) {
-		ctx->enquire = new Xapian::Enquire(*db);
-		ctx->enquire->set_docid_order(Xapian::Enquire::DONT_CARE);
-		ctx->enquire->set_query(*query->xapian->query);
+		iter->enquire = new Xapian::Enquire(*db);
+		iter->enquire->set_docid_order(Xapian::Enquire::DONT_CARE);
+		iter->enquire->set_query(*query->xapian->query);
 	}
-	ctx->result = p_new(query->pool,
-			    struct fts_flatcurve_xapian_query_result, 1);
-	ctx->size = 0;
+	iter->result = p_new(query->pool,
+			     struct fts_flatcurve_xapian_query_result, 1);
+	iter->size = 0;
 
-	return ctx;
+	return iter;
 }
 
 struct fts_flatcurve_xapian_query_result
-*fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iterate_context *ctx)
+*fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iter *iter)
 {
 	Xapian::MSet m;
 
-	if (ctx->size == 0) {
-		if (ctx->enquire == NULL)
+	if (iter->size == 0) {
+		if (iter->enquire == NULL)
 			return NULL;
-		m = ctx->enquire->get_mset(ctx->offset, FLATCURVE_MSET_RANGE);
+		m = iter->enquire->get_mset(iter->offset, FLATCURVE_MSET_RANGE);
 		if (m.empty())
 			return NULL;
-		ctx->i = m.begin();
-		ctx->offset += FLATCURVE_MSET_RANGE;
-		ctx->size = m.size();
+		iter->i = m.begin();
+		iter->offset += FLATCURVE_MSET_RANGE;
+		iter->size = m.size();
 	}
 
-	ctx->result->score = ctx->i.get_weight();
-	ctx->result->uid = *(ctx->i);
-	++ctx->i;
-	--ctx->size;
+	iter->result->score = iter->i.get_weight();
+	iter->result->uid = *(iter->i);
+	++iter->i;
+	--iter->size;
 
-	return ctx->result;
+	return iter->result;
 }
 
 void
-fts_flatcurve_xapian_query_iter_deinit(struct fts_flatcurve_xapian_query_iterate_context **ctx)
+fts_flatcurve_xapian_query_iter_deinit(struct fts_flatcurve_xapian_query_iter **_iter)
 {
+	struct fts_flatcurve_xapian_query_iter *iter = *_iter;
+
 	/* Need to explicitly call dtor, or else MSet doesn't release memory
 	 * allocated internally. */
-	(*ctx)->i.~MSetIterator();
-	delete((*ctx)->enquire);
-	p_free((*ctx)->query->pool, (*ctx)->result);
-	p_free((*ctx)->query->pool, *ctx);
+	*_iter = NULL;
+	iter->i.~MSetIterator();
+	delete(iter->enquire);
+	p_free(iter->query->pool, iter->result);
+	p_free(iter->query->pool, iter);
 }
 
 bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_query *query,
 				    struct flatcurve_fts_result *r)
 {
-	struct fts_flatcurve_xapian_query_iterate_context *iter;
+	struct fts_flatcurve_xapian_query_iter *iter;
 	struct fts_flatcurve_xapian_query_result *result;
 	struct fts_score_map *score;
 

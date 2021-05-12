@@ -317,7 +317,7 @@ static bool
 fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
 				 struct mailbox *box)
 {
-	struct fts_flatcurve_xapian_query_iterate_context *iter;
+	struct fts_flatcurve_xapian_query_iter *iter;
 	struct mail *mail;
 	ARRAY_TYPE(seq_range) missing, uids;
 	bool dbexist = TRUE;
