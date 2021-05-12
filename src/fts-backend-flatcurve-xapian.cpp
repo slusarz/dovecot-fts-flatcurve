@@ -27,6 +27,7 @@ extern "C" {
 
 struct flatcurve_xapian_db {
 	Xapian::Database *db;
+	Xapian::WritableDatabase *dbw;
 	char *path;
 };
 ARRAY_DEFINE_TYPE(xapian_database, struct flatcurve_xapian_db);
@@ -145,6 +146,18 @@ static struct fts_flatcurve_xapian_db_iter
 	iter->path_len = str_len(iter->path);
 
 	return iter;
+}
+
+static int
+fts_flatcurve_xapian_uid_exists_db(Xapian::Database *db, uint32_t uid)
+{
+	try {
+		(void)db->get_document(uid);
+	} catch (Xapian::DocNotFoundError &e) {
+		return 0;
+	}
+
+	return 1;
 }
 
 static bool fts_flatcurve_xapian_dir_exists(const char *path)
@@ -328,15 +341,34 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 }
 
 static Xapian::WritableDatabase *
+fts_flatcurve_xapian_write_db_open(struct flatcurve_fts_backend *backend,
+				   const char *path, int db_flags,
+				   std::string &error)
+{
+	Xapian::WritableDatabase *dbw;
+
+#ifdef XAPIAN_HAS_RETRY_LOCK
+	db_flags |= Xapian::DB_RETRY_LOCK;
+#endif
+
+	try {
+		dbw = new Xapian::WritableDatabase(path, db_flags);
+		e_debug(backend->event, "Opened DB (RW) mailbox=%s "
+			"messages=%u version=%u; %s", str_c(backend->boxname),
+			dbw->get_doccount(),
+			FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION, path);
+		return dbw;
+	} catch (Xapian::Error &e) {
+		error = e.get_msg();
+		return NULL;
+	}
+}
+
+static Xapian::WritableDatabase *
 fts_flatcurve_xapian_write_db(struct flatcurve_fts_backend *backend)
 {
-	int db_flags =
-#ifdef XAPIAN_HAS_RETRY_LOCK
-		Xapian::DB_CREATE_OR_OPEN | Xapian::DB_RETRY_LOCK;
-#else
-		Xapian::DB_CREATE_OR_OPEN;
-#endif
 	bool dbw_created = FALSE;
+	std::string error;
 	struct flatcurve_xapian *xapian = backend->xapian;
 
 	if (xapian->db_write != NULL)
@@ -358,13 +390,12 @@ fts_flatcurve_xapian_write_db(struct flatcurve_fts_backend *backend)
 		}
 	}
 
-	try {
-		xapian->db_write =
-			new Xapian::WritableDatabase(str_c(xapian->dbw_path),
-						     db_flags);
-	} catch (Xapian::Error &e) {
+	xapian->db_write = fts_flatcurve_xapian_write_db_open(
+				backend, str_c(xapian->dbw_path),
+				Xapian::DB_CREATE_OR_OPEN, error);
+	if (xapian->db_write == NULL) {
 		e_debug(backend->event, "Cannot open DB RW mailbox=%s; %s",
-			str_c(backend->boxname), e.get_msg().c_str());
+			str_c(backend->boxname), error.c_str());
 		return NULL;
 	}
 
@@ -372,16 +403,46 @@ fts_flatcurve_xapian_write_db(struct flatcurve_fts_backend *backend)
 
 	xapian->dbw_doccount = xapian->db_write->get_doccount();
 
-	e_debug(backend->event, "Opened DB (RW) mailbox=%s messages=%u "
-		"version=%u; %s", str_c(backend->boxname),
-		xapian->dbw_doccount, FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION,
-		str_c(xapian->dbw_path));
-
 	if (dbw_created)
 		fts_flatcurve_xapian_read_db_add(backend,
 						 str_c(xapian->dbw_path));
 
 	return xapian->db_write;
+}
+
+static Xapian::WritableDatabase *
+fts_flatcurve_xapian_write_db_by_uid(struct flatcurve_fts_backend *backend,
+				     uint32_t uid)
+{
+	Xapian::WritableDatabase *dbw;
+	std::string error;
+	unsigned int i;
+	struct flatcurve_xapian_db *xdb;
+
+	/* Need to figure out which DB the UID lives in. Always look in the
+	 * "current" DB first, since more recent messages tend to be the
+	 * ones that are accessed most often (and many mailboxes will only
+	 * ever have a single DB anyway. */
+	if ((dbw = fts_flatcurve_xapian_write_db(backend)) == NULL)
+		return NULL;
+
+	if (fts_flatcurve_xapian_uid_exists_db(dbw, uid) > 0)
+		return dbw;
+
+	(void)fts_flatcurve_xapian_read_db(backend);
+	for (i = 0; i < array_count(&backend->xapian->read_dbs); i++) {
+		xdb = array_idx_modifiable(&backend->xapian->read_dbs, i);
+		if (fts_flatcurve_xapian_uid_exists_db(xdb->db, uid) > 0) {
+			if (xdb->dbw == NULL)
+				xdb->dbw = fts_flatcurve_xapian_write_db_open(
+					backend, xdb->path, Xapian::DB_OPEN,
+					error);
+			if (xdb->dbw != NULL)
+				return xdb->dbw;
+		}
+	}
+
+	return NULL;
 }
 
 static void
@@ -460,6 +521,7 @@ static void
 fts_flatcurve_xapian_close_write_db(struct flatcurve_fts_backend *backend)
 {
 	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian_db *xdb;
 
 	if (xapian->db_write == NULL)
 		return;
@@ -471,12 +533,21 @@ fts_flatcurve_xapian_close_write_db(struct flatcurve_fts_backend *backend)
 	xapian->db_write = NULL;
 	str_truncate(xapian->dbw_path, 0);
 	xapian->dbw_doccount = xapian->doc_updates = 0;
+
+	/* Close any other DBs that were also opened for writing (e.g.
+	 * expunge) */
+	array_foreach_modifiable(&xapian->read_dbs, xdb) {
+		if (xdb->dbw != NULL) {
+			xdb->dbw->close();
+			delete(xdb->dbw);
+		}
+	}
 }
 
 void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 {
-	struct flatcurve_xapian_db *xdb;
 	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian_db *xdb;
 
 	fts_flatcurve_xapian_close_write_db(backend);
 
@@ -518,13 +589,7 @@ int fts_flatcurve_xapian_uid_exists(struct flatcurve_fts_backend *backend,
 	if ((db = fts_flatcurve_xapian_read_db(backend)) == NULL)
 		return -1;
 
-	try {
-		(void)db->get_document(uid);
-	} catch (Xapian::DocNotFoundError &e) {
-		return 0;
-	}
-
-	return 1;
+	return fts_flatcurve_xapian_uid_exists_db(db, uid);
 }
 
 void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
@@ -532,8 +597,13 @@ void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 {
 	Xapian::WritableDatabase *dbw;
 
-	if ((dbw = fts_flatcurve_xapian_write_db(backend)) == NULL)
+	dbw = fts_flatcurve_xapian_write_db_by_uid(backend, uid);
+	if (dbw == NULL) {
+		e_debug(backend->event, "Expunge failed mailbox=%s uid=%u; "
+			"could not open DB to expunge",
+			str_c(backend->boxname), uid);
 		return;
+	}
 
 	try {
 		dbw->delete_document(uid);
