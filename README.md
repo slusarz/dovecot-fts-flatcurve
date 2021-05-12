@@ -114,6 +114,11 @@ Optional parameters for the `fts_flatcurve` plugin setting:
 		     (integer, maximum 200; DEFAULT: 30) 
  - `min_term_size` - The minimum number of characters in a term to index.
 		     (integer; DEFAULT: 2)
+ - `rotate_size` - When the mail ("current") database reaches this number
+                   of messages, it is rotated to a read-only database and
+                   replaced by a new write DB. Most people should not
+                   change this setting. (integer, set to 0 to disable
+                   rotation; DEFAULT: 5000)
  - `substring_search` - If enabled, allows substring searches (RFC 3501
                         compliant). However, this requires significant
                         additional storage space, so substring searches can
@@ -128,7 +133,7 @@ mail_plugins = $mail_plugins fts fts_flatcurve
 plugin {
   fts = flatcurve
   fts_flatcurve = commit_limit=500 max_term_size=30 min_term_size=2 \
-                  substring_search=yes
+                  rotate_size=5000 substring_search=yes
 }
 ```
 
@@ -209,6 +214,14 @@ Emitted when a rescan is completed.
 | `mailbox` | The mailbox name                                         |
 | `status`  | Status of rescan \[expunge_msgs\|missing_msgs\|ok\]      |
 | `uids`    | The list of UIDs that triggered a non-ok status response |
+
+#### fts_flatcurve_rotate
+
+Emitted when a mailbox has it's underlying Xapian DB rotated.
+
+| Field     | Description      |
+| --------- | ---------------- |
+| `mailbox` | The mailbox name |
 
 ### Debugging
 
