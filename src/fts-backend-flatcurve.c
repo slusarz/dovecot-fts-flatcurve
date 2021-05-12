@@ -531,6 +531,10 @@ fts_backend_flatcurve_lookup_multi(struct fts_backend *_backend,
 			r->definite_uids = fresult->uids;
 		r->scores = fresult->scores;
 
+		/* This was an empty query - skip output of debug info. */
+		if (query->qtext == NULL)
+			continue;
+
 		u = str_c(fts_backend_flatcurve_seq_range_string(&fresult->uids,
 								 query->pool));
 		e_debug(event_create_passthrough(backend->event)->

@@ -856,7 +856,6 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query)
 	/* Empty Query. Optimize by not creating a query and returning no
 	 * results when we go through the iteration later. */
 	if (array_is_empty(&x->args)) {
-		query->qtext = str_new_const(query->pool, "[Empty Query]", 13);
 		fts_flatcurve_xapian_build_query_deinit(query);
 		return TRUE;
 	}
