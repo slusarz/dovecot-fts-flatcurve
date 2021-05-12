@@ -332,8 +332,9 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
-	e_debug(backend->event, "Opened DB (RO) mailbox=%s version=%u; %s",
-		str_c(backend->boxname),
+	e_debug(backend->event, "Opened DB (RO) mailbox=%s messages=%u "
+		"version=%u; %s", str_c(backend->boxname),
+		xapian->db_read->get_doccount(),
 		FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION,
 		str_c(backend->db_path));
 
