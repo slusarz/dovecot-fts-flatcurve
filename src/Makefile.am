@@ -4,10 +4,8 @@ AM_CPPFLAGS = \
 	$(LIBDOVECOT_FTS_INCLUDE) \
 	$(XAPIAN_INCLUDE)
 
-# TODO: -fpermissive needed as str.h errors in C++ due to cast issue
 AM_CXXFLAGS = \
-	$(XAPIAN_LIBS) \
-	-fpermissive
+	$(XAPIAN_LIBS)
 
 lib21_fts_flatcurve_plugin_la_LDFLAGS = -module -avoid-version
 
