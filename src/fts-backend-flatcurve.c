@@ -318,17 +318,20 @@ fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
 				 struct mailbox *box,
 				 pool_t pool)
 {
-	struct fts_flatcurve_xapian_query_iter *iter;
-	struct mail *mail;
-	ARRAY_TYPE(seq_range) missing, uids;
 	bool dbexist = TRUE;
 	struct event_passthrough *e;
+	struct fts_flatcurve_xapian_query_iter *iter;
+	struct seq_range_iter iter2;
+	uint32_t low_uid;
+	struct mail *mail;
+	ARRAY_TYPE(seq_range) expunged, missing, uids;
 	struct flatcurve_fts_query *query;
 	struct fts_flatcurve_xapian_query_result *result;
+	int ret;
 	struct mail_search_args *search_args;
 	struct mail_search_context *search_ctx;
 	struct mailbox_transaction_context *trans;
-	const char *u;
+	const char *u, *u2;
 
 	/* Check for non-indexed mails. */
 	if (mailbox_sync(box, MAILBOX_SYNC_FLAG_FULL_READ) < 0)
@@ -362,57 +365,66 @@ end:
 	mail_search_args_unref(&search_args);
 	(void)mailbox_transaction_commit(&trans);
 
+	if (!dbexist)
+		return;
+
 	e = event_create_passthrough(backend->event)->
 				     set_name("fts_flatcurve_rescan")->
 				     add_str("mailbox", box->name);
 
 	if (!array_is_empty(&missing)) {
-		/* There does not seem to be an easy way to indicate what
-		 * uids need to be indexed. Only solution is simply to delete
-		 * the index and rebuild at a later time. */
-		fts_flatcurve_xapian_delete_index(backend);
-		u = str_c(fts_backend_flatcurve_seq_range_string(&missing,
-			  pool));
-		e_debug(e->add_str("status", "missing_msgs")->
-			add_str("uids", u)->event(),
-			"Rescan: Missing messages; deleting index "
-			"mailbox=%s uids=%s", box->name, u);
-	} else if (dbexist) {
-		/* Check for expunged mails. */
-		query = p_new(pool, struct flatcurve_fts_query, 1);
-		query->backend = backend;
-		query->match_all = TRUE;
-		query->pool = pool;
-		fts_flatcurve_xapian_build_query(query);
+		/* There does not seem to be an easy way via FTS API (as of
+		 * 2.3.15) to indicate what specific uids need to be indexed.
+		 * Instead, delete all messages above the lowest, non-indexed
+		 * UID and recreate the index the next time the mailbox
+		 * is accessed. */
+		seq_range_array_iter_init(&iter2, &missing);
+		ret = seq_range_array_iter_nth(&iter2, 0, &low_uid);
+		i_assert(ret);
+	}
 
-		if ((iter = fts_flatcurve_xapian_query_iter_init(query)) != NULL) {
-			while ((result = fts_flatcurve_xapian_query_iter_next(iter)) != NULL) {
-				if (!seq_range_exists(&uids, result->uid)) {
-					fts_flatcurve_xapian_expunge(backend,
-					     result->uid);
-					u = p_strdup_printf(pool, "%u",
-							    result->uid);
-					e_debug(e->add_str("status", "missing_msgs")->
-						add_str("uids", u)->event(),
-						"Rescan: Missing expunged "
-						"message; deleting mailbox=%s "
-						"uid=%s", box->name, u);
-				}
+	query = p_new(pool, struct flatcurve_fts_query, 1);
+	query->backend = backend;
+	query->match_all = TRUE;
+	query->pool = pool;
+	fts_flatcurve_xapian_build_query(query);
+
+	p_array_init(&expunged, pool, 256);
+
+	if ((iter = fts_flatcurve_xapian_query_iter_init(query)) != NULL) {
+		while ((result = fts_flatcurve_xapian_query_iter_next(iter)) != NULL) {
+			if (((low_uid > 0) && (result->uid >= low_uid)) ||
+			    ((low_uid == 0) && (!seq_range_exists(&uids, result->uid)))) {
+				fts_flatcurve_xapian_expunge(backend,
+							     result->uid);
+				seq_range_array_add(&expunged, result->uid);
 			}
-			fts_flatcurve_xapian_query_iter_deinit(&iter);
 		}
-		fts_flatcurve_xapian_destroy_query(query);
+		fts_flatcurve_xapian_query_iter_deinit(&iter);
+	}
 
-		if (array_is_empty(&missing)) {
-			e_debug(e->add_str("status", "ok")->event(),
-				"Rescan: no issues found mailbox=%s",
-				box->name);
+	fts_flatcurve_xapian_destroy_query(query);
+
+	if (array_is_empty(&expunged)) {
+		e_debug(e->add_str("status", "ok")->event(),
+			"Rescan: no issues found mailbox=%s",
+			box->name);
+	} else {
+		u = str_c(fts_backend_flatcurve_seq_range_string(&expunged,
+								 pool));
+		e->add_str("expunged", u);
+
+		if (low_uid > 0) {
+			u2 = str_c(fts_backend_flatcurve_seq_range_string(
+					&missing, pool));
+			e_debug(e->add_str("status", "missing_msgs")->
+				add_str("uids", u2)->event(),
+				"Rescan: missing messages mailbox=%s uids=%s "
+				"expunged=%s", box->name, u2, u);
 		} else {
-			u = str_c(fts_backend_flatcurve_seq_range_string(&missing, pool));
-			e_debug(e->add_str("status", "expunge_msgs")->
-				add_str("uids", u)->event(),
-				"Rescan: expunge messages mailbox=%s "
-				"uids=%s", box->name, u);
+			e_debug(e->add_str("status", "expunge_msgs")->event(),
+				"Rescan: expunge non-existent messages "
+				"mailbox=%s expunged=%s", box->name, u);
 		}
 	}
 }

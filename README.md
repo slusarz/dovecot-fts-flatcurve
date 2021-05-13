@@ -209,11 +209,12 @@ Emitted when a query is completed.
 
 Emitted when a rescan is completed.
 
-| Field     | Description                                              |
-| --------- | -------------------------------------------------------- |
-| `mailbox` | The mailbox name                                         |
-| `status`  | Status of rescan \[expunge_msgs\|missing_msgs\|ok\]      |
-| `uids`    | The list of UIDs that triggered a non-ok status response |
+| Field      | Description                                              |
+| ---------- | -------------------------------------------------------- |
+| `expunged` | The list of UIDs that were expunged during rescan        |
+| `mailbox`  | The mailbox name                                         |
+| `status`   | Status of rescan \[expunge_msgs\|missing_msgs\|ok\]      |
+| `uids`     | The list of UIDs that triggered a non-ok status response |
 
 #### fts_flatcurve_rotate
 
