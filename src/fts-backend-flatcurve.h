@@ -4,23 +4,7 @@
 #ifndef FTS_FLATCURVE_BACKEND_H
 #define FTS_FLATCURVE_BACKEND_H
 
-#include "lib.h"
 #include "fts-flatcurve-plugin.h"
-
-#define FTS_FLATCURVE_DB_PREFIX "index."
-#define FTS_FLATCURVE_DB_WRITE_SUFFIX "current"
-#define FTS_FLATCURVE_DB_OPTIMIZE_PREFIX "optimize"
-
-/* Xapian "recommendations" are that you begin your local prefix identifier
- * with "X" for data that doesn't match with a data type listed as a Xapian
- * "convention". However, this recommendation is for maintaining
- * compatability with the search front-end (Omega) that they provide. We don't
- * care about compatability, so save storage space by using single letter
- * prefixes. Bodytext is stored without prefixes, as it is expected to be the
- * single largest storage pool. */
-#define FLATCURVE_ALL_HEADERS_PREFIX "A"
-#define FLATCURVE_BOOLEAN_FIELD_PREFIX "B"
-#define FLATCURVE_HEADER_PREFIX "H"
 
 #define FTS_FLATCURVE_PLUGIN_LABEL "fts_flatcurve"
 #define FTS_FLATCURVE_LABEL "fts-flatcurve"

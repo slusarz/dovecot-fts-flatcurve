@@ -4,12 +4,6 @@
 #ifndef FTS_BACKEND_FLATCURVE_XAPIAN_H
 #define FTS_BACKEND_FLATCURVE_XAPIAN_H
 
-/* Version database, so that any schema changes can be caught.
- * 1 = Initial version */
-#define FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION_KEY \
-	"dovecot." FTS_FLATCURVE_LABEL
-#define FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION 1
-
 struct fts_flatcurve_xapian_query_result {
 	double score;
 	uint32_t uid;

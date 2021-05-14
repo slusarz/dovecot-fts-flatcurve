@@ -19,9 +19,31 @@ extern "C" {
 #include <stdio.h>
 };
 
-#define FLATCURVE_ALL_HEADERS_QP "allhdrs"
-#define FLATCURVE_HEADER_BOOL_QP "hdr_bool"
-#define FLATCURVE_HEADER_QP "hdr_"
+#define FLATCURVE_XAPIAN_DB_PREFIX "index."
+#define FLATCURVE_XAPIAN_DB_CURRENT_WRITE_SUFFIX "current"
+#define FLATCURVE_XAPIAN_DB_OPTIMIZE_PREFIX "optimize"
+#define FLATCURVE_XAPIAN_CURRENT_DBW \
+	FLATCURVE_XAPIAN_DB_PREFIX FLATCURVE_XAPIAN_DB_CURRENT_WRITE_SUFFIX
+
+/* Xapian "recommendations" are that you begin your local prefix identifier
+ * with "X" for data that doesn't match with a data type listed as a Xapian
+ * "convention". However, this recommendation is for maintaining
+ * compatability with the search front-end (Omega) that they provide. We don't
+ * care about compatability, so save storage space by using single letter
+ * prefixes. Bodytext is stored without prefixes, as it is expected to be the
+ * single largest storage pool. */
+#define FLATCURVE_XAPIAN_ALL_HEADERS_PREFIX   "A"
+#define FLATCURVE_XAPIAN_BOOLEAN_FIELD_PREFIX "B"
+#define FLATCURVE_XAPIAN_HEADER_PREFIX        "H"
+
+#define FLATCURVE_XAPIAN_ALL_HEADERS_QP "allhdrs"
+#define FLATCURVE_XAPIAN_HEADER_BOOL_QP "hdr_bool"
+#define FLATCURVE_XAPIAN_HEADER_QP      "hdr_"
+
+/* Version database, so that any schema changes can be caught.
+ * 1 = Initial version */
+#define FLATCURVE_XAPIAN_DB_VERSION_KEY "dovecot." FTS_FLATCURVE_LABEL
+#define FLATCURVE_XAPIAN_DB_VERSION 1
 
 #define FLATCURVE_MSET_RANGE 10
 
@@ -71,8 +93,8 @@ struct fts_flatcurve_xapian_query_iter {
 };
 
 enum fts_flatcurve_xapian_db_iter_options {
-	FTS_FLATCURVE_XAPIAN_DB_ITER_NO_OPTIONS,
-	FTS_FLATCURVE_XAPIAN_DB_ITER_IGNORE_OPTIMIZE = 0x01
+	FLATCURVE_XAPIAN_DB_ITER_NO_OPTIONS,
+	FLATCURVE_XAPIAN_DB_ITER_IGNORE_OPTIMIZE = 0x01
 };
 
 struct fts_flatcurve_xapian_db_iter {
@@ -182,14 +204,14 @@ fts_flatcurve_xapian_db_iter_next(struct fts_flatcurve_xapian_db_iter *iter)
 			continue;
 
 		/* Ignore all files in this directory other than directories
-		 * that begin with FTS_FLATCURVE_DB_PREFIX. */
-		if (str_begins(d->d_name, FTS_FLATCURVE_DB_PREFIX) &&
+		 * that begin with FLATCURVE_XAPIAN_DB_PREFIX. */
+		if (str_begins(d->d_name, FLATCURVE_XAPIAN_DB_PREFIX) &&
 		    fts_flatcurve_xapian_dir_exists(str_c(iter->path)))
 			return str_c(iter->path);
 
 		/* If we find remnants of optimization, delete it now. */
-		if (((iter->options & FTS_FLATCURVE_XAPIAN_DB_ITER_IGNORE_OPTIMIZE) == 0) &&
-		    (str_begins(d->d_name, FTS_FLATCURVE_DB_OPTIMIZE_PREFIX)))
+		if (((iter->options & FLATCURVE_XAPIAN_DB_ITER_IGNORE_OPTIMIZE) == 0) &&
+		    (str_begins(d->d_name, FLATCURVE_XAPIAN_DB_OPTIMIZE_PREFIX)))
 			fts_flatcurve_xapian_delete_db_dir(iter->backend,
 							   str_c(iter->path));
 	}
@@ -216,7 +238,7 @@ fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 	bool write_ver = FALSE;
 	struct flatcurve_xapian *xapian = backend->xapian;
 
-	ver = db->get_metadata(FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION_KEY);
+	ver = db->get_metadata(FLATCURVE_XAPIAN_DB_VERSION_KEY);
 	if (ver.empty()) {
 		/* Upgrade from 0 to 1: store the DB version. */
 		write_ver = TRUE;
@@ -232,9 +254,8 @@ fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 
 	if (write_ver &&
 	    ((dbw = fts_flatcurve_xapian_write_db(backend)) != NULL)) {
-		ss << FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION;
-		dbw->set_metadata(FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION_KEY,
-				  ss.str());
+		ss << FLATCURVE_XAPIAN_DB_VERSION;
+		dbw->set_metadata(FLATCURVE_XAPIAN_DB_VERSION_KEY, ss.str());
 		if (!write)
 			fts_flatcurve_xapian_close_write_db(backend);
 	}
@@ -272,7 +293,7 @@ fts_flatcurve_xapian_rename_db(struct flatcurve_fts_backend *backend,
 	for (;;) {
 		new_path.clear();
 		new_path = str_c(backend->db_path);
-		new_path += FTS_FLATCURVE_DB_PREFIX;
+		new_path += FLATCURVE_XAPIAN_DB_PREFIX;
 		ss << i_rand_limit(8192);
 		new_path += ss.str();
 
@@ -321,7 +342,7 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 	 * to be handled separately, as a WritableDatabase object only
 	 * supports a single on-disk DB at a time. */
 
-	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, FTS_FLATCURVE_XAPIAN_DB_ITER_NO_OPTIONS)) == NULL)
+	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, FLATCURVE_XAPIAN_DB_ITER_NO_OPTIONS)) == NULL)
 		return NULL;
 
 	xapian->db_read = new Xapian::Database;
@@ -334,8 +355,7 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 
 	e_debug(backend->event, "Opened DB (RO) mailbox=%s messages=%u "
 		"version=%u; %s", str_c(backend->boxname),
-		xapian->db_read->get_doccount(),
-		FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION,
+		xapian->db_read->get_doccount(), FLATCURVE_XAPIAN_DB_VERSION,
 		str_c(backend->db_path));
 
 	return xapian->db_read;
@@ -356,8 +376,7 @@ fts_flatcurve_xapian_write_db_open(struct flatcurve_fts_backend *backend,
 		dbw = new Xapian::WritableDatabase(path, db_flags);
 		e_debug(backend->event, "Opened DB (RW) mailbox=%s "
 			"messages=%u version=%u; %s", str_c(backend->boxname),
-			dbw->get_doccount(),
-			FTS_BACKEND_FLATCURVE_XAPIAN_DB_VERSION, path);
+			dbw->get_doccount(), FLATCURVE_XAPIAN_DB_VERSION, path);
 		return dbw;
 	} catch (Xapian::Error &e) {
 		error = e.get_msg();
@@ -376,8 +395,7 @@ fts_flatcurve_xapian_write_db(struct flatcurve_fts_backend *backend)
 		return xapian->db_write;
 
 	str_append_str(xapian->dbw_path, backend->db_path);
-	str_append(xapian->dbw_path,
-		   FTS_FLATCURVE_DB_PREFIX FTS_FLATCURVE_DB_WRITE_SUFFIX);
+	str_append(xapian->dbw_path, FLATCURVE_XAPIAN_CURRENT_DBW);
 
 	/* Check and see if write DB exists. */
 	if (!fts_flatcurve_xapian_dir_exists(str_c(xapian->dbw_path))) {
@@ -662,7 +680,7 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 	if (str_len(ctx->hdr_name)) {
 		h = str_lcase(str_c_modifiable(ctx->hdr_name));
 		xapian->doc->add_boolean_term(
-			FLATCURVE_BOOLEAN_FIELD_PREFIX + h);
+			FLATCURVE_XAPIAN_BOOLEAN_FIELD_PREFIX + h);
 	}
 
 	/* Xapian does not support substring searches by default, so we
@@ -682,9 +700,10 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 		temp.toUTF8String(t);
 
 		if (ctx->indexed_hdr) {
-			xapian->doc->add_term(FLATCURVE_HEADER_PREFIX + h + t);
+			xapian->doc->add_term(
+				FLATCURVE_XAPIAN_HEADER_PREFIX + h + t);
 		}
-		xapian->doc->add_term(FLATCURVE_ALL_HEADERS_PREFIX + t);
+		xapian->doc->add_term(FLATCURVE_XAPIAN_ALL_HEADERS_PREFIX + t);
 	} while (ctx->backend->fuser->set.substring_search &&
 		 (temp.length() >= ctx->backend->fuser->set.min_term_size));
 }
@@ -737,7 +756,7 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 		return;
 
 	o = str_c(backend->db_path);
-	o += FTS_FLATCURVE_DB_OPTIMIZE_PREFIX;
+	o += FLATCURVE_XAPIAN_DB_OPTIMIZE_PREFIX;
 
 	try {
 		db->compact(o, Xapian::DBCOMPACT_NO_RENUMBER |
@@ -758,7 +777,7 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 
 	/* Delete old indexes except for new DB. */
 	fts_flatcurve_xapian_close(backend);
-	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, FTS_FLATCURVE_XAPIAN_DB_ITER_IGNORE_OPTIMIZE)) == NULL) {
+	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, FLATCURVE_XAPIAN_DB_ITER_IGNORE_OPTIMIZE)) == NULL) {
 		e_error(backend->event, "Activating new index (%s -> %s) "
 			"failed mailbox=%s; %m", o.c_str(), n.c_str(),
 			str_c(backend->boxname));
@@ -844,10 +863,11 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 
 	switch (arg->type) {
 	case SEARCH_TEXT:
-		x->qp->add_prefix(FLATCURVE_ALL_HEADERS_QP,
-				  FLATCURVE_ALL_HEADERS_PREFIX);
+		x->qp->add_prefix(FLATCURVE_XAPIAN_ALL_HEADERS_QP,
+				  FLATCURVE_XAPIAN_ALL_HEADERS_PREFIX);
 		str_printfa(a->value, "%s:%s* OR %s*",
-			    FLATCURVE_ALL_HEADERS_QP, t.c_str(), t.c_str());
+			    FLATCURVE_XAPIAN_ALL_HEADERS_QP, t.c_str(),
+			    t.c_str());
 		break;
 	case SEARCH_BODY:
 		str_append(a->value, t.c_str());
@@ -859,18 +879,21 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		if (t.size() > 0) {
 			if (fts_header_want_indexed(arg->hdr_field_name)) {
 				hdr = str_new(query->pool, 32);
-				str_printfa(hdr, "%s%s", FLATCURVE_HEADER_QP,
+				str_printfa(hdr, "%s%s",
+					    FLATCURVE_XAPIAN_HEADER_QP,
 					    t_str_lcase(arg->hdr_field_name));
 				hdr2 = str_new(query->pool, 32);
-				str_printfa(hdr2, "%s%s", FLATCURVE_HEADER_PREFIX,
+				str_printfa(hdr2, "%s%s",
+					    FLATCURVE_XAPIAN_HEADER_PREFIX,
 					    t_str_ucase(arg->hdr_field_name));
 				x->qp->add_prefix(str_c(hdr), str_c(hdr2));
 				str_printfa(a->value, "%s:%s*", str_c(hdr), t.c_str());
 			} else {
-				x->qp->add_prefix(FLATCURVE_ALL_HEADERS_QP,
-						  FLATCURVE_ALL_HEADERS_PREFIX);
+				x->qp->add_prefix(
+					FLATCURVE_XAPIAN_ALL_HEADERS_QP,
+					FLATCURVE_XAPIAN_ALL_HEADERS_PREFIX);
 				str_printfa(a->value, "%s:%s*",
-					    FLATCURVE_ALL_HEADERS_QP,
+					    FLATCURVE_XAPIAN_ALL_HEADERS_QP,
 					    t.c_str());
 				/* We can only match if it appears in the pool
 				 * of header terms, not to a specific header,
@@ -879,9 +902,11 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 				query->maybe = TRUE;
 			}
 		} else {
-			x->qp->add_boolean_prefix(FLATCURVE_HEADER_BOOL_QP,
-						  FLATCURVE_BOOLEAN_FIELD_PREFIX);
-			str_printfa(a->value, "%s:%s", FLATCURVE_HEADER_BOOL_QP,
+			x->qp->add_boolean_prefix(
+				FLATCURVE_XAPIAN_HEADER_BOOL_QP,
+				FLATCURVE_XAPIAN_BOOLEAN_FIELD_PREFIX);
+			str_printfa(a->value, "%s:%s",
+				    FLATCURVE_XAPIAN_HEADER_BOOL_QP,
 				    t_str_lcase(arg->hdr_field_name));
 		}
 		break;
