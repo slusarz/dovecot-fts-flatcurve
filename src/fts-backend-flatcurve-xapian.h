@@ -36,10 +36,10 @@ bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_query *query,
 void fts_flatcurve_xapian_destroy_query(struct flatcurve_fts_query *query);
 void fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend);
 
-struct fts_flatcurve_xapian_query_iter
-*fts_flatcurve_xapian_query_iter_init(struct flatcurve_fts_query *query);
-struct fts_flatcurve_xapian_query_result
-*fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iter *iter);
+struct fts_flatcurve_xapian_query_iter *
+fts_flatcurve_xapian_query_iter_init(struct flatcurve_fts_query *query);
+struct fts_flatcurve_xapian_query_result *
+fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iter *iter);
 void
 fts_flatcurve_xapian_query_iter_deinit(struct fts_flatcurve_xapian_query_iter **_iter);
 

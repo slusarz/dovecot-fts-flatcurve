@@ -132,9 +132,9 @@ fts_flatcurve_xapian_delete_db_dir(struct flatcurve_fts_backend *backend,
 			str_c(backend->boxname), error);
 }
 
-static struct fts_flatcurve_xapian_db_iter
-*fts_flatcurve_xapian_db_iter_init(struct flatcurve_fts_backend *backend,
-				   enum fts_flatcurve_xapian_db_iter_options opts)
+static struct fts_flatcurve_xapian_db_iter *
+fts_flatcurve_xapian_db_iter_init(struct flatcurve_fts_backend *backend,
+				  enum fts_flatcurve_xapian_db_iter_options opts)
 {
 	DIR *dirp;
 	struct fts_flatcurve_xapian_db_iter *iter;
@@ -996,8 +996,8 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query)
 	return ret;
 }
 
-struct fts_flatcurve_xapian_query_iter
-*fts_flatcurve_xapian_query_iter_init(struct flatcurve_fts_query *query)
+struct fts_flatcurve_xapian_query_iter *
+fts_flatcurve_xapian_query_iter_init(struct flatcurve_fts_query *query)
 {
 	Xapian::Database *db;
 	struct fts_flatcurve_xapian_query_iter *iter;
@@ -1022,8 +1022,8 @@ struct fts_flatcurve_xapian_query_iter
 	return iter;
 }
 
-struct fts_flatcurve_xapian_query_result
-*fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iter *iter)
+struct fts_flatcurve_xapian_query_result *
+fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iter *iter)
 {
 	Xapian::MSet m;
 
