@@ -327,7 +327,7 @@ fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 	xdb->dbw_doccount = xdb->dbw->get_doccount();
 
 	e_debug(backend->event, "Opened DB (RW) mailbox=%s "
-		"messages=%u version=%u; %s", str_c(backend->boxname),
+		"messages=%zu version=%u; %s", str_c(backend->boxname),
 		xdb->dbw_doccount, FLATCURVE_XAPIAN_DB_VERSION,
 		dbpath->path);
 
