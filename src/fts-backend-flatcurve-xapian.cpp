@@ -375,6 +375,7 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 {
 	std::string error;
 	struct flatcurve_xapian_db_iter *iter;
+	unsigned int shards = 0;
 	struct flatcurve_xapian *xapian = backend->xapian;
 
 	if (xapian->db_read != NULL)
@@ -405,14 +406,15 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 	while (fts_flatcurve_xapian_db_iter_next(iter)) {
 		(void)fts_flatcurve_xapian_read_db_get(backend, iter->path,
 						       error);
+		++shards;
 	}
 
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
 	e_debug(backend->event, "Opened DB (RO) mailbox=%s messages=%u "
-		"version=%u; %s", str_c(backend->boxname),
+		"version=%u shards=%u; %s", str_c(backend->boxname),
 		xapian->db_read->get_doccount(), FLATCURVE_XAPIAN_DB_VERSION,
-		str_c(backend->db_path));
+		shards, str_c(backend->db_path));
 
 	return xapian->db_read;
 }
