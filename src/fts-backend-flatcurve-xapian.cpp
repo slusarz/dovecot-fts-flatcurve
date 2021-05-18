@@ -120,6 +120,10 @@ void fts_flatcurve_xapian_init(struct flatcurve_fts_backend *backend)
 	backend->xapian->dbw_path = str_new(backend->pool, 256);
 }
 
+void fts_flatcurve_xapian_deinit(struct flatcurve_fts_backend *backend)
+{
+}
+
 static void
 fts_flatcurve_xapian_delete_db_dir(struct flatcurve_fts_backend *backend,
 			           const char *dir)

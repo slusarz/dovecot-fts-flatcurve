@@ -91,8 +91,9 @@ static void fts_backend_flatcurve_deinit(struct fts_backend *_backend)
 		(struct flatcurve_fts_backend *)_backend;
 
 	fts_backend_flatcurve_close_box(backend);
-	event_unref(&backend->event);
+	fts_flatcurve_xapian_deinit(backend);
 
+	event_unref(&backend->event);
 	pool_unref(&backend->pool);
 }
 
