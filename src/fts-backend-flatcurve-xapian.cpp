@@ -852,10 +852,11 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 
 	if (t.find_first_of(' ') != std::string::npos) {
 		if (((db = fts_flatcurve_xapian_read_db(query->backend)) == NULL) ||
-		    !db->has_positions())
+		    !db->has_positions()) {
 			/* Phrase searching not available. */
 			array_pop_back(&x->args);
 			return TRUE;
+		}
 
 		if (t.size() > 0)
 			t = "\"" + t + "\"";
