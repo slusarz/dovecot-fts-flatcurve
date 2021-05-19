@@ -343,76 +343,198 @@ Thanks to:
 Benchmarking
 ------------
 
-### Indexing benchmark with substring matching DISABLED
+### Indexing benchmark with substring matching ENABLED (default configuration)
 
 ```
-Linux ... 5.4.73-1-pve #1 SMP PVE 5.4.73-1 ... x86_64 GNU/Linux
-CentOS 7; Dovecot 2.3.13; Xapian 1.2.22
-VM:
-  - 2x Intel(R) Core(TM) i7-4770 CPU @ 3.40GHz
-  - 512 MB RAM
-Using fts_flatcurve as of 22 January 2021
+Linux ... 5.4.72-microsoft-standard-WSL2 #1 SMP ... x86_64 GNU/Linux
+VM Running on Docker Desktop (Windows 10)
+Debian Buster; Dovecot 2.3.14; Xapian 1.4.11
+Host CPU: AMD RYZEN 7 1700 8-Core 3.0 GHz (3.7 GHz Turbo)
+Using fts_flatcurve as of 18 May 2021
 
 
--- Indexing Trash Mailbox w/43120 messages
+-- Indexing Trash Mailbox w/25863 messages
 -- (e.g. this is "legitimate" mail; it does not include Spam)
-$ time doveadm index Trash
-doveadm(): Info: Trash: Caching mails seq=1..43120
-43120/43120
+-- FTS index deleted before run (Dovecot caches NOT deleted)
+-- Dovecot plugin configuration: "fts_flatcurve ="
+-- Limit process to 256 MB 
+$ ulimit -v 256000 && /usr/bin/time -v doveadm index -u foo Trash
+        User time (seconds): 212.78
+        System time (seconds): 14.62
+        Percent of CPU this job got: 93%
+        Elapsed (wall clock) time (h:mm:ss or m:ss): 4:02.48
+        Maximum resident set size (kbytes): 120684
+        Minor (reclaiming a frame) page faults: 29421
+        Voluntary context switches: 1366
+        Involuntary context switches: 165
+        File system outputs: 5559904
 
-real    2m3.947s   [~347 msgs/second]
-user    1m47.174s
-sys     0m2.083s
+Median throughput: ~107 msgs/second
 
 
 -- Listing Xapian files for the mailbox
-$ ls -la flatcurve-index/
-total 280508
-drwx------ 2 vmail vmail      4096 Jan 21 23:39 .
-drwx------ 3 vmail vmail      4096 Jan 21 23:39 ..
--rw------- 1 vmail vmail         0 Jan 21 23:37 flintlock
--rw------- 1 vmail vmail        28 Jan 21 23:37 iamchert
--rw------- 1 vmail vmail 206168064 Jan 21 23:39 postlist.DB
--rw------- 1 vmail vmail      2779 Jan 21 23:39 postlist.baseA
--rw------- 1 vmail vmail      3164 Jan 21 23:39 postlist.baseB
--rw------- 1 vmail vmail    548864 Jan 21 23:39 record.DB
--rw------- 1 vmail vmail        23 Jan 21 23:39 record.baseA
--rw------- 1 vmail vmail        24 Jan 21 23:39 record.baseB
--rw------- 1 vmail vmail  80478208 Jan 21 23:39 termlist.DB
--rw------- 1 vmail vmail      1156 Jan 21 23:39 termlist.baseA
--rw------- 1 vmail vmail      1246 Jan 21 23:39 termlist.baseB
+$ ls -laR fts-flatcurve/
+fts-flatcurve:
+total 2164
+drwx------ 8 vmail vmail    4096 May 19 04:43 .
+drwx------ 3 vmail vmail 2183168 May 19 04:46 ..
+drwx------ 2 vmail vmail    4096 May 19 04:41 index.1640
+drwx------ 2 vmail vmail    4096 May 19 04:40 index.4081
+drwx------ 2 vmail vmail    4096 May 19 04:41 index.5954
+drwx------ 2 vmail vmail    4096 May 19 04:42 index.7108
+drwx------ 2 vmail vmail    4096 May 19 04:43 index.7628
+drwx------ 2 vmail vmail    4096 May 19 04:43 index.current
+
+fts-flatcurve/index.1640:
+total 164740
+drwx------ 2 vmail vmail      4096 May 19 04:41 .
+drwx------ 8 vmail vmail      4096 May 19 04:43 ..
+-rw------- 1 vmail vmail         0 May 19 04:41 flintlock
+-rw------- 1 vmail vmail       113 May 19 04:41 iamglass
+-rw------- 1 vmail vmail 139853824 May 19 04:41 postlist.glass
+-rw------- 1 vmail vmail  28827648 May 19 04:41 termlist.glass
+
+fts-flatcurve/index.4081:
+total 203188
+drwx------ 2 vmail vmail      4096 May 19 04:40 .
+drwx------ 8 vmail vmail      4096 May 19 04:43 ..
+-rw------- 1 vmail vmail         0 May 19 04:39 flintlock
+-rw------- 1 vmail vmail       113 May 19 04:40 iamglass
+-rw------- 1 vmail vmail 176029696 May 19 04:40 postlist.glass
+-rw------- 1 vmail vmail  32014336 May 19 04:40 termlist.glass
+
+fts-flatcurve/index.5954:
+total 168712
+drwx------ 2 vmail vmail      4096 May 19 04:41 .
+drwx------ 8 vmail vmail      4096 May 19 04:43 ..
+-rw------- 1 vmail vmail         0 May 19 04:40 flintlock
+-rw------- 1 vmail vmail       114 May 19 04:41 iamglass
+-rw------- 1 vmail vmail 143818752 May 19 04:41 postlist.glass
+-rw------- 1 vmail vmail  28925952 May 19 04:41 termlist.glass
+
+fts-flatcurve/index.7108:
+total 249116
+drwx------ 2 vmail vmail      4096 May 19 04:42 .
+drwx------ 8 vmail vmail      4096 May 19 04:43 ..
+-rw------- 1 vmail vmail         0 May 19 04:41 flintlock
+-rw------- 1 vmail vmail       115 May 19 04:42 iamglass
+-rw------- 1 vmail vmail 218718208 May 19 04:42 postlist.glass
+-rw------- 1 vmail vmail  36356096 May 19 04:42 termlist.glass
+
+fts-flatcurve/index.7628:
+total 249828
+drwx------ 2 vmail vmail      4096 May 19 04:43 .
+drwx------ 8 vmail vmail      4096 May 19 04:43 ..
+-rw------- 1 vmail vmail         0 May 19 04:42 flintlock
+-rw------- 1 vmail vmail       117 May 19 04:43 iamglass
+-rw------- 1 vmail vmail 220364800 May 19 04:43 postlist.glass
+-rw------- 1 vmail vmail  35438592 May 19 04:43 termlist.glass
+
+fts-flatcurve/index.current:
+total 22324
+drwx------ 2 vmail vmail     4096 May 19 04:43 .
+drwx------ 8 vmail vmail     4096 May 19 04:43 ..
+-rw------- 1 vmail vmail        0 May 19 04:43 flintlock
+-rw------- 1 vmail vmail      111 May 19 04:43 iamglass
+-rw------- 1 vmail vmail 18685952 May 19 04:43 postlist.glass
+-rw------- 1 vmail vmail  4161536 May 19 04:43 termlist.glass
 
 
--- Compacting mailbox (Xapian 1.2 does not support auto-compaction)
-$ xapian-compact flatcurve-index flatcurve-index-compact
-postlist: Reduced by 63% 127584K (201336K -> 73752K)
-record: Reduced by 5% 32K (536K -> 504K)
-termlist: Reduced by 6% 5056K (78592K -> 73536K)
-position: doesn't exist
-spelling: doesn't exist
-synonym: doesn't exist
-$ ls -la flatcurve-index-compact/
-total 147828
-drwx------ 2 root  root      4096 Jan 21 23:45 .
-drwx------ 4 vmail vmail     4096 Jan 21 23:45 ..
--rw------- 1 root  root        28 Jan 21 23:45 iamchert
--rw------- 1 root  root  75522048 Jan 21 23:45 postlist.DB
--rw------- 1 root  root        13 Jan 21 23:45 postlist.baseA
--rw------- 1 root  root      1171 Jan 21 23:45 postlist.baseB
--rw------- 1 root  root    516096 Jan 21 23:45 record.DB
--rw------- 1 root  root        13 Jan 21 23:45 record.baseA
--rw------- 1 root  root        23 Jan 21 23:45 record.baseB
--rw------- 1 root  root  75300864 Jan 21 23:45 termlist.DB
--rw------- 1 root  root        13 Jan 21 23:45 termlist.baseA
--rw------- 1 root  root      1167 Jan 21 23:45 termlist.baseB
+-- Compacting mailbox
+$ du -s fts-flatcurve/
+1057888 fts-flatcurve/
+$ /usr/bin/time -v doveadm fts optimize -u foo
+        User time (seconds): 10.13
+        System time (seconds): 1.13
+        Percent of CPU this job got: 88%
+        Elapsed (wall clock) time (h:mm:ss or m:ss): 0:12.66
+        Maximum resident set size (kbytes): 14372
+        Minor (reclaiming a frame) page faults: 1162
+        Voluntary context switches: 1154
+        Involuntary context switches: 1
+        File system outputs: 1670056
+$ du -s fts-flatcurve/
+512348 fts-flatcurve/
+$ ls -laR fts-flatcurve/
+fts-flatcurve/:
+total 2144
+drwx------ 3 vmail vmail    4096 May 19 04:52 .
+drwx------ 3 vmail vmail 2183168 May 19 04:46 ..
+drwx------ 2 vmail vmail    4096 May 19 04:52 index.4595
+
+fts-flatcurve/index.4595:
+total 512348
+drwx------ 2 vmail vmail      4096 May 19 04:52 .
+drwx------ 3 vmail vmail      4096 May 19 04:52 ..
+-rw------- 1 vmail vmail         0 May 19 04:52 flintlock
+-rw------- 1 vmail vmail       110 May 19 04:52 iamglass
+-rw------- 1 vmail vmail 334757888 May 19 04:52 postlist.glass
+-rw------- 1 vmail vmail 189874176 May 19 04:52 termlist.glass
 
 
 -- Comparing to size of Trash mailbox
-$ doveadm mailbox status vsize Trash
-Trash vsize=1712148272
-$ echo "scale=3; (147828 * 1024) / 1712148272" | bc
-.088  [Index = ~9% the size of the total mailbox data size]
+$ doveadm mailbox status -u foo vsize Trash
+Trash vsize=1162426786
+$ echo "scale=3; (512348 * 1024) / 1162426786" | bc
+.451  [Index = ~45% the size of the total mailbox data size]
 ```
+
+### Indexing benchmark with substring matching DISABLED (non-default configuration)
+
+```
+Linux ... 5.4.72-microsoft-standard-WSL2 #1 SMP ... x86_64 GNU/Linux
+VM Running on Docker Desktop (Windows 10)
+Debian Buster; Dovecot 2.3.14; Xapian 1.4.11
+Host CPU: AMD RYZEN 7 1700 8-Core 3.0 GHz (3.7 GHz Turbo)
+Using fts_flatcurve as of 18 May 2021
+
+
+-- Indexing Trash Mailbox w/25863 messages
+-- (e.g. this is "legitimate" mail; it does not include Spam)
+-- FTS index deleted before run (Dovecot caches NOT deleted)
+-- Dovecot plugin configuration: "fts_flatcurve = substring_search=no"
+-- Limit process to 256 MB 
+$ ulimit -v 256000 && /usr/bin/time -v doveadm index -u foo Trash
+        User time (seconds): 79.13
+        System time (seconds): 0.94
+        Percent of CPU this job got: 96%
+        Elapsed (wall clock) time (h:mm:ss or m:ss): 1:23.07
+        Maximum resident set size (kbytes): 48088
+        Minor (reclaiming a frame) page faults: 11366
+        Voluntary context switches: 3455
+        Involuntary context switches: 104
+        File system outputs: 790328
+
+
+Median throughput: ~311 msgs/second
+
+
+-- Compacting mailbox
+$ du -s fts-flatcurve/
+169364 fts-flatcurve/
+$ /usr/bin/time -v doveadm fts optimize -u foo
+        User time (seconds): 1.06
+        System time (seconds): 0.13
+        Percent of CPU this job got: 77%
+        Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.54
+        Maximum resident set size (kbytes): 14532
+        Minor (reclaiming a frame) page faults: 1154
+        Voluntary context switches: 832
+        Involuntary context switches: 1
+        File system outputs: 278728
+$ du -s fts-flatcurve/
+96300 fts-flatcurve/
+
+
+-- Comparing to size of Trash mailbox
+$ doveadm mailbox status -u foo vsize Trash
+Trash vsize=1162426786
+$ echo "scale=3; (96300 * 1024) / 1162426786" | bc
+.084  [Index = ~8.4% the size of the total mailbox data size]
+```
+
+As can be seen, substring matching in Xapian requires significantly more
+resources (mainly CPU and disk storage).
 
 Licensing
 ---------
