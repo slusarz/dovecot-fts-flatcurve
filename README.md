@@ -114,6 +114,9 @@ Optional parameters for the `fts_flatcurve` plugin setting:
 		     (integer, maximum 200; DEFAULT: 30) 
  - `min_term_size` - The minimum number of characters in a term to index.
 		     (integer; DEFAULT: 2)
+ - `optimize_limit` - Once the database reaches this number of shards,
+                      automatically optimize the DB at shutdown. (integer,
+                      set to 0 to disable; DEFAULT: 10)
  - `rotate_size` - When the mail ("current") database reaches this number
                    of messages, it is rotated to a read-only database and
                    replaced by a new write DB. Most people should not
@@ -133,7 +136,7 @@ mail_plugins = $mail_plugins fts fts_flatcurve
 plugin {
   fts = flatcurve
   fts_flatcurve = commit_limit=500 max_term_size=30 min_term_size=2 \
-                  rotate_size=5000 substring_search=yes
+                  optimize_limit=10 rotate_size=5000 substring_search=yes
 }
 ```
 

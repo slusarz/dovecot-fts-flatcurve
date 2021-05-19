@@ -32,6 +32,7 @@ fts_flatcurve_plugin_init_settings(struct fts_flatcurve_settings *set,
 	set->commit_limit = FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT;
 	set->max_term_size = FTS_FLATCURVE_MAX_TERM_SIZE_DEFAULT;
 	set->min_term_size = FTS_FLATCURVE_MIN_TERM_SIZE_DEFAULT;
+	set->optimize_limit = FTS_FLATCURVE_OPTIMIZE_LIMIT_DEFAULT;
 	set->rotate_size = FTS_FLATCURVE_ROTATE_SIZE_DEFAULT;
 	set->substring_search = FTS_FLATCURVE_SUBSTRING_SEARCH_DEFAULT;
 
@@ -61,6 +62,14 @@ fts_flatcurve_plugin_init_settings(struct fts_flatcurve_settings *set,
 				return -1;
 			}
 			set->min_term_size = val;
+		} else if (str_begins(*tmp, "optimize_limit=")) {
+			if (str_to_uint(*tmp + 15, &val) < 0) {
+				i_warning(FTS_FLATCURVE_DEBUG_PREFIX
+					  "Invalid optimize_limit: %s",
+					  *tmp + 13);
+				return -1;
+			}
+			set->optimize_limit = val;
 		} else if (str_begins(*tmp, "rotate_size=")) {
 			if (str_to_uint(*tmp + 12, &val) < 0) {
 				i_warning(FTS_FLATCURVE_DEBUG_PREFIX

@@ -68,8 +68,9 @@ struct flatcurve_xapian {
 	Xapian::Database *db_read;
 	HASH_TABLE_TYPE(xapian_db) dbs;
 
-	/* Xapian pool: used for DB info, so it can be easily cleared when
-	 * switching mailboxes. */
+	/* Xapian pool: used for per mailbox DB info, so it can be easily
+	 * cleared when switching mailboxes. Not for use with long
+	 * lived data (e.g. optimize). */
 	pool_t pool;
 
 	/* Current document. */
@@ -77,6 +78,9 @@ struct flatcurve_xapian {
 	uint32_t doc_uid, last_uid;
 	unsigned int doc_updates;
 	bool doc_created:1;
+
+	/* List of mailboxes to optimize at shutdown. */
+	HASH_TABLE(char *, char *) optimize;
 };
 
 struct flatcurve_fts_query_arg {
@@ -136,8 +140,23 @@ void fts_flatcurve_xapian_init(struct flatcurve_fts_backend *backend)
 
 void fts_flatcurve_xapian_deinit(struct flatcurve_fts_backend *backend)
 {
-	hash_table_destroy(&backend->xapian->dbs);
-	pool_unref(&backend->xapian->pool);
+	struct hash_iterate_context *iter;
+	void *key, *val;
+	struct flatcurve_xapian *xapian = backend->xapian;
+
+	if (hash_table_is_created(xapian->optimize)) {
+		iter = hash_table_iterate_init(xapian->optimize);
+	        while (hash_table_iterate(iter, xapian->optimize, &key, &val)) {
+			fts_backend_flatcurve_open_box(backend,
+						       (const char *)key,
+						       (const char *)val);
+			fts_flatcurve_xapian_optimize_box(backend);
+		}
+		hash_table_iterate_deinit(&iter);
+		hash_table_destroy(&xapian->optimize);
+	}
+	hash_table_destroy(&xapian->dbs);
+	pool_unref(&xapian->pool);
 }
 
 static struct flatcurve_xapian_db_path *
@@ -374,6 +393,7 @@ static Xapian::Database *
 fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 {
 	std::string error;
+	struct fts_flatcurve_user *fuser = backend->fuser;
 	struct flatcurve_xapian_db_iter *iter;
 	unsigned int shards = 0;
 	struct flatcurve_xapian *xapian = backend->xapian;
@@ -415,6 +435,17 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 		"version=%u shards=%u; %s", str_c(backend->boxname),
 		xapian->db_read->get_doccount(), FLATCURVE_XAPIAN_DB_VERSION,
 		shards, str_c(backend->db_path));
+
+	if ((fuser->set.optimize_limit > 0) &&
+	    (shards >= fuser->set.optimize_limit)) {
+		if (!hash_table_is_created(xapian->optimize))
+			hash_table_create(&xapian->optimize, xapian->pool,
+					  0, str_hash, strcmp);
+		if (hash_table_lookup(xapian->optimize, str_c(backend->boxname)) == NULL)
+			hash_table_insert(xapian->optimize,
+					  p_strdup(xapian->pool, str_c(backend->boxname)),
+					  p_strdup(xapian->pool, str_c(backend->db_path)));
+	}
 
 	return xapian->db_read;
 }

@@ -52,4 +52,7 @@ struct flatcurve_fts_result {
 	ARRAY_TYPE(seq_range) uids;
 };
 
+void fts_backend_flatcurve_open_box(struct flatcurve_fts_backend *backend,
+                                    const char *name, const char *path);
+
 #endif
