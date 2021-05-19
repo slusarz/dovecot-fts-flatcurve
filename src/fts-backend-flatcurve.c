@@ -97,8 +97,9 @@ static void fts_backend_flatcurve_deinit(struct fts_backend *_backend)
 	pool_unref(&backend->pool);
 }
 
-void fts_backend_flatcurve_open_box(struct flatcurve_fts_backend *backend,
-				    const char *name, const char *path)
+static void
+fts_backend_flatcurve_open_box(struct flatcurve_fts_backend *backend,
+			       const char *name, const char *path)
 {
 	str_append(backend->boxname, name);
 	str_printfa(backend->db_path, "%s/%s/", path, FTS_FLATCURVE_LABEL);
@@ -460,10 +461,6 @@ fts_backend_flatcurve_iterate_ns(struct fts_backend *_backend,
 
 		switch (act) {
 		case FTS_BACKEND_FLATCURVE_ACTION_OPTIMIZE:
-			e_debug(event_create_passthrough(backend->event)->
-				set_name("fts_flatcurve_optimize")->
-				add_str("mailbox", info->vname)->event(),
-				"Optimizing mailbox=%s", info->vname);
 			fts_flatcurve_xapian_optimize_box(backend);
 			break;
 		case FTS_BACKEND_FLATCURVE_ACTION_RESCAN:

@@ -147,9 +147,8 @@ void fts_flatcurve_xapian_deinit(struct flatcurve_fts_backend *backend)
 	if (hash_table_is_created(xapian->optimize)) {
 		iter = hash_table_iterate_init(xapian->optimize);
 	        while (hash_table_iterate(iter, xapian->optimize, &key, &val)) {
-			fts_backend_flatcurve_open_box(backend,
-						       (const char *)key,
-						       (const char *)val);
+			str_append(backend->boxname, (const char *)key);
+			str_append(backend->db_path, (const char *)val);
 			fts_flatcurve_xapian_optimize_box(backend);
 		}
 		hash_table_iterate_deinit(&iter);
@@ -871,6 +870,11 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 
 	if ((db = fts_flatcurve_xapian_read_db(backend)) == NULL)
 		return;
+
+	e_debug(event_create_passthrough(backend->event)->
+		set_name("fts_flatcurve_optimize")->
+		add_str("mailbox", str_c(backend->boxname))->event(),
+		"Optimizing mailbox=%s", str_c(backend->boxname));
 
 	o = fts_flatcurve_xapian_create_db_path(
 		backend, FLATCURVE_XAPIAN_DB_OPTIMIZE);
