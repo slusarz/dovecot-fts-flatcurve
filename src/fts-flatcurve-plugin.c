@@ -79,9 +79,9 @@ fts_flatcurve_plugin_init_settings(struct fts_flatcurve_settings *set,
 			}
 			set->rotate_size = val;
 		} else if (str_begins(*tmp, "substring_search=")) {
-			if (strcasecmp(*tmp + 17, "yes")) {
+			if (strcasecmp(*tmp + 17, "yes") == 0) {
 				set->substring_search = TRUE;
-			} else if (strcasecmp(*tmp + 17, "no")) {
+			} else if (strcasecmp(*tmp + 17, "no") == 0) {
 				set->substring_search = FALSE;
 			} else {
 				i_warning(FTS_FLATCURVE_DEBUG_PREFIX
