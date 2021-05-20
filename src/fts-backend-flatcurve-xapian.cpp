@@ -313,10 +313,6 @@ fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 {
 	struct flatcurve_xapian_db *xdb;
 
-#ifdef XAPIAN_HAS_RETRY_LOCK
-	db_flags |= Xapian::DB_RETRY_LOCK;
-#endif
-
 	xdb = fts_flatcurve_xapian_get_db(backend, dbpath);
 	if (xdb->dbw != NULL)
 		return xdb;
@@ -331,6 +327,12 @@ fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 			return NULL;
 		}
 	}
+
+	db_flags |=
+#ifdef XAPIAN_HAS_RETRY_LOCK
+		Xapian::DB_RETRY_LOCK |
+#endif
+		Xapian::DB_NO_SYNC;
 
 	try {
 		xdb->dbw = new Xapian::WritableDatabase(dbpath->path,
