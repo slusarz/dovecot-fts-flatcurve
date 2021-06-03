@@ -20,6 +20,7 @@
 #define FTS_FLATCURVE_MIN_TERM_SIZE_DEFAULT 2
 #define FTS_FLATCURVE_OPTIMIZE_LIMIT_DEFAULT 10
 #define FTS_FLATCURVE_ROTATE_SIZE_DEFAULT 5000
+#define FTS_FLATCURVE_ROTATE_TIME_DEFAULT 5000
 #define FTS_FLATCURVE_SUBSTRING_SEARCH_DEFAULT TRUE
 
 struct fts_flatcurve_settings {
@@ -28,6 +29,7 @@ struct fts_flatcurve_settings {
 	unsigned int min_term_size;
 	unsigned int optimize_limit;
 	unsigned int rotate_size;
+	unsigned int rotate_time;
 	bool substring_search;
 };
 

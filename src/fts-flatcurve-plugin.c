@@ -34,6 +34,7 @@ fts_flatcurve_plugin_init_settings(struct fts_flatcurve_settings *set,
 	set->min_term_size = FTS_FLATCURVE_MIN_TERM_SIZE_DEFAULT;
 	set->optimize_limit = FTS_FLATCURVE_OPTIMIZE_LIMIT_DEFAULT;
 	set->rotate_size = FTS_FLATCURVE_ROTATE_SIZE_DEFAULT;
+	set->rotate_time = FTS_FLATCURVE_ROTATE_TIME_DEFAULT;
 	set->substring_search = FTS_FLATCURVE_SUBSTRING_SEARCH_DEFAULT;
 
 	for (tmp = t_strsplit_spaces(str, " "); *tmp != NULL; tmp++) {
@@ -78,6 +79,14 @@ fts_flatcurve_plugin_init_settings(struct fts_flatcurve_settings *set,
 				return -1;
 			}
 			set->rotate_size = val;
+		} else if (str_begins(*tmp, "rotate_time=")) {
+			if (str_to_uint(*tmp + 12, &val) < 0) {
+				i_warning(FTS_FLATCURVE_DEBUG_PREFIX
+					  "Invalid rotate_time: %s",
+					  *tmp + 12);
+				return -1;
+			}
+			set->rotate_time = val;
 		} else if (str_begins(*tmp, "substring_search=")) {
 			if (strcasecmp(*tmp + 17, "yes") == 0) {
 				set->substring_search = TRUE;

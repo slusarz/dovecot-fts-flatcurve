@@ -122,6 +122,11 @@ Optional parameters for the `fts_flatcurve` plugin setting:
                    replaced by a new write DB. Most people should not
                    change this setting. (integer, set to 0 to disable
                    rotation; DEFAULT: 5000)
+ - `rotate_time` - When the mail ("current") database exceeds this length
+                   of time (in msecs) to commit changes, it is rotated to a
+                   read-only database and replaced by a new write DB. Most
+                   people should not change this setting. (integer, set to 0
+                   to disable rotation; DEFAULT: 5000)
  - `substring_search` - If enabled, allows substring searches (RFC 3501
                         compliant). However, this requires significant
                         additional storage space, so substring searches can
@@ -136,7 +141,8 @@ mail_plugins = $mail_plugins fts fts_flatcurve
 plugin {
   fts = flatcurve
   fts_flatcurve = commit_limit=500 max_term_size=30 min_term_size=2 \
-                  optimize_limit=10 rotate_size=5000 substring_search=yes
+                  optimize_limit=10 rotate_size=5000 rotate_time=5000 \
+                  substring_search=yes
 }
 ```
 

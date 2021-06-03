@@ -60,7 +60,9 @@ struct flatcurve_xapian_db {
 	struct flatcurve_xapian_db_path *dbpath;
 	size_t dbw_doccount;
 	unsigned int version_update;
+
 	bool current_db:1;
+	bool need_rotate:1;
 };
 HASH_TABLE_DEFINE_TYPE(xapian_db, char *, struct flatcurve_xapian_db *);
 
@@ -465,7 +467,7 @@ fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend)
 		return xapian->dbw_current;
 
 	dbpath = fts_flatcurve_xapian_create_db_path(
-		backend, FLATCURVE_XAPIAN_CURRENT_DBW);
+			backend, FLATCURVE_XAPIAN_CURRENT_DBW);
 	xdb = fts_flatcurve_xapian_write_db_get(backend, dbpath,
 						Xapian::DB_CREATE_OR_OPEN,
 						error);
@@ -563,50 +565,27 @@ fts_flatcurve_xapian_write_db_by_uid(struct flatcurve_fts_backend *backend,
 }
 
 static void
-fts_flatcurve_xapian_check_commit_limit(struct flatcurve_fts_backend *backend)
+fts_flatcurve_xapian_check_commit_limit(struct flatcurve_fts_backend *backend,
+					struct flatcurve_xapian_db *xdb)
 {
 	struct fts_flatcurve_user *fuser = backend->fuser;
+	struct flatcurve_xapian *xapian = backend->xapian;
 
-	if ((fuser->set.commit_limit > 0) &&
-	    (++backend->xapian->doc_updates >= fuser->set.commit_limit)) {
-		backend->xapian->doc_updates = 0;
+	++xapian->doc_updates;
+
+	if (xdb->current_db &&
+	    (fuser->set.rotate_size > 0) &&
+	    (xdb->dbw_doccount >= fuser->set.rotate_size)) {
+		xdb->need_rotate = TRUE;
+		fts_flatcurve_xapian_close(backend);
+	} else if ((fuser->set.commit_limit > 0) &&
+		   (xapian->doc_updates >= fuser->set.commit_limit)) {
 		fts_flatcurve_xapian_close_dbs(
 			backend, FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT);
 		e_debug(backend->event, "Committing DB as update "
 			"limit was reached; mailbox=%s limit=%d",
 			str_c(backend->boxname),
 			fuser->set.commit_limit);
-	}
-}
-
-static void
-fts_flatcurve_xapian_check_rotate_limit(struct flatcurve_fts_backend *backend,
-					struct flatcurve_xapian_db *xdb)
-{
-	struct fts_flatcurve_user *fuser = backend->fuser;
-	struct flatcurve_xapian_db_path *n, *o;
-
-	if (!xdb->current_db)
-		return;
-
-	if ((fuser->set.rotate_size > 0) &&
-	    (++xdb->dbw_doccount >= fuser->set.rotate_size)) {
-		/* We've hit the rotate limit. Close all DBs and move the
-		 * current write DB to an "old" DB path. */
-		o = fts_flatcurve_xapian_temp_copy_db_path(xdb->dbpath);
-		fts_flatcurve_xapian_close(backend);
-		if ((n = fts_flatcurve_xapian_rename_db(backend, o)) == NULL) {
-			e_debug(backend->event, "Error when rotating DBs "
-				"mailbox=%s; Falling back to optimizing DB",
-				str_c(backend->boxname));
-			fts_flatcurve_xapian_optimize_box(backend);
-		} else {
-			e_debug(event_create_passthrough(backend->event)->
-				set_name("fts_flatcurve_rotate")->
-				add_str("mailbox", str_c(backend->boxname))->
-				event(), "Rotating index mailbox=%s",
-				str_c(backend->boxname));
-		}
 	}
 }
 
@@ -636,15 +615,15 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 
 	xapian->last_uid = xapian->doc_uid;
 
-	fts_flatcurve_xapian_check_commit_limit(backend);
-
 	if (xapian->doc_created)
 		delete(xapian->doc);
 	xapian->doc = NULL;
 	xapian->doc_created = FALSE;
 	xapian->doc_uid = 0;
 
-	fts_flatcurve_xapian_check_rotate_limit(backend, xdb);
+	++xdb->dbw_doccount;
+
+	fts_flatcurve_xapian_check_commit_limit(backend, xdb);
 }
 
 static void
@@ -652,12 +631,13 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 			       enum flatcurve_xapian_db_close opts)
 {
 	int diff;
+	struct fts_flatcurve_user *fuser = backend->fuser;
 	struct hash_iterate_context *iter;
 	void *key, *val;
 	struct timeval now, start;
 	bool reopen = FALSE;
 	struct flatcurve_xapian *xapian = backend->xapian;
-	struct flatcurve_xapian_db *xdb;
+	struct flatcurve_xapian_db *xdb, *xdb_dbw_closed = NULL;
 
 	fts_flatcurve_xapian_clear_document(backend);
 
@@ -673,6 +653,8 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 				xdb->dbw->close();
 				delete(xdb->dbw);
 				xdb->dbw = NULL;
+				xdb->dbw_doccount = 0;
+				xdb_dbw_closed = xdb;
 				xapian->dbw_current = NULL;
 				reopen = TRUE;
 			} else if ((opts & FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT) == FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT) {
@@ -689,6 +671,12 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 					"mailbox=%s", xapian->doc_updates, 
 					diff/1000, diff%1000,
 					str_c(backend->boxname));
+
+				xdb->need_rotate =
+					xdb->need_rotate ||
+					(xdb->current_db &&
+					 (fuser->set.rotate_time > 0) &&
+					 (diff > fuser->set.rotate_time));
 			}
 		}
 		if (xdb->db != NULL) {
@@ -700,12 +688,32 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 	}
 	hash_table_iterate_deinit(&iter);
 
+	xapian->doc_updates = 0;
+
+	if ((xdb_dbw_closed != NULL) && xdb_dbw_closed->need_rotate) {
+		xdb_dbw_closed->need_rotate = FALSE;
+
+		/* We've hit a rotate limit. Close all DBs and move the
+		 * current write DB to an "old" DB path. */
+		if (fts_flatcurve_xapian_rename_db(backend, xdb_dbw_closed->dbpath) == NULL) {
+			e_debug(backend->event, "Error when rotating DBs "
+				"mailbox=%s; Falling back to optimizing DB",
+				str_c(backend->boxname));
+			fts_flatcurve_xapian_optimize_box(backend);
+		} else {
+			e_debug(event_create_passthrough(backend->event)->
+				set_name("fts_flatcurve_rotate")->
+				add_str("mailbox", str_c(backend->boxname))->
+				event(), "Rotating index mailbox=%s",
+				str_c(backend->boxname));
+			reopen = FALSE;
+		}
+	}
+
 	if (reopen &&
 	    (xapian->db_read != NULL) &&
 	    ((opts & FLATCURVE_XAPIAN_DB_CLOSE_NO_REOPEN) != FLATCURVE_XAPIAN_DB_CLOSE_NO_REOPEN))
 		(void)xapian->db_read->reopen();
-
-	xapian->doc_updates = 0;
 }
 
 void fts_flatcurve_xapian_refresh(struct flatcurve_fts_backend *backend)
@@ -766,7 +774,7 @@ void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 		xdb->dbw->delete_document(uid);
 		if (xdb->current_db)
 			--xdb->dbw_doccount;
-		fts_flatcurve_xapian_check_commit_limit(backend);
+		fts_flatcurve_xapian_check_commit_limit(backend, xdb);
 	} catch (Xapian::Error &e) {
 		e_debug(backend->event, "update_expunge (%s)",
 			e.get_msg().c_str());
