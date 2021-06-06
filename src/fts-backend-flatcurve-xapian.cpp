@@ -451,7 +451,7 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 	return xapian->db_read;
 }
 
-static flatcurve_xapian_db *
+static struct flatcurve_xapian_db *
 fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend)
 {
 	struct flatcurve_xapian_db_path *dbpath;
@@ -515,7 +515,7 @@ fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 }
 
 // Function requires read DB to have been opened
-static flatcurve_xapian_db *
+static struct flatcurve_xapian_db *
 fts_flatcurve_xapian_uid_exists_db(struct flatcurve_fts_backend *backend,
 				   uint32_t uid)
 {
@@ -539,7 +539,7 @@ fts_flatcurve_xapian_uid_exists_db(struct flatcurve_fts_backend *backend,
 	return ret;
 }
 
-static flatcurve_xapian_db *
+static struct flatcurve_xapian_db *
 fts_flatcurve_xapian_write_db_by_uid(struct flatcurve_fts_backend *backend,
 				     uint32_t uid)
 {
