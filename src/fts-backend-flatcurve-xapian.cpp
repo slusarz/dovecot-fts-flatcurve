@@ -65,6 +65,7 @@ HASH_TABLE_DEFINE_TYPE(xapian_db, char *, struct flatcurve_xapian_db *);
 
 struct flatcurve_xapian {
 	/* Current database objects. */
+	struct flatcurve_xapian_db *dbw_current;
 	Xapian::Database *db_read;
 	HASH_TABLE_TYPE(xapian_db) dbs;
 
@@ -456,10 +457,14 @@ fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend)
 {
 	struct flatcurve_xapian_db_path *dbpath;
 	std::string error;
+	struct flatcurve_xapian *xapian = backend->xapian;
 	struct flatcurve_xapian_db *xdb;
 
+	if (xapian->dbw_current != NULL)
+		return xapian->dbw_current;
+
 	dbpath = fts_flatcurve_xapian_create_db_path(
-			backend, FLATCURVE_XAPIAN_CURRENT_DBW);
+		backend, FLATCURVE_XAPIAN_CURRENT_DBW);
 	xdb = fts_flatcurve_xapian_write_db_get(backend, dbpath,
 						Xapian::DB_CREATE_OR_OPEN,
 						error);
@@ -470,6 +475,7 @@ fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend)
 	}
 
 	xdb->current_db = TRUE;
+	xapian->dbw_current = xdb;
 
 	return xdb;
 }
@@ -662,6 +668,7 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 				xdb->dbw->close();
 				delete(xdb->dbw);
 				xdb->dbw = NULL;
+				xapian->dbw_current = NULL;
 				reopen = TRUE;
 			} else if ((opts & FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT) == FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT) {
 				xdb->dbw->commit();
