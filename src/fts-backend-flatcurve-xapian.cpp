@@ -444,12 +444,12 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 	if ((fuser->set.optimize_limit > 0) &&
 	    (shards >= fuser->set.optimize_limit)) {
 		if (!hash_table_is_created(xapian->optimize))
-			hash_table_create(&xapian->optimize, xapian->pool,
+			hash_table_create(&xapian->optimize, backend->pool,
 					  0, str_hash, strcmp);
 		if (hash_table_lookup(xapian->optimize, str_c(backend->boxname)) == NULL)
 			hash_table_insert(xapian->optimize,
-					  p_strdup(xapian->pool, str_c(backend->boxname)),
-					  p_strdup(xapian->pool, str_c(backend->db_path)));
+					  p_strdup(backend->pool, str_c(backend->boxname)),
+					  p_strdup(backend->pool, str_c(backend->db_path)));
 	}
 
 	return xapian->db_read;
