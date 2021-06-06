@@ -13,6 +13,7 @@ extern "C" {
 #include "str.h"
 #include "mail-storage-private.h"
 #include "mail-search.h"
+#include "time-util.h"
 #include "unlink-directory.h"
 #include "fts-backend-flatcurve.h"
 #include "fts-backend-flatcurve-xapian.h"
@@ -650,8 +651,10 @@ static void
 fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 			       enum flatcurve_xapian_db_close opts)
 {
+	int diff;
 	struct hash_iterate_context *iter;
 	void *key, *val;
+	struct timeval now, start;
 	bool reopen = FALSE;
 	struct flatcurve_xapian *xapian = backend->xapian;
 	struct flatcurve_xapian_db *xdb;
@@ -664,6 +667,8 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 		if (xdb->dbw != NULL) {
 			fts_flatcurve_xapian_update_db_version(xdb);
 
+			i_gettimeofday(&start);
+
 			if ((opts & FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE) == FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE) {
 				xdb->dbw->close();
 				delete(xdb->dbw);
@@ -673,6 +678,17 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 			} else if ((opts & FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT) == FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT) {
 				xdb->dbw->commit();
 				reopen = TRUE;
+			}
+
+			if (reopen == TRUE) {
+				i_gettimeofday(&now);
+				diff = timeval_diff_msecs(&now, &start);
+
+				e_debug(backend->event, "Committed %u changes "
+					"to DB (RW) in %u.%03u secs; "
+					"mailbox=%s", xapian->doc_updates, 
+					diff/1000, diff%1000,
+					str_c(backend->boxname));
 			}
 		}
 		if (xdb->db != NULL) {
