@@ -898,8 +898,10 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 {
 #ifdef XAPIAN_HAS_COMPACT
 	Xapian::Database *db;
+	int diff;
 	struct flatcurve_xapian_db_iter *iter;
 	struct flatcurve_xapian_db_path *n, *npath, *o;
+	struct timeval now, start;
 
 	if ((db = fts_flatcurve_xapian_read_db(backend)) == NULL)
 		return;
@@ -911,6 +913,8 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 
 	o = fts_flatcurve_xapian_create_db_path(
 		backend, FLATCURVE_XAPIAN_DB_OPTIMIZE);
+
+	i_gettimeofday(&start);
 
 	try {
 		db->compact(o->path, Xapian::DBCOMPACT_NO_RENUMBER |
@@ -946,8 +950,11 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 	}
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
-	e_debug(backend->event, "Optimized DB; mailbox=%s",
-		str_c(backend->boxname));
+	i_gettimeofday(&now);
+	diff = timeval_diff_msecs(&now, &start);
+
+	e_debug(backend->event, "Optimized DB in %u.%03u secs; mailbox=%s",
+		diff/1000, diff%1000, str_c(backend->boxname));
 #endif
 }
 
