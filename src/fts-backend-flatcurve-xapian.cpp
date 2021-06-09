@@ -59,7 +59,7 @@ struct flatcurve_xapian_db {
 	Xapian::WritableDatabase *dbw;
 	struct flatcurve_xapian_db_path *dbpath;
 	size_t dbw_doccount;
-	unsigned int version_update;
+	unsigned int changes, version_update;
 
 	bool current_db:1;
 	bool need_rotate:1;
@@ -572,6 +572,7 @@ fts_flatcurve_xapian_check_commit_limit(struct flatcurve_fts_backend *backend,
 	struct flatcurve_xapian *xapian = backend->xapian;
 
 	++xapian->doc_updates;
+	++xdb->changes;
 
 	if (xdb->current_db &&
 	    (fuser->set.rotate_size > 0) &&
@@ -667,16 +668,18 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 				diff = timeval_diff_msecs(&now, &start);
 
 				e_debug(backend->event, "Committed %u changes "
-					"to DB (RW) in %u.%03u secs; "
-					"mailbox=%s", xapian->doc_updates, 
-					diff/1000, diff%1000,
-					str_c(backend->boxname));
+					"to DB (RW; %s) in %u.%03u secs; "
+					"mailbox=%s", xdb->changes,
+					xdb->dbpath->fname, diff/1000,
+					diff%1000, str_c(backend->boxname));
 
 				xdb->need_rotate =
 					xdb->need_rotate ||
 					(xdb->current_db &&
 					 (fuser->set.rotate_time > 0) &&
 					 (diff > fuser->set.rotate_time));
+
+				xdb->changes = 0;
 			}
 		}
 		if (xdb->db != NULL) {
