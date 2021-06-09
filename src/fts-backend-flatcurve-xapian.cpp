@@ -215,7 +215,7 @@ fts_flatcurve_xapian_db_iter_init(struct flatcurve_fts_backend *backend)
 	dirp = opendir(str_c(backend->db_path));
 	if (dirp == NULL) {
 		if (errno != ENOENT)
-			e_debug(backend->event, "Cannot open DB RO "
+			e_debug(backend->event, "Cannot open DB (RO) "
 				"mailbox=%s; opendir(%s) failed: %m",
 				str_c(backend->boxname),
 				str_c(backend->db_path));
@@ -325,7 +325,7 @@ fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 	if (!fts_flatcurve_xapian_dir_exists(dbpath)) {
 		if (mailbox_list_mkdir_root(backend->backend.ns->list,
 		    dbpath->path, MAILBOX_LIST_PATH_TYPE_INDEX) < 0) {
-			e_debug(backend->event, "Cannot create DB "
+			e_debug(backend->event, "Cannot create DB (RW) "
 				"mailbox=%s; %s", str_c(backend->boxname),
 				dbpath->path);
 			return NULL;
@@ -350,10 +350,10 @@ fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 
 	xdb->dbw_doccount = xdb->dbw->get_doccount();
 
-	e_debug(backend->event, "Opened DB (RW) mailbox=%s "
-		"messages=%zu version=%u; %s", str_c(backend->boxname),
-		xdb->dbw_doccount, FLATCURVE_XAPIAN_DB_VERSION,
-		dbpath->path);
+	e_debug(backend->event, "Opened DB (RW; %s) mailbox=%s "
+		"messages=%zu version=%u", dbpath->fname,
+		str_c(backend->boxname), xdb->dbw_doccount,
+		FLATCURVE_XAPIAN_DB_VERSION);
 
 	return xdb;
 }
@@ -437,9 +437,9 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
 	e_debug(backend->event, "Opened DB (RO) mailbox=%s messages=%u "
-		"version=%u shards=%u; %s", str_c(backend->boxname),
+		"version=%u shards=%u", str_c(backend->boxname),
 		xapian->db_read->get_doccount(), FLATCURVE_XAPIAN_DB_VERSION,
-		shards, str_c(backend->db_path));
+		shards);
 
 	if ((fuser->set.optimize_limit > 0) &&
 	    (shards >= fuser->set.optimize_limit)) {
@@ -472,7 +472,7 @@ fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend)
 						Xapian::DB_CREATE_OR_OPEN,
 						error);
 	if (xdb == NULL) {
-		e_debug(backend->event, "Cannot open DB RW mailbox=%s; %s",
+		e_debug(backend->event, "Cannot open DB (RW) mailbox=%s; %s",
 			str_c(backend->boxname), error.c_str());
 		return NULL;
 	}
@@ -699,7 +699,7 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 		/* We've hit a rotate limit. Close all DBs and move the
 		 * current write DB to an "old" DB path. */
 		if (fts_flatcurve_xapian_rename_db(backend, xdb_dbw_closed->dbpath) == NULL) {
-			e_debug(backend->event, "Error when rotating DBs "
+			e_debug(backend->event, "Error when rotating DB "
 				"mailbox=%s; Falling back to optimizing DB",
 				str_c(backend->boxname));
 			fts_flatcurve_xapian_optimize_box(backend);
@@ -941,7 +941,7 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 	fts_flatcurve_xapian_close(backend);
 	if ((iter = fts_flatcurve_xapian_db_iter_init(backend)) == NULL) {
 		e_error(backend->event, "Activating new index (%s -> %s) "
-			"failed mailbox=%s; %m", o->path, npath->path,
+			"failed mailbox=%s; %m", o->fname, npath->fname,
 			str_c(backend->boxname));
 		fts_flatcurve_xapian_delete_db_dir(backend, n);
 		return;
