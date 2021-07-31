@@ -1,0 +1,163 @@
+
+# We need to give autoindexing a chance to catch up, so do a bunch of NOOPs
+# to waste some time
+ok noop
+ok noop
+ok noop
+ok noop
+ok noop
+ok noop
+ok noop
+ok noop
+ok noop
+ok noop
+ok noop
+ok noop
+ok noop
+ok noop
+ok noop
+
+
+## Address search tests
+
+# full address searching
+ok search from user-from@domain.org
+* search 1 2 3 4 6 7
+ok search to user-to@domain.org
+* search 1 2 3 4
+ok search cc user-cc@domain.org
+* search 1 2 3 4 5
+ok search bcc user-bcc@domain.org
+* search 1 2 3 4
+
+# realname searching
+ok search from realfrom
+* search 2 4 6 7
+ok search to realto
+* search 2 4
+ok search cc realcc
+* search 2 4
+ok search bcc realbcc
+* search 2 4
+
+# existence searches
+ok search header from ""
+* search 1 2 3 4 5 6 7
+ok search header to ""
+* search 1 2 3 4 6 7
+ok search header cc ""
+* search 1 2 3 4 5
+ok search header bcc ""
+* search 1 2 3 4
+
+# substring address searches
+ok search from ser-fro
+* search 1 2 3 4 5 6 7
+ok search to ser-t
+* search 1 2 3 4
+ok search cc ser-c
+* search 1 2 3 4 5
+ok search bcc ser-bc
+* search 1 2 3 4
+
+# substring realname searches
+ok search from ealfro
+* search 2 4 6 7
+ok search to ealt
+* search 2 4
+ok search cc ealc
+* search 2 4
+ok search bcc ealbc
+* search 2 4
+
+# multiple addresses
+ok search from user-from1
+* search 5
+ok search from user-from2
+* search 5
+
+# groups
+ok search to groupname
+* search 6 7
+ok search to groupname2
+* search 6
+ok search to groupuser1
+* search 6
+ok search to groupuser2
+* search 6
+ok search to groupuser3
+* search 6
+ok search to groupuser4
+* search
+
+
+## Body search tests
+
+# search full words first
+ok search text asdfghjkl
+* search 8 9
+ok search text zxcvbnm
+* search 8 10 11
+ok search text qwertyuiop
+* search 9 10 11
+
+ok search body asdfghjkl
+* search 8 9
+ok search body zxcvbnm
+* search 8 10 11
+ok search body qwertyuiop
+* search 11
+
+# search substrings
+ok search text sdfghjk
+* search 8 9
+ok search text xcvbn
+* search 8 10 11
+ok search text wertyuio
+* search 9 10 11
+
+ok search body sdfghjk
+* search 8 9
+ok search body xcvbn
+* search 8 10 11
+ok search body wertyuio
+* search 11
+
+
+## Header search tests
+
+# just check that this returns ok. it's not really specified in RFC, so
+# don't verify the result.
+ok search subject ""
+
+# subject
+ok search subject hello
+* search 12
+ok search subject beautiful
+* search 12
+ok search subject world
+* search 12
+ok search subject "hello beautiful"
+* search 12
+ok search subject "hello beautiful world"
+* search 12
+ok search subject "eautiful worl"
+* search 12
+
+# header
+ok search header subject ""
+* search 9 12
+ok search not header subject ""
+* search 1 2 3 4 5 6 7 8 10 11 13
+ok search header x-extra ""
+* search 13
+ok search not header x-extra ""
+* search 1 2 3 4 5 6 7 8 9 10 11 12
+ok search header x-extra hello
+* search 13
+ok search header x-extra "hello beautiful"
+* search 13
+ok search header x-extra "eautiful head"
+* search 13
+ok search header x-extra "another"
+* search 13
