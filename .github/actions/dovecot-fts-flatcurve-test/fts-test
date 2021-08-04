@@ -1,23 +1,4 @@
 
-# We need to give autoindexing a chance to catch up, so do a bunch of NOOPs
-# to waste some time
-ok noop
-ok noop
-ok noop
-ok noop
-ok noop
-ok noop
-ok noop
-ok noop
-ok noop
-ok noop
-ok noop
-ok noop
-ok noop
-ok noop
-ok noop
-
-
 ## Address search tests
 
 # full address searching
