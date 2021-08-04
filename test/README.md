@@ -11,7 +11,7 @@ To run gdb/get core dumps with docker:
 ```
 docker run -it --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
 	--rm --privileged -v /proc:/writable_proc \
-	-v dovecot-fts-flatcurve-data:/dovecot/sdbox dovecot-fts-flatcurve
+	dovecot-fts-flatcurve
 
 # Run these commands in the container
 ulimit -c unlimited
