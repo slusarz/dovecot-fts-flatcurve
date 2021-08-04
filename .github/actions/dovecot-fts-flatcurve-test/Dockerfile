@@ -25,8 +25,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 	libexttextcat-dev \
 	libicu-dev \
 	libxapian-dev \
-	dovecot-imaptest && \
-	apt-get clean
+	dovecot-imaptest
 
 # We need to build Dovecot ourselves, since "standard" Dovecot does not
 # come with necessary ICU libraries built-in
