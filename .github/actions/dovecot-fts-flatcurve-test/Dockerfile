@@ -40,6 +40,7 @@ RUN git clone https://github.com/slusarz/dovecot-fts-flatcurve.git /dovecot/fts-
 WORKDIR /dovecot/fts-flatcurve
 RUN ./autogen.sh && ./configure && make install
 
+# Users dovecot and dovenull are created by dovecot-imaptest package
 RUN useradd vmail && \
     mkdir -p /dovecot/sdbox && \
     chown -R vmail:vmail /dovecot/sdbox
