@@ -119,6 +119,7 @@ enum flatcurve_xapian_db_close {
 /* Externally accessible struct. */
 struct fts_flatcurve_xapian_query_iter {
 	struct flatcurve_fts_query *query;
+	Xapian::Database *db;
 	Xapian::Enquire *enquire;
 	Xapian::MSetIterator i;
 	unsigned int offset, size;
@@ -1175,6 +1176,7 @@ fts_flatcurve_xapian_query_iter_init(struct flatcurve_fts_query *query)
 		return NULL;
 
 	iter = p_new(query->pool, struct fts_flatcurve_xapian_query_iter, 1);
+	iter->db = db;
 	iter->query = query;
 	if (!empty_query) {
 		iter->enquire = new Xapian::Enquire(*db);
@@ -1196,7 +1198,27 @@ fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iter *ite
 	if (iter->size == 0) {
 		if (iter->enquire == NULL)
 			return NULL;
-		m = iter->enquire->get_mset(iter->offset, FLATCURVE_MSET_RANGE);
+
+		/* Always reopen the database when doing queries; this will
+		 * capture any messages that are being indexed by a background
+		 * process. reopen() is "free" if the DB hasn't changed. */
+		(void)iter->db->reopen();
+		try {
+			m = iter->enquire->get_mset(iter->offset,
+						    FLATCURVE_MSET_RANGE);
+		} catch (Xapian::DatabaseModifiedError &e) {
+			/* Per documentation, this is only thrown if more than
+			 * one change has been made to the database. To
+			 * resolve you need to reopen the DB (Xapian can
+			 * handle a single snapshot of a modified DB natively,
+			 * so this only occurs if there have been multiple
+			 * writes). However, we ALWAYS want to use the
+			 * most up-to-date version, so we have already
+			 * explicitly called reopen() above. Thus, we should
+			 * never see this exception. */
+			i_unreached();
+		}
+
 		if (m.empty())
 			return NULL;
 		iter->i = m.begin();
