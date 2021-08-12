@@ -545,6 +545,10 @@ $ echo "scale=3; (96300 * 1024) / 1162426786" | bc
 As can be seen, substring matching in Xapian requires significantly more
 resources (mainly CPU and disk storage).
 
+Testing Status
+--------------
+[![.github/workflows/main.yml](https://github.com/slusarz/dovecot-fts-flatcurve/actions/workflows/main.yml/badge.svg)](https://github.com/slusarz/dovecot-fts-flatcurve/actions/workflows/main.yml)
+
 Licensing
 ---------
 
