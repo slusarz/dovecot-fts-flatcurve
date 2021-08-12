@@ -110,7 +110,7 @@ static void fts_flatcurve_mail_user_created(struct mail_user *user)
 	struct fts_flatcurve_user *fuser;
 	const char *env, *error;
 
-	if (fts_mail_user_init(user, &error) < 0) {
+	if (fts_mail_user_init(user, TRUE, &error) < 0) {
 		i_error(FTS_FLATCURVE_DEBUG_PREFIX "%s", error);
 		return;
 	}
