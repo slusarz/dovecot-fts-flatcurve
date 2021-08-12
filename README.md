@@ -30,7 +30,10 @@ Get it?
 Requirements
 ------------
 
-* Dovecot 2.x+ (tested on Dovecot CE 2.3.10, 2.3.13)
+* Dovecot 2.3.10+
+  - It is recommended that you use the most up-to-date version of Dovecot
+    (see https://repo.dovecot.org/). New code is developed and tested
+    against the Dovecot git master branch (https://github.com/dovecot/core/).
   - Flatcurve relies on Dovecot's built-in FTS stemming library.
     - REQUIRES icu support (--with-icu)
     - REQUIRES stemmer support (--with-stemmer)
