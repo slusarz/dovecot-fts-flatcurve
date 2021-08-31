@@ -33,6 +33,26 @@ AS_VERSION_COMPARE([1.3.2], [$XAPIAN_VERSION],
 AS_VERSION_COMPARE([1.3.99], [$XAPIAN_VERSION],
 		   AC_DEFINE([XAPIAN_HAS_COMPACT],[1],[Xapian compaction support (1.4+)]))
 
+AC_MSG_CHECKING([for fts_mail_user_init API version 2.3.17+])
+AC_LANG_PUSH(C)
+ac_save_CFLAGS=$CFLAGS
+CFLAGS="$CFLAGS -Werror=incompatible-pointer-types -DHAVE_CONFIG_H $LIBDOVECOT_INCLUDE $LIBDOVECOT_STORAGE_INCLUDE $LIBDOVECOT_FTS_INCLUDE"
+AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM(
+        [[#include "lib.h"]
+         [#include "mail-storage-hooks.h"]
+         [#include "fts-user.h"]],
+        [[int (*ptr)(struct mail_user *, bool, const char **);]
+         [ptr = fts_mail_user_init;]])
+    ],[
+        AC_MSG_RESULT([yes])
+        AC_DEFINE(HAVE_FTS_MAIL_USER_INIT_2_3_17, [], [fts_mail_user_init API version 2.3.17+])
+    ],[
+        AC_MSG_RESULT([no])
+    ])
+CFLAGS=$ac_save_CFLAGS
+AC_LANG_POP()
+
 if test "$DOVECOT_INSTALLED" != "yes"; then
     DOVECOT_FTS_PLUGIN="$abs_dovecotdir/src/plugins/fts/lib20_fts_plugin.la"
 else

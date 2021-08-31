@@ -7,6 +7,7 @@
 #include "fts-backend-flatcurve.h"
 #include "fts-backend-flatcurve-xapian.h"
 #include "fts-flatcurve-plugin.h"
+#include "fts-flatcurve-config.h"
 
 const char *fts_flatcurve_plugin_version = DOVECOT_ABI_VERSION;
 
@@ -110,7 +111,11 @@ static void fts_flatcurve_mail_user_created(struct mail_user *user)
 	struct fts_flatcurve_user *fuser;
 	const char *env, *error;
 
+#ifdef HAVE_FTS_MAIL_USER_INIT_2_3_17
 	if (fts_mail_user_init(user, TRUE, &error) < 0) {
+#else
+	if (fts_mail_user_init(user, &error) < 0) {
+#endif
 		i_error(FTS_FLATCURVE_DEBUG_PREFIX "%s", error);
 		return;
 	}
