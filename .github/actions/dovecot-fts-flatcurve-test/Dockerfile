@@ -30,13 +30,13 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 # We need to build Dovecot ourselves, since "standard" Dovecot does not
 # come with necessary ICU libraries built-in
 RUN mkdir /dovecot
-RUN git clone https://github.com/dovecot/core.git /dovecot/core
+RUN git clone --depth 1 https://github.com/dovecot/core.git /dovecot/core
 WORKDIR /dovecot/core
 RUN ./autogen.sh && \
 	PANDOC=false ./configure --with-stemmer --with-textcat --with-icu && \
 	make install
 
-RUN git clone https://github.com/slusarz/dovecot-fts-flatcurve.git /dovecot/fts-flatcurve
+RUN git clone --depth 1 https://github.com/slusarz/dovecot-fts-flatcurve.git /dovecot/fts-flatcurve
 WORKDIR /dovecot/fts-flatcurve
 RUN ./autogen.sh && ./configure && make install
 
@@ -46,7 +46,9 @@ RUN useradd vmail && \
     chown -R vmail:vmail /dovecot/sdbox
 
 ADD dovecot.conf /usr/local/etc/dovecot/dovecot.conf
+ADD dovecot.conf.no_substring /dovecot
 ADD fts-test /dovecot/fts-test
+ADD fts-test.no_substring /dovecot/fts-test
 ADD fts-test.mbox /dovecot/fts-test.mbox
 
 ADD entrypoint.sh /entrypoint.sh
