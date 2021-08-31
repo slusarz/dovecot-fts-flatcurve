@@ -1121,8 +1121,14 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query)
 
 	for (; args != NULL ; args = args->next) {
 		if (!fts_flatcurve_build_query_arg(query, args)) {
-			fts_flatcurve_xapian_build_query_deinit(query);
-			return FALSE;
+			/* At the moment, build_query_arg() will never
+			 * return FALSE - we will ignore unknown arguments.
+			 * Keep the return value though, in case we want to
+			 * change this in the future (at which point we
+			 * need to uncomment the following two lines. */
+			//fts_flatcurve_xapian_build_query_deinit(query);
+			//return FALSE;
+			i_unreached();
 		}
 	}
 
