@@ -612,7 +612,7 @@ fts_backend_flatcurve_lookup(struct fts_backend *_backend, struct mailbox *box,
 	}
 	pool_unref(&multi_result.pool);
 
-	return 0;
+	return ret;
 }
 
 
