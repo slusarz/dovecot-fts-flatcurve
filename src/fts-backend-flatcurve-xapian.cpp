@@ -972,6 +972,9 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	std::string t;
 	struct flatcurve_fts_query_xapian *x = query->xapian;
 
+	if (arg->no_fts)
+		return TRUE;
+
 	a = array_append_space(&x->args);
 	a->value = str_new(query->pool, 64);
 
