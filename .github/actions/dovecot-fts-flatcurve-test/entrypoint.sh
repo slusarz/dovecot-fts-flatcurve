@@ -11,6 +11,7 @@ fi
 echo
 echo "Testing prefix-only configuration"
 doveadm stop
+rm -rf /dovecot/sdbox/foo
 dovecot -c /dovecot/dovecot.conf.no_substring
 export IMAPTEST_NO_SUBSTRING=1
 if ! imaptest user=foo pass=pass test=/dovecot/imaptest/fts-test ; then
