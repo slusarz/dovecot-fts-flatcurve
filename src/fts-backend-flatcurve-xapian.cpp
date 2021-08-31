@@ -1005,8 +1005,14 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		return TRUE;
 
 	default:
+		/* We should never get here - this is a search argument that
+		 * we don't understand how to handle that has leaked to this
+		 * point. For performance reasons, we will ignore this
+		 * argument and err on the side of returning too many
+		 * results (rather than falling back to slow, manual
+		 * search). */
 		array_pop_back(&x->args);
-		return FALSE;
+		return TRUE;
 	}
 
 	/* Required by FTS API to avoid this argument being looked up via
