@@ -142,3 +142,12 @@ ok search header x-extra "eautiful head"
 * search 13
 ok search header x-extra "another"
 * search 13
+
+## Searches with flag information
+
+# Flatcurve should be ignoring the flag arguments internally, as other
+# Dovecot code is handling flag filtering
+ok search undeleted body xcvbn
+* search 8 10 11
+ok search deleted body sdfghjk
+* search

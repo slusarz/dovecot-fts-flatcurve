@@ -972,6 +972,9 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	std::string t;
 	struct flatcurve_fts_query_xapian *x = query->xapian;
 
+	if (arg->no_fts)
+		return TRUE;
+
 	a = array_append_space(&x->args);
 	a->value = str_new(query->pool, 64);
 
@@ -1002,8 +1005,14 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		return TRUE;
 
 	default:
+		/* We should never get here - this is a search argument that
+		 * we don't understand how to handle that has leaked to this
+		 * point. For performance reasons, we will ignore this
+		 * argument and err on the side of returning too many
+		 * results (rather than falling back to slow, manual
+		 * search). */
 		array_pop_back(&x->args);
-		return FALSE;
+		return TRUE;
 	}
 
 	/* Required by FTS API to avoid this argument being looked up via
@@ -1112,8 +1121,14 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query)
 
 	for (; args != NULL ; args = args->next) {
 		if (!fts_flatcurve_build_query_arg(query, args)) {
-			fts_flatcurve_xapian_build_query_deinit(query);
-			return FALSE;
+			/* At the moment, build_query_arg() will never
+			 * return FALSE - we will ignore unknown arguments.
+			 * Keep the return value though, in case we want to
+			 * change this in the future (at which point we
+			 * need to uncomment the following two lines. */
+			//fts_flatcurve_xapian_build_query_deinit(query);
+			//return FALSE;
+			i_unreached();
 		}
 	}
 
