@@ -32,6 +32,16 @@ ok search header bcc ""
 * search 1 2 3 4
 
 # substring address searches
+!ifenv IMAPTEST_NO_SUBSTRING
+ok search from ser-fro
+* search
+ok search to ser-t
+* search
+ok search cc ser-c
+* search
+ok search bcc ser-bc
+* search
+!else
 ok search from ser-fro
 * search 1 2 3 4 5 6 7
 ok search to ser-t
@@ -40,8 +50,19 @@ ok search cc ser-c
 * search 1 2 3 4 5
 ok search bcc ser-bc
 * search 1 2 3 4
+!endif
 
 # substring realname searches
+!ifenv IMAPTEST_NO_SUBSTRING
+ok search from ealfro
+* search
+ok search to ealt
+* search
+ok search cc ealc
+* search
+ok search bcc ealbc
+* search
+!else
 ok search from ealfro
 * search 2 4 6 7
 ok search to ealt
@@ -50,6 +71,7 @@ ok search cc ealc
 * search 2 4
 ok search bcc ealbc
 * search 2 4
+!endif
 
 # multiple addresses
 ok search from user-from1
@@ -90,6 +112,21 @@ ok search body qwertyuiop
 * search 11
 
 # search substrings
+!ifenv IMAPTEST_NO_SUBSTRING
+ok search text sdfghjk
+* search
+ok search text xcvbn
+* search
+ok search text wertyuio
+* search
+
+ok search body sdfghjk
+* search
+ok search body xcvbn
+* search
+ok search body wertyuio
+* search
+!else
 ok search text sdfghjk
 * search 8 9
 ok search text xcvbn
@@ -103,6 +140,7 @@ ok search body xcvbn
 * search 8 10 11
 ok search body wertyuio
 * search 11
+!endif
 
 
 ## Header search tests
@@ -122,8 +160,13 @@ ok search subject "hello beautiful"
 * search 12
 ok search subject "hello beautiful world"
 * search 12
+!ifenv IMAPTEST_NO_SUBSTRING
+ok search subject "eautiful worl"
+* search
+!else
 ok search subject "eautiful worl"
 * search 12
+!endif
 
 # header
 ok search header subject ""
@@ -138,8 +181,13 @@ ok search header x-extra hello
 * search 13
 ok search header x-extra "hello beautiful"
 * search 13
+!ifenv IMAPTEST_NO_SUBSTRING
+ok search header x-extra "eautiful head"
+* search
+!else
 ok search header x-extra "eautiful head"
 * search 13
+!endif
 ok search header x-extra "another"
 * search 13
 
@@ -147,7 +195,7 @@ ok search header x-extra "another"
 
 # Flatcurve should be ignoring the flag arguments internally, as other
 # Dovecot code is handling flag filtering
-ok search undeleted body xcvbn
+ok search undeleted text zxcvbnm
 * search 8 10 11
-ok search deleted body sdfghjk
+ok search deleted text zxcvbnm
 * search
