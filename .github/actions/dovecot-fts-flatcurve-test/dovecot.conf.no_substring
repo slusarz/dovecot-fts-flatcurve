@@ -3,3 +3,6 @@
 plugin {
   fts_flatcurve = substring_search=no
 }
+
+mail_debug = yes
+log_path = /var/log/dovecot.log
