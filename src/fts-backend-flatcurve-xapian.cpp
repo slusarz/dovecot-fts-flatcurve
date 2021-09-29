@@ -743,6 +743,8 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 		xapian->db_read = NULL;
 	}
 
+	xapian->last_uid = 0;
+
 	p_clear(xapian->pool);
 }
 
