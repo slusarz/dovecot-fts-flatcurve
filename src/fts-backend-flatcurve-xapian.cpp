@@ -1214,8 +1214,9 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query)
 			Xapian::QueryParser::FLAG_WILDCARD
 		));
 	} catch (Xapian::QueryParserError &e) {
-		e_error(query->backend->event, "Parsing query failed: %s",
-			e.get_msg().c_str());
+		e_error(query->backend->event,
+			"Parsing query failed: %s (query: %s)",
+			e.get_msg().c_str(), str.c_str());
 		ret = FALSE;
 	}
 
