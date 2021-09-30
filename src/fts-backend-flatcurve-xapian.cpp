@@ -124,6 +124,7 @@ struct fts_flatcurve_xapian_query_iter {
 	Xapian::MSetIterator i;
 	unsigned int offset, size;
 	struct fts_flatcurve_xapian_query_result *result;
+	bool reopen:1;
 };
 
 static bool
@@ -1211,10 +1212,14 @@ fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iter *ite
 		if (iter->enquire == NULL)
 			return NULL;
 
-		/* Always reopen the database when doing queries; this will
+		/* Always reopen the database before beginning query; this will
 		 * capture any messages that are being indexed by a background
 		 * process. reopen() is "free" if the DB hasn't changed. */
-		(void)iter->db->reopen();
+		if (!iter->reopen) {
+			(void)iter->db->reopen();
+			iter->reopen = TRUE;
+		}
+
 		try {
 			m = iter->enquire->get_mset(iter->offset,
 						    FLATCURVE_MSET_RANGE);
