@@ -79,7 +79,7 @@ struct flatcurve_xapian {
 
 	/* Current document. */
 	Xapian::Document *doc;
-	uint32_t doc_uid, last_uid;
+	uint32_t doc_uid;
 	unsigned int doc_updates;
 	bool doc_created:1;
 
@@ -504,9 +504,6 @@ fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 	Xapian::Database *db = (xdb->dbw == NULL) ? xdb->db : xdb->dbw;
 	std::string ver;
 
-	backend->xapian->last_uid = I_MAX(backend->xapian->last_uid,
-					  db->get_lastdocid());
-
 	ver = db->get_metadata(FLATCURVE_XAPIAN_DB_VERSION_KEY);
 	if (ver.empty()) {
 		/* New DB: store the DB version in the db object and write it
@@ -614,8 +611,6 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 			  "mailbox=%s uid=%u; %s", str_c(backend->boxname),
 			  xapian->doc_uid, e.get_msg().c_str());
 	}
-
-	xapian->last_uid = xapian->doc_uid;
 
 	if (xapian->doc_created)
 		delete(xapian->doc);
@@ -743,16 +738,16 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 		xapian->db_read = NULL;
 	}
 
-	xapian->last_uid = 0;
-
 	p_clear(xapian->pool);
 }
 
 void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 				       uint32_t *last_uid_r)
 {
-	(void)fts_flatcurve_xapian_read_db(backend);
-	*last_uid_r = backend->xapian->last_uid;
+	Xapian::Database *db;
+
+	*last_uid_r = ((db = fts_flatcurve_xapian_read_db(backend)) == NULL)
+		? 0 : db->get_lastdocid();
 }
 
 int fts_flatcurve_xapian_uid_exists(struct flatcurve_fts_backend *backend,
