@@ -747,8 +747,15 @@ void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 {
 	Xapian::Database *db;
 
-	*last_uid_r = ((db = fts_flatcurve_xapian_read_db(backend)) == NULL)
-		? 0 : db->get_document(db->get_lastdocid()).get_docid();
+	if ((db = fts_flatcurve_xapian_read_db(backend)) != NULL) {
+		try {
+			*last_uid_r = db->get_document(db->get_lastdocid())
+					  .get_docid();
+			return;
+		} catch (Xapian::DocNotFoundError &e) {}
+	}
+
+	*last_uid_r = 0;
 }
 
 int fts_flatcurve_xapian_uid_exists(struct flatcurve_fts_backend *backend,
