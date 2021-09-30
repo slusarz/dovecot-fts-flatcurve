@@ -27,7 +27,7 @@ static struct fts_backend *fts_backend_flatcurve_alloc(void)
 
 	pool = pool_alloconly_create(FTS_FLATCURVE_LABEL " pool", 4096);
 
-	backend = p_new(pool, struct flatcurve_fts_backend, 1);
+	backend = i_new(struct flatcurve_fts_backend, 1);
 	backend->backend = fts_backend_flatcurve;
 	backend->pool = pool;
 
@@ -95,6 +95,8 @@ static void fts_backend_flatcurve_deinit(struct fts_backend *_backend)
 
 	event_unref(&backend->event);
 	pool_unref(&backend->pool);
+
+	i_free(backend);
 }
 
 static void
