@@ -9,7 +9,7 @@ RUN curl https://repo.dovecot.org/DOVECOT-REPO-GPG | gpg --import && \
         gpg --export ED409DA1 > /etc/apt/trusted.gpg.d/dovecot.gpg && \
         echo "deb https://repo.dovecot.org/ce-2.3-latest/debian/buster buster main" >> /etc/apt/sources.list.d/dovecot.list
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y \
+RUN apt-get update && apt-get install -y \
 	git \
 	automake \
 	libtool \
