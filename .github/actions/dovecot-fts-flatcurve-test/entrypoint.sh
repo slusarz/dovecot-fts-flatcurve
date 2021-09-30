@@ -5,6 +5,7 @@ echo "Testing RFC Compliant (substring) configuration"
 dovecot
 if ! imaptest user=foo pass=pass test=/dovecot/imaptest/fts-test ; then
 	echo "ERROR: Failed test!"
+	cat /var/log/dovecot.log
 	exit 1
 fi
 
