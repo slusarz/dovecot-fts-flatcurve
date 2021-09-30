@@ -31,14 +31,12 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
 # come with necessary ICU libraries built-in
 RUN mkdir /dovecot
 RUN git clone --depth 1 https://github.com/dovecot/core.git /dovecot/core
-WORKDIR /dovecot/core
-RUN ./autogen.sh && \
+RUN cd /dovecot/core && ./autogen.sh && \
 	PANDOC=false ./configure --with-stemmer --with-textcat --with-icu && \
 	make install
 
 RUN git clone --depth 1 https://github.com/slusarz/dovecot-fts-flatcurve.git /dovecot/fts-flatcurve
-WORKDIR /dovecot/fts-flatcurve
-RUN ./autogen.sh && ./configure && make install
+RUN cd /dovecot/fts-flatcurve && ./autogen.sh && ./configure && make install
 
 # Users dovecot and dovenull are created by dovecot-imaptest package
 RUN useradd vmail && \
