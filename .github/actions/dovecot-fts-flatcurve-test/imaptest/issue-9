@@ -1,0 +1,8 @@
+messages: 2
+
+ok search text body
+* search 1 2
+ok store 2 +flags (\deleted)
+ok expunge
+ok search text body
+* search 1

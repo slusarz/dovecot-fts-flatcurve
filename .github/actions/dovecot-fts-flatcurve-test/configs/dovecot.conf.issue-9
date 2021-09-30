@@ -1,0 +1,7 @@
+!include /dovecot/configs/dovecot.conf
+
+plugin {
+  fts_autoindex = no
+  fts_enforced = no
+  fts_languages = de en
+}
