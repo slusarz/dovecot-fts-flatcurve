@@ -191,6 +191,29 @@ ok search header x-extra "eautiful head"
 ok search header x-extra "another"
 * search 13
 
+# complex header searches
+ok search header from user-from@domain.org header cc user-cc@domain.org
+* search 1 2 3 4
+ok search or header from user-from@domain.org header cc user-cc@domain.org
+* search 1 2 3 4 5 6 7
+ok search header from user-from@domain.org not header cc user-cc@domain.org
+* search 6 7
+ok search not header from user-from@domain.org not header cc user-cc@domain.org
+* search 8 9 10 11 12 13
+ok search or not header from user-from@domain.org header cc user-cc@domain.org
+* search 1 2 3 4 5 8 9 10 11 12 13
+ok search header to groupuser2 header to groupuser3 header from user-from
+* search 6
+ok search or (not header cc user-cc@domain.org header from user-from) (header x-extra "beautiful")
+* search 6 7 13
+!ifenv IMAPTEST_NO_SUBSTRING
+ok search or (not header cc user-cc@domain.org header from user-from) (header x-extra "eautiful head")
+* search 6 7
+!else
+ok search or (not header cc user-cc@domain.org header from user-from) (header x-extra "eautiful head")
+* search 6 7 13
+!endif
+
 ## Searches with flag information
 
 # Flatcurve should be ignoring the flag arguments internally, as other
