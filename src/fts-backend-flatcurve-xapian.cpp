@@ -85,6 +85,9 @@ struct flatcurve_xapian {
 
 	/* List of mailboxes to optimize at shutdown. */
 	HASH_TABLE(char *, char *) optimize;
+
+	/* Cached object to help with last_uid search. */
+	Xapian::Enquire *enquire_last_uid;
 };
 
 struct flatcurve_fts_query_arg {
@@ -733,6 +736,9 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 					FLATCURVE_XAPIAN_DB_CLOSE_NO_REOPEN));
 	hash_table_clear(backend->xapian->dbs, TRUE);
 
+	if (xapian->enquire_last_uid != NULL)
+		delete(xapian->enquire_last_uid);
+
 	if (xapian->db_read != NULL) {
 		xapian->db_read->close();
 		delete(xapian->db_read);
@@ -742,6 +748,31 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 	p_clear(xapian->pool);
 }
 
+static uint32_t
+fts_flatcurve_xapian_get_last_uid_query(struct flatcurve_fts_backend *backend,
+					Xapian::Database *db)
+{
+	Xapian::MSet m;
+	struct flatcurve_xapian *xapian = backend->xapian;
+
+	if (xapian->enquire_last_uid == NULL) {
+		xapian->enquire_last_uid = new Xapian::Enquire(*db);
+		xapian->enquire_last_uid->set_docid_order(
+			Xapian::Enquire::DESCENDING);
+		xapian->enquire_last_uid->set_query(Xapian::Query::MatchAll);
+	}
+
+	try {
+		m = xapian->enquire_last_uid->get_mset(0, 1);
+	} catch (Xapian::DatabaseModifiedError &e) {
+		(void)db->reopen();
+		return fts_flatcurve_xapian_get_last_uid_query(backend, db);
+	}
+
+	return (m.empty())
+		? 0 : m.begin().get_document().get_docid();
+}
+
 void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 				       uint32_t *last_uid_r)
 {
@@ -749,11 +780,20 @@ void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 
 	if ((db = fts_flatcurve_xapian_read_db(backend)) != NULL) {
 		try {
+			/* Optimization: if last used ID still exists in
+			 * mailbox, this is a cheap call. */
 			*last_uid_r = db->get_document(db->get_lastdocid())
 					  .get_docid();
 			return;
 		} catch (Xapian::DocNotFoundError &e) {
-		} catch (Xapian::InvalidArgumentError &e) {}
+			/* Last used Xapian ID is no longer in the DB. Need
+			 * to do a manual search for the last existing ID. */
+			*last_uid_r =
+				fts_flatcurve_xapian_get_last_uid_query(backend, db);
+			return;
+		} catch (Xapian::InvalidArgumentError &e) {
+			// Document ID is 0
+		}
 	}
 
 	*last_uid_r = 0;
