@@ -1,4 +1,4 @@
-!include /usr/local/etc/dovecot/dovecot.conf
+!include /dovecot/configs/dovecot.conf
 
 plugin {
   fts_flatcurve = substring_search=no

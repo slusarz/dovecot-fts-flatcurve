@@ -43,8 +43,7 @@ RUN useradd vmail && \
     mkdir -p /dovecot/sdbox && \
     chown -R vmail:vmail /dovecot/sdbox
 
-ADD dovecot.conf /usr/local/etc/dovecot/dovecot.conf
-ADD dovecot.conf.no_substring /dovecot
+ADD configs/ /dovecot/configs
 ADD imaptest/ /dovecot/imaptest
 
 ADD entrypoint.sh /entrypoint.sh
