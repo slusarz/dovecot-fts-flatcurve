@@ -762,13 +762,7 @@ fts_flatcurve_xapian_get_last_uid_query(struct flatcurve_fts_backend *backend,
 		xapian->enquire_last_uid->set_query(Xapian::Query::MatchAll);
 	}
 
-	try {
-		m = xapian->enquire_last_uid->get_mset(0, 1);
-	} catch (Xapian::DatabaseModifiedError &e) {
-		(void)db->reopen();
-		return fts_flatcurve_xapian_get_last_uid_query(backend, db);
-	}
-
+	m = xapian->enquire_last_uid->get_mset(0, 1);
 	return (m.empty())
 		? 0 : m.begin().get_document().get_docid();
 }
@@ -779,6 +773,8 @@ void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 	Xapian::Database *db;
 
 	if ((db = fts_flatcurve_xapian_read_db(backend)) != NULL) {
+		(void)db->reopen();
+
 		try {
 			/* Optimization: if last used ID still exists in
 			 * mailbox, this is a cheap call. */
