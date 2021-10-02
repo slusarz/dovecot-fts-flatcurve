@@ -2,6 +2,7 @@
 
 TESTUSER=user
 TESTPASS=pass
+TESTBOX=imaptest
 DOVECOT_LOG=/var/log/dovecot.log
 
 ulimit -c unlimited
@@ -13,7 +14,7 @@ function restart_dovecot() {
 }
 
 function run_imaptest() {
-	if ! imaptest user=$TESTUSER pass=$TESTPASS test=$1 ; then
+	if ! imaptest user=$TESTUSER pass=$TESTPASS box=$TESTBOX test=$1 ; then
 		echo "ERROR: Failed test!"
 		cat $DOVECOT_LOG
 		exit 1
@@ -37,6 +38,10 @@ run_test "Testing prefix-only configuration" \
 	/dovecot/imaptest/fts-test
 unset IMAPTEST_NO_SUBSTRING
 
-run_test "Testing GitHub Issue #9" \
+TESTBOX=inbox
+run_test "Testing GitHub Issue #9 (1st pass)" \
+	/dovecot/configs/dovecot.conf.issue-9 \
+	/dovecot/imaptest/issue-9
+run_test "Testing GitHub Issue #9 (2nd pass; crash)" \
 	/dovecot/configs/dovecot.conf.issue-9 \
 	/dovecot/imaptest/issue-9
