@@ -45,3 +45,13 @@ run_test "Testing GitHub Issue #9 (1st pass)" \
 run_test "Testing GitHub Issue #9 (2nd pass; crash)" \
 	/dovecot/configs/dovecot.conf.issue-9 \
 	/dovecot/imaptest/issue-9
+
+TESTBOX=imaptest
+run_test "Testing GitHub Issue #10 (English)" \
+	/dovecot/configs/dovecot.conf.issue-10 \
+	/dovecot/imaptest/issue-10/issue-10
+export IMAPTEST_ISSUE_10_GERMAN=1
+run_test "Testing GitHub Issue #10 (German; fails)" \
+	/dovecot/configs/dovecot.conf.issue-10 \
+	/dovecot/imaptest/issue-10/issue-10
+unset IMAPTEST_NO_SUBSTRING

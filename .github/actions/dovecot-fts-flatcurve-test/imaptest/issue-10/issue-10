@@ -1,0 +1,21 @@
+messages: 1
+
+!ifenv IMAPTEST_ISSUE_10_GERMAN
+ok search text anhang
+!else
+ok search text body
+!endif
+* search 1
+ok append $mailbox
+!ifenv IMAPTEST_ISSUE_10_GERMAN
+ok search text anhang
+!else
+ok search text body
+!endif
+* search 1 2
+!ifenv IMAPTEST_ISSUE_10_GERMAN
+ok search text anhang
+!else
+ok search text body
+!endif
+* search 1 2
