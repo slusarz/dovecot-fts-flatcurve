@@ -1,0 +1,67 @@
+# Append mails to fill current shard almost completely
+messages: 9
+
+# Search result from current shard
+ok search text authentication
+* SEARCH 2 3 6
+
+# Append more mails to rotate the database. Search after each append to check
+# that no Xapian::DatabaseNotFoundError exception is thrown (issue #11)
+ok append
+ok search text authentication
+* SEARCH 2 3 6
+
+ok append
+ok search text authentication
+* SEARCH 2 3 6
+
+ok append
+ok search text authentication
+* SEARCH 2 3 6
+
+ok append
+ok search text authentication
+* SEARCH 2 3 6 13
+
+ok append
+ok search text authentication
+* SEARCH 2 3 6 13 14
+
+ok search text authentication
+* SEARCH 2 3 6 13 14
+
+# Append even more mails to rotate database again
+ok append
+ok append
+ok append
+ok append
+ok append
+ok append
+ok append
+ok append
+ok append
+
+# Search result from all shards, including the rotated ones (issue #11)
+ok search text authentication
+* SEARCH 2 3 6 13 14 16 20 22
+
+# Remove mail from 2nd rotated shard
+ok store 14 +flags (\deleted)
+ok expunge
+
+ok search text authentication
+* SEARCH 2 3 6 13 15 19 21
+
+# Remove mail from current shard
+ok store 21 +flags (\deleted)
+ok expunge
+
+ok search text authentication
+* SEARCH 2 3 6 13 15 19
+
+# Remove mail from 1st rotated shard
+ok store 2 +flags (\deleted)
+ok expunge
+
+ok search text authentication
+* SEARCH 2 5 12 14 18

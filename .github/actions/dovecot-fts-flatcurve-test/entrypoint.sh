@@ -55,3 +55,7 @@ run_test "Testing GitHub Issue #10 (German; fails)" \
 	/dovecot/configs/dovecot.conf.issue-10 \
 	/dovecot/imaptest/issue-10/issue-10
 unset IMAPTEST_NO_SUBSTRING
+
+run_test "Tests database sharding" \
+	/dovecot/configs/dovecot.conf.sharding \
+	/dovecot/imaptest/sharding/sharding

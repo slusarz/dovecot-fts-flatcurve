@@ -718,8 +718,7 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 
 void fts_flatcurve_xapian_refresh(struct flatcurve_fts_backend *backend)
 {
-	fts_flatcurve_xapian_close_dbs(backend,
-				       FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE);
+	fts_flatcurve_xapian_close(backend);
 }
 
 void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
