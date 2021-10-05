@@ -1,0 +1,27 @@
+messages: 1
+connections: 2
+
+1 ok search text body
+* search 1
+
+# flatcurve index has been rotated; there is no current.### index
+2 ok append
+
+1 ok noop
+1 ok search text body
+* search 1 2
+
+# There are now 2 flatcurve indexes: index.### and current.###
+2 ok append
+
+1 ok noop
+1 ok search text body
+* search 1 2 3
+
+# This causes current.### to be rotated and a new current.### created
+2 ok append
+2 ok append
+
+1 ok noop
+1 ok search text body
+* search 1 2 3 4 5
