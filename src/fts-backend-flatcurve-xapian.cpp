@@ -112,19 +112,18 @@ struct flatcurve_xapian_db_iter {
 enum flatcurve_xapian_db_close {
 	FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT = 0x01,
 	FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE  = 0x02,
-	FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE   = 0x04,
-	FLATCURVE_XAPIAN_DB_CLOSE_NO_REOPEN  = 0x08
+	FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE   = 0x04
 };
 
 /* Externally accessible struct. */
 struct fts_flatcurve_xapian_query_iter {
+	struct flatcurve_fts_backend *backend;
 	struct flatcurve_fts_query *query;
 	Xapian::Database *db;
 	Xapian::Enquire *enquire;
 	Xapian::MSetIterator i;
 	unsigned int offset, size;
 	struct fts_flatcurve_xapian_query_result *result;
-	bool reopen:1;
 };
 
 static bool
@@ -405,8 +404,19 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 	unsigned int shards = 0;
 	struct flatcurve_xapian *xapian = backend->xapian;
 
-	if (xapian->db_read != NULL)
+	if (xapian->db_read != NULL) {
+		try {
+			(void)xapian->db_read->reopen();
+		} catch (Xapian::DatabaseNotFoundError &e) {
+			/* This means that the underlying databases have
+			 * changed (i.e. DB rotation by another process).
+			 * Close all DBs and reopen. */
+			 fts_flatcurve_xapian_close(backend);
+			 return fts_flatcurve_xapian_read_db(backend);
+		}
+
 		return xapian->db_read;
+	}
 
 	/* How Xapian DBs work in fts-flatcurve: generally, on init, there
 	 * should be 2 on-disk databases: one that contains the "old"
@@ -706,14 +716,8 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 				add_str("mailbox", str_c(backend->boxname))->
 				event(), "Rotating index mailbox=%s",
 				str_c(backend->boxname));
-			reopen = FALSE;
 		}
 	}
-
-	if (reopen &&
-	    (xapian->db_read != NULL) &&
-	    ((opts & FLATCURVE_XAPIAN_DB_CLOSE_NO_REOPEN) != FLATCURVE_XAPIAN_DB_CLOSE_NO_REOPEN))
-		(void)xapian->db_read->reopen();
 }
 
 void fts_flatcurve_xapian_refresh(struct flatcurve_fts_backend *backend)
@@ -729,8 +733,7 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 	fts_flatcurve_xapian_close_dbs(backend,
 				       (enum flatcurve_xapian_db_close)
 				       (FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE |
-					FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE |
-					FLATCURVE_XAPIAN_DB_CLOSE_NO_REOPEN));
+					FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE));
 	hash_table_clear(backend->xapian->dbs, TRUE);
 
 	if (xapian->db_read != NULL) {
@@ -764,8 +767,6 @@ void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 	Xapian::Database *db;
 
 	if ((db = fts_flatcurve_xapian_read_db(backend)) != NULL) {
-		(void)db->reopen();
-
 		try {
 			/* Optimization: if last used ID still exists in
 			 * mailbox, this is a cheap call. */
@@ -1215,23 +1216,10 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query)
 struct fts_flatcurve_xapian_query_iter *
 fts_flatcurve_xapian_query_iter_init(struct flatcurve_fts_query *query)
 {
-	Xapian::Database *db;
 	struct fts_flatcurve_xapian_query_iter *iter;
 
-	bool empty_query = (query->xapian->query == NULL);
-
-	if (!empty_query &&
-	    ((db = fts_flatcurve_xapian_read_db(query->backend)) == NULL))
-		return NULL;
-
 	iter = p_new(query->pool, struct fts_flatcurve_xapian_query_iter, 1);
-	iter->db = db;
 	iter->query = query;
-	if (!empty_query) {
-		iter->enquire = new Xapian::Enquire(*db);
-		iter->enquire->set_docid_order(Xapian::Enquire::DONT_CARE);
-		iter->enquire->set_query(*query->xapian->query);
-	}
 	iter->result = p_new(query->pool,
 			     struct fts_flatcurve_xapian_query_result, 1);
 	iter->size = 0;
@@ -1245,15 +1233,15 @@ fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iter *ite
 	Xapian::MSet m;
 
 	if (iter->size == 0) {
-		if (iter->enquire == NULL)
-			return NULL;
+		if (iter->enquire == NULL) {
+			if ((iter->query->xapian->query == NULL) ||
+			    ((iter->db = fts_flatcurve_xapian_read_db(iter->query->backend)) == NULL))
+				return NULL;
 
-		/* Always reopen the database before beginning query; this will
-		 * capture any messages that are being indexed by a background
-		 * process. reopen() is "free" if the DB hasn't changed. */
-		if (!iter->reopen) {
-			(void)iter->db->reopen();
-			iter->reopen = TRUE;
+			iter->enquire = new Xapian::Enquire(*iter->db);
+			iter->enquire->set_docid_order(
+					Xapian::Enquire::DONT_CARE);
+			iter->enquire->set_query(*iter->query->xapian->query);
 		}
 
 		try {
