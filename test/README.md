@@ -19,6 +19,8 @@ echo 2 >> /writable_proc/sys/fs/suid_dumpable
 echo /tmp/core >> /writable_proc/sys/kernel/core_pattern
 ```
 
+To run gdb/get core dumps with podman, run the ``podman_cores.sh`` script.
+
 To access shell:
 ```
 docker exec -it [container_name] /bin/bash
