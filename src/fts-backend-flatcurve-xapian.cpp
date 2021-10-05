@@ -105,8 +105,9 @@ struct flatcurve_xapian_db_iter {
 	struct flatcurve_fts_backend *backend;
 	DIR *dirp;
 
-	/* This is set every time next() is run. */
+	/* These are set every time next() is run. */
 	struct flatcurve_xapian_db_path *path;
+	bool is_current;
 };
 
 enum flatcurve_xapian_db_close {
@@ -249,8 +250,10 @@ fts_flatcurve_xapian_db_iter_next(struct flatcurve_xapian_db_iter *iter)
 		if (str_begins(d->d_name, FLATCURVE_XAPIAN_DB_PREFIX)) {
 			iter->path = fts_flatcurve_xapian_create_db_path(
 				iter->backend, d->d_name);
-			if (fts_flatcurve_xapian_dir_exists(iter->path))
+			if (fts_flatcurve_xapian_dir_exists(iter->path)) {
+				iter->is_current = (strcmp(d->d_name, FLATCURVE_XAPIAN_CURRENT_DBW) == 0);
 				return TRUE;
+			}
 		}
 	}
 
@@ -395,14 +398,45 @@ fts_flatcurve_xapian_rename_db(struct flatcurve_fts_backend *backend,
 	}
 }
 
+static struct flatcurve_xapian_db *
+fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend)
+{
+	struct flatcurve_xapian_db_path *dbpath;
+	std::string error;
+	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian_db *xdb;
+
+	if (xapian->dbw_current != NULL)
+		return xapian->dbw_current;
+
+	dbpath = fts_flatcurve_xapian_create_db_path(
+			backend, FLATCURVE_XAPIAN_CURRENT_DBW);
+	xdb = fts_flatcurve_xapian_write_db_get(backend, dbpath,
+						Xapian::DB_CREATE_OR_OPEN,
+						error);
+	if (xdb == NULL) {
+		e_debug(backend->event, "Cannot open DB (RW) mailbox=%s; %s",
+			str_c(backend->boxname), error.c_str());
+		return NULL;
+	}
+
+	xdb->current_db = TRUE;
+	xapian->dbw_current = xdb;
+
+	return xdb;
+}
+
+
 static Xapian::Database *
 fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 {
+	bool current_exists = FALSE;
 	std::string error;
 	struct fts_flatcurve_user *fuser = backend->fuser;
 	struct flatcurve_xapian_db_iter *iter;
 	unsigned int shards = 0;
 	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian_db *xdb;
 
 	if (xapian->db_read != NULL) {
 		try {
@@ -443,10 +477,19 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 	while (fts_flatcurve_xapian_db_iter_next(iter)) {
 		(void)fts_flatcurve_xapian_read_db_get(backend, iter->path,
 						       error);
+		if (iter->is_current)
+			current_exists = TRUE;
 		++shards;
 	}
 
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
+
+	if (!current_exists) {
+		xdb = fts_flatcurve_xapian_write_db_current(backend);
+		(void)fts_flatcurve_xapian_read_db_get(backend, xdb->dbpath,
+						       error);
+		++shards;
+	}
 
 	e_debug(backend->event, "Opened DB (RO) mailbox=%s messages=%u "
 		"version=%u shards=%u", str_c(backend->boxname),
@@ -465,34 +508,6 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 	}
 
 	return xapian->db_read;
-}
-
-static struct flatcurve_xapian_db *
-fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend)
-{
-	struct flatcurve_xapian_db_path *dbpath;
-	std::string error;
-	struct flatcurve_xapian *xapian = backend->xapian;
-	struct flatcurve_xapian_db *xdb;
-
-	if (xapian->dbw_current != NULL)
-		return xapian->dbw_current;
-
-	dbpath = fts_flatcurve_xapian_create_db_path(
-			backend, FLATCURVE_XAPIAN_CURRENT_DBW);
-	xdb = fts_flatcurve_xapian_write_db_get(backend, dbpath,
-						Xapian::DB_CREATE_OR_OPEN,
-						error);
-	if (xdb == NULL) {
-		e_debug(backend->event, "Cannot open DB (RW) mailbox=%s; %s",
-			str_c(backend->boxname), error.c_str());
-		return NULL;
-	}
-
-	xdb->current_db = TRUE;
-	xapian->dbw_current = xdb;
-
-	return xdb;
 }
 
 static void
