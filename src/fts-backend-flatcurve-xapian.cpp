@@ -42,9 +42,10 @@ extern "C" {
 #define FLATCURVE_XAPIAN_HEADER_BOOL_QP "hdr_bool"
 #define FLATCURVE_XAPIAN_HEADER_QP      "hdr_"
 
-/* Version database, so that any schema changes can be caught.
- * 1 = Initial version */
-#define FLATCURVE_XAPIAN_DB_VERSION_KEY "dovecot." FTS_FLATCURVE_LABEL
+/* Version database, so that any schema changes can be caught. */
+#define FLATCURVE_XAPIAN_DB_KEY_PREFIX "dovecot."
+#define FLATCURVE_XAPIAN_DB_VERSION_KEY FLATCURVE_XAPIAN_DB_KEY_PREFIX \
+	FTS_FLATCURVE_LABEL
 #define FLATCURVE_XAPIAN_DB_VERSION 1
 
 #define FLATCURVE_MSET_RANGE 10
@@ -59,7 +60,7 @@ struct flatcurve_xapian_db {
 	Xapian::WritableDatabase *dbw;
 	struct flatcurve_xapian_db_path *dbpath;
 	size_t dbw_doccount;
-	unsigned int changes, version_update;
+	unsigned int changes;
 
 	bool current_db:1;
 	bool need_rotate:1;
@@ -127,7 +128,7 @@ struct fts_flatcurve_xapian_query_iter {
 	struct fts_flatcurve_xapian_query_result *result;
 };
 
-static bool
+static void
 fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 				      struct flatcurve_xapian_db *xdb);
 static void
@@ -306,9 +307,7 @@ fts_flatcurve_xapian_read_db_get(struct flatcurve_fts_backend *backend,
 		return NULL;
 	}
 
-	if (fts_flatcurve_xapian_check_db_version(backend, xdb))
-		(void)xdb->db->reopen();
-
+	fts_flatcurve_xapian_check_db_version(backend, xdb);
 	backend->xapian->db_read->add_database(*(xdb->db));
 
 	return xdb;
@@ -350,8 +349,7 @@ fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 		return NULL;
 	}
 
-	(void)fts_flatcurve_xapian_check_db_version(backend, xdb);
-
+	fts_flatcurve_xapian_check_db_version(backend, xdb);
 	xdb->dbw_doccount = xdb->dbw->get_doccount();
 
 	e_debug(backend->event, "Opened DB (RW; %s) mailbox=%s "
@@ -511,40 +509,40 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 }
 
 static void
-fts_flatcurve_xapian_update_db_version(struct flatcurve_xapian_db *xdb)
-{
-	std::ostringstream ss;
-
-	if (xdb->version_update != 0) {
-		ss << xdb->version_update;
-		xdb->dbw->set_metadata(FLATCURVE_XAPIAN_DB_VERSION_KEY,
-				       ss.str());
-		xdb->version_update = 0;
-	}
-}
-
-static bool
 fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 				      struct flatcurve_xapian_db *xdb)
 {
 	Xapian::Database *db = (xdb->dbw == NULL) ? xdb->db : xdb->dbw;
-	std::string ver;
+	std::string error, ver;
+	std::ostringstream ss;
+	int v;
 
 	ver = db->get_metadata(FLATCURVE_XAPIAN_DB_VERSION_KEY);
-	if (ver.empty()) {
-		/* New DB: store the DB version in the db object and write it
-		 * later if we have something to commit. */
-		xdb->version_update = FLATCURVE_XAPIAN_DB_VERSION;
-	} else {
-		/* At the present time, we only have one DB version. Once we
-		 * have more than one version, we will need to compare the
-		 * version information whenever we open the DB - it is
-		 * possible we will need to upgrade schema before we can
-		 * begin working with the DB. For now, no need to do any of
-		 * this. */
-	}
+	v = ver.empty() ? 0 : std::stoi(ver);
 
-	return FALSE;
+	if (v == FLATCURVE_XAPIAN_DB_VERSION)
+		return;
+
+	/* If we need to upgrade DB, and this is NOT the write DB, open the
+	* write DB, do the changes there, and reopen the read DB. */
+	if (!xdb->dbw) {
+		(void)fts_flatcurve_xapian_write_db_get(backend, xdb->dbpath,
+							Xapian::DB_OPEN, error);
+		fts_flatcurve_xapian_check_db_version(backend, xdb);
+		(void)xdb->db->reopen();
+		return;
+        }
+
+	/* 0->1: Added DB version. Always implicity update version when we
+	 * upgrade (done at end of this function). */
+	if (v == 0)
+		++v;
+
+	ss << FLATCURVE_XAPIAN_DB_VERSION;
+	xdb->dbw->set_metadata(FLATCURVE_XAPIAN_DB_VERSION_KEY, ss.str());
+
+	/* Commit the changes now. */
+	xdb->dbw->commit();
 }
 
 // Function requires read DB to have been opened
@@ -687,8 +685,6 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 	while (hash_table_iterate(iter, xapian->dbs, &key, &val)) {
 		xdb = (struct flatcurve_xapian_db *)val;
 		if (xdb->dbw != NULL) {
-			fts_flatcurve_xapian_update_db_version(xdb);
-
 			i_gettimeofday(&start);
 
 			if ((opts & FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE) == FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE) {
