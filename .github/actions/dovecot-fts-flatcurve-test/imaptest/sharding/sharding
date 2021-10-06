@@ -41,7 +41,7 @@ ok append
 ok append
 ok append
 
-# Search result from all shards, including the rotated ones (issue #11)
+# Search result across all shards, including the rotated ones (issue #11)
 ok search text authentication
 * SEARCH 2 3 6 13 14 16 20 22
 

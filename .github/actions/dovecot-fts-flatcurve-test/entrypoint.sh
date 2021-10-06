@@ -59,3 +59,6 @@ unset IMAPTEST_NO_SUBSTRING
 run_test "Tests database sharding" \
 	/dovecot/configs/dovecot.conf.sharding \
 	/dovecot/imaptest/sharding/sharding
+run_test "Tests database sharding (no Xapian::DatabaseNotFoundError with unpatched plugin)" \
+	/dovecot/configs/dovecot.conf.sharding \
+	/dovecot/imaptest/sharding/sharding-2

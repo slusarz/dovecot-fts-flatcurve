@@ -1,0 +1,64 @@
+connections: 2
+messages: 9
+
+# This test script is basically the same as the other sharding test script but
+# it uses 2 IMAP sessions for appending and searching so that an unpatched
+# plugin isn't terminated with a Xapian::DatabaseNotFoundError exception and
+# instead fails because of the 2nd problem in issue #11 (incomplete search
+# results across shards)
+
+# Search result from current shard
+2 ok search text authentication
+* SEARCH 2 3 6
+
+# Database is rotated after these appends
+1 ok append
+1 ok append
+1 ok append
+1 ok append
+1 ok append
+
+2 Ok noop
+2 ok search text authentication
+* SEARCH 2 3 6 13 14
+
+# Database is rotated again
+1 ok append
+1 ok append
+1 ok append
+1 ok append
+1 ok append
+1 ok append
+1 ok append
+1 ok append
+1 ok append
+
+# Search result across all shards, including the rotated ones (issue
+# #11). This fails with an unpatched plugin.
+2 ok noop
+2 ok search text authentication
+* SEARCH 2 3 6 13 14 16 20 22
+
+# Remove mail from 2nd rotated shard
+1 ok store 14 +flags (\deleted)
+1 ok expunge
+
+2 ok noop
+2 ok search text authentication
+* SEARCH 2 3 6 13 15 19 21
+
+# Remove mail from current shard
+1 ok store 21 +flags (\deleted)
+1 ok expunge
+
+2 ok noop
+2 ok search text authentication
+* SEARCH 2 3 6 13 15 19
+
+# Remove mail from 1st rotated shard
+1 ok store 2 +flags (\deleted)
+1 ok expunge
+
+2 ok noop
+2 ok search text authentication
+* SEARCH 2 5 12 14 18
