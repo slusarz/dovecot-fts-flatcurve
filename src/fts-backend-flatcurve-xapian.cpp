@@ -635,15 +635,34 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 }
 
 static void
+fts_flatcurve_xapian_close_dbw_commit(struct flatcurve_fts_backend *backend,
+				      struct flatcurve_xapian_db *xdb,
+				      const struct timeval *start)
+{
+	int diff;
+	struct timeval now;
+
+	i_gettimeofday(&now);
+	diff = timeval_diff_msecs(&now, start);
+
+	e_debug(backend->event, "Committed %u changes to DB (RW; %s) in "
+		"%u.%03u secs; mailbox=%s", xdb->changes, xdb->dbpath->fname,
+		diff/1000, diff%1000, str_c(backend->boxname));
+
+	xdb->changes = 0;
+	xdb->need_rotate = xdb->need_rotate ||
+			   (xdb->current_db &&
+			    (backend->fuser->set.rotate_time > 0) &&
+			    (diff > backend->fuser->set.rotate_time));
+}
+
+static void
 fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 			       enum flatcurve_xapian_db_close opts)
 {
-	int diff;
-	struct fts_flatcurve_user *fuser = backend->fuser;
 	struct hash_iterate_context *iter;
 	void *key, *val;
-	struct timeval now, start;
-	bool reopen = FALSE;
+	struct timeval start;
 	struct flatcurve_xapian *xapian = backend->xapian;
 	struct flatcurve_xapian_db *xdb, *xdb_dbw_closed = NULL;
 
@@ -664,29 +683,10 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 				xdb->dbw_doccount = 0;
 				xdb_dbw_closed = xdb;
 				xapian->dbw_current = NULL;
-				reopen = TRUE;
+				fts_flatcurve_xapian_close_dbw_commit(backend, xdb, &start);
 			} else if ((opts & FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT) == FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT) {
 				xdb->dbw->commit();
-				reopen = TRUE;
-			}
-
-			if (reopen == TRUE) {
-				i_gettimeofday(&now);
-				diff = timeval_diff_msecs(&now, &start);
-
-				e_debug(backend->event, "Committed %u changes "
-					"to DB (RW; %s) in %u.%03u secs; "
-					"mailbox=%s", xdb->changes,
-					xdb->dbpath->fname, diff/1000,
-					diff%1000, str_c(backend->boxname));
-
-				xdb->need_rotate =
-					xdb->need_rotate ||
-					(xdb->current_db &&
-					 (fuser->set.rotate_time > 0) &&
-					 (diff > fuser->set.rotate_time));
-
-				xdb->changes = 0;
+				fts_flatcurve_xapian_close_dbw_commit(backend, xdb, &start);
 			}
 		}
 		if (xdb->db != NULL) {
