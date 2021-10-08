@@ -112,9 +112,9 @@ struct flatcurve_xapian_db_iter {
 };
 
 enum flatcurve_xapian_db_close {
-	FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT = 0x01,
-	FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE  = 0x02,
-	FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE   = 0x04
+	FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT = BIT(0),
+	FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE  = BIT(1),
+	FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE   = BIT(2)
 };
 
 /* Externally accessible struct. */
@@ -687,7 +687,7 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 		if (xdb->dbw != NULL) {
 			i_gettimeofday(&start);
 
-			if ((opts & FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE) == FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE) {
+			if (HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE)) {
 				xdb->dbw->close();
 				delete(xdb->dbw);
 				xdb->dbw = NULL;
@@ -695,13 +695,13 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 				xdb_dbw_closed = xdb;
 				xapian->dbw_current = NULL;
 				fts_flatcurve_xapian_close_dbw_commit(backend, xdb, &start);
-			} else if ((opts & FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT) == FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT) {
+			} else if (HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT)) {
 				xdb->dbw->commit();
 				fts_flatcurve_xapian_close_dbw_commit(backend, xdb, &start);
 			}
 		}
 		if (xdb->db != NULL) {
-			if ((opts & FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE) == FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE) {
+			if (HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE)) {
 				delete(xdb->db);
 				xdb->db = NULL;
 			}
