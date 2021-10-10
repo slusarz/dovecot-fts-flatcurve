@@ -56,9 +56,9 @@ run_test "Testing GitHub Issue #10 (German; fails)" \
 	/dovecot/imaptest/issue-10/issue-10
 unset IMAPTEST_NO_SUBSTRING
 
-run_test "Tests database sharding" \
+run_test "Testing database sharding" \
 	/dovecot/configs/dovecot.conf.sharding \
 	/dovecot/imaptest/sharding/sharding
-run_test "Tests database sharding (no Xapian::DatabaseNotFoundError with unpatched plugin)" \
+run_test "Testing database sharding (no Xapian::DatabaseNotFoundError with unpatched plugin)" \
 	/dovecot/configs/dovecot.conf.sharding \
 	/dovecot/imaptest/sharding/sharding-2
