@@ -22,9 +22,7 @@ extern "C" {
 };
 
 #define FLATCURVE_XAPIAN_DB_PREFIX "index."
-#define FLATCURVE_XAPIAN_DB_CURRENT_WRITE_SUFFIX "current"
-#define FLATCURVE_XAPIAN_CURRENT_DBW \
-	FLATCURVE_XAPIAN_DB_PREFIX FLATCURVE_XAPIAN_DB_CURRENT_WRITE_SUFFIX
+#define FLATCURVE_XAPIAN_DB_CURRENT_PREFIX "current."
 #define FLATCURVE_XAPIAN_DB_OPTIMIZE "optimize.temp"
 
 /* Xapian "recommendations" are that you begin your local prefix identifier
@@ -244,7 +242,8 @@ fts_flatcurve_xapian_db_iter_next(struct flatcurve_xapian_db_iter *iter)
 	while ((d = readdir(iter->dirp)) != NULL) {
 		/* Ignore all files in this directory other than directories
 		 * that begin with FLATCURVE_XAPIAN_DB_PREFIX. */
-		if (str_begins(d->d_name, FLATCURVE_XAPIAN_DB_PREFIX)) {
+		if (str_begins(d->d_name, FLATCURVE_XAPIAN_DB_PREFIX) ||
+		    str_begins(d->d_name, FLATCURVE_XAPIAN_DB_CURRENT_PREFIX)) {
 			iter->path = fts_flatcurve_xapian_create_db_path(
 				iter->backend, d->d_name);
 			if ((stat(iter->path->path, &st) >= 0) &&
@@ -350,7 +349,8 @@ fts_flatcurve_xapian_db_add(struct flatcurve_xapian *xapian,
 	xdb = p_new(xapian->pool, struct flatcurve_xapian_db, 1);
 	xdb->dbpath = dbpath;
 	hash_table_insert(xapian->dbs, dbpath->fname, xdb);
-	if (strcmp(dbpath->fname, FLATCURVE_XAPIAN_CURRENT_DBW) == 0) {
+	if (str_begins(dbpath->fname, FLATCURVE_XAPIAN_DB_CURRENT_PREFIX)) {
+		/* TODO: Detect multiple current DBs. */
 		xapian->dbw_current = xdb;
 		xdb->current_db = TRUE;
 	}
@@ -363,6 +363,7 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend)
 {
 	struct flatcurve_xapian_db_path *dbpath;
 	struct flatcurve_xapian_db_iter *iter;
+	std::ostringstream s;
 	struct flatcurve_xapian *xapian = backend->xapian;
 	struct flatcurve_xapian_db *xdb;
 
@@ -379,8 +380,13 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend)
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
 	if (xapian->dbw_current == NULL) {
-		dbpath = fts_flatcurve_xapian_create_db_path(
-				backend, FLATCURVE_XAPIAN_CURRENT_DBW);
+		/* The current DB has filename of the format PREFIX.timestamp.
+		 * This ensures that we will catch any current DB renaming
+		 * done by another process (reopen() on the DB will fail,
+		 * causing the entire DB to be closed/reopened). */
+		s << FLATCURVE_XAPIAN_DB_CURRENT_PREFIX << i_microseconds();
+		dbpath = fts_flatcurve_xapian_create_db_path(backend,
+							     s.str().c_str());
 		xdb = fts_flatcurve_xapian_db_add(xapian, dbpath);
 		if (fts_flatcurve_xapian_write_db_get(backend, xdb, (enum flatcurve_xapian_wdb)(FLATCURVE_XAPIAN_WDB_CREATE | FLATCURVE_XAPIAN_WDB_NODEBUG)) == NULL)
 			return FALSE;
