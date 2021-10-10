@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+echo "Compiling plugin"
+./autogen.sh && ./configure && make install
+
 TESTUSER=user
 TESTPASS=pass
 TESTBOX=imaptest
