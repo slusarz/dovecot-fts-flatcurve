@@ -540,7 +540,7 @@ fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 	std::string ver;
 
 	ver = db->get_metadata(FLATCURVE_XAPIAN_DB_VERSION_KEY);
-	v = ver.empty() ? 0 : std::stoi(ver);
+	v = ver.empty() ? 0 : std::atoi(ver.c_str());
 
 	if (v == FLATCURVE_XAPIAN_DB_VERSION)
 		return;
