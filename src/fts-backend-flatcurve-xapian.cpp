@@ -509,6 +509,7 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 			e_debug(backend->event, "Cannot open DB (RO) "
 				"mailbox=%s; %s", str_c(backend->boxname),
 				e.get_msg().c_str());
+			hash_table_iterate_deinit(&iter);
 			return NULL;
 		}
 		fts_flatcurve_xapian_check_db_version(backend, xdb);
