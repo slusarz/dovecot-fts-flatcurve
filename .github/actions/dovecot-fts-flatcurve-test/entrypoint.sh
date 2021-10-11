@@ -59,3 +59,20 @@ unset IMAPTEST_NO_SUBSTRING
 run_test "Testing GitHub Issue #11 (DB Rotation/Deletion)" \
         /dovecot/configs/dovecot.conf.issue-11 \
         /dovecot/imaptest/issue-11
+
+TESTBOX=rotatetest
+restart_dovecot /dovecot/configs/dovecot.conf.issue-11
+doveadm mailbox delete -u $TESTUSER $TESTBOX
+doveadm mailbox create -u $TESTUSER $TESTBOX
+echo "Subject: foo" | doveadm save -u $TESTUSER -m $TESTBOX
+sleep 2
+for i in /dovecot/sdbox/user/sdbox/mailboxes/$TESTBOX/dbox-Mails/fts-flatcurve/current.*
+do
+	runuser -u vmail -- cp -r $i ${i}1
+done
+echo "Subject: foo" | doveadm save -u $TESTUSER -m $TESTBOX
+echo "Subject: foo" | doveadm save -u $TESTUSER -m $TESTBOX
+run_test "Testing DB Rotation/Deletion (multiple current DBs)" \
+	/dovecot/configs/dovecot.conf.issue-11 \
+	/dovecot/imaptest/multiple-current-db
+TESTBOX=imaptest

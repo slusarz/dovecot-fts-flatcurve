@@ -340,17 +340,54 @@ fts_flatcurve_xapian_rename_db(struct flatcurve_fts_backend *backend,
 	}
 }
 
+static void
+fts_flatcurve_xapian_optimize_mailbox(struct flatcurve_fts_backend *backend)
+{
+	struct flatcurve_xapian *xapian = backend->xapian;
+
+	if (!hash_table_is_created(xapian->optimize))
+		hash_table_create(&xapian->optimize, backend->pool, 0,
+				  str_hash, strcmp);
+	if (hash_table_lookup(xapian->optimize, str_c(backend->boxname)) == NULL)
+		hash_table_insert(xapian->optimize,
+				  p_strdup(backend->pool, str_c(backend->boxname)),
+				  p_strdup(backend->pool, str_c(backend->db_path)));
+}
+
 static flatcurve_xapian_db *
-fts_flatcurve_xapian_db_add(struct flatcurve_xapian *xapian,
+fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
 			    struct flatcurve_xapian_db_path *dbpath)
 {
+	struct flatcurve_xapian_db_path *n, *r;
 	struct flatcurve_xapian_db *xdb;
+	struct flatcurve_xapian *xapian = backend->xapian;
+
+	/* If multiple current DBs exist, rename the oldest. */
+	if ((xapian->dbw_current != NULL) &&
+	    str_begins(dbpath->fname, FLATCURVE_XAPIAN_DB_CURRENT_PREFIX)) {
+		if (strcmp(dbpath->fname, xapian->dbw_current->dbpath->fname) > 0) {
+			n = fts_flatcurve_xapian_rename_db(backend,
+							   xapian->dbw_current->dbpath);
+			r = xapian->dbw_current->dbpath;
+			xapian->dbw_current->current_db = FALSE;
+		} else {
+			n = fts_flatcurve_xapian_rename_db(backend, dbpath);
+			r = dbpath;
+		}
+
+		/* If rename fails, use the folders as-is but mark the most
+		 * recent folder as "current". Flag this mailbox to be
+		 * optimized on shutdown. */
+		if (n == NULL)
+			fts_flatcurve_xapian_optimize_mailbox(backend);
+		else
+			r = n;
+	}
 
 	xdb = p_new(xapian->pool, struct flatcurve_xapian_db, 1);
 	xdb->dbpath = dbpath;
 	hash_table_insert(xapian->dbs, dbpath->fname, xdb);
 	if (str_begins(dbpath->fname, FLATCURVE_XAPIAN_DB_CURRENT_PREFIX)) {
-		/* TODO: Detect multiple current DBs. */
 		xapian->dbw_current = xdb;
 		xdb->current_db = TRUE;
 	}
@@ -375,7 +412,7 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend)
 	if ((iter = fts_flatcurve_xapian_db_iter_init(backend)) == NULL)
 		return FALSE;
 	while (fts_flatcurve_xapian_db_iter_next(iter)) {
-		(void)fts_flatcurve_xapian_db_add(xapian, iter->path);
+		(void)fts_flatcurve_xapian_db_add(backend, iter->path);
 	}
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
@@ -387,7 +424,7 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend)
 		s << FLATCURVE_XAPIAN_DB_CURRENT_PREFIX << i_microseconds();
 		dbpath = fts_flatcurve_xapian_create_db_path(backend,
 							     s.str().c_str());
-		xdb = fts_flatcurve_xapian_db_add(xapian, dbpath);
+		xdb = fts_flatcurve_xapian_db_add(backend, dbpath);
 		if (fts_flatcurve_xapian_write_db_get(backend, xdb, (enum flatcurve_xapian_wdb)(FLATCURVE_XAPIAN_WDB_CREATE | FLATCURVE_XAPIAN_WDB_NODEBUG)) == NULL)
 			return FALSE;
 		fts_flatcurve_xapian_close_db(xdb);
@@ -486,15 +523,8 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 		shards);
 
 	if ((backend->fuser->set.optimize_limit > 0) &&
-	    (shards >= backend->fuser->set.optimize_limit)) {
-		if (!hash_table_is_created(xapian->optimize))
-			hash_table_create(&xapian->optimize, backend->pool,
-					  0, str_hash, strcmp);
-		if (hash_table_lookup(xapian->optimize, str_c(backend->boxname)) == NULL)
-			hash_table_insert(xapian->optimize,
-					  p_strdup(backend->pool, str_c(backend->boxname)),
-					  p_strdup(backend->pool, str_c(backend->db_path)));
-	}
+	    (shards >= backend->fuser->set.optimize_limit))
+		fts_flatcurve_xapian_optimize_mailbox(backend);
 
 	return xapian->db_read;
 }

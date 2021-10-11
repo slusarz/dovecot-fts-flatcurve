@@ -1,0 +1,7 @@
+state: nonauth
+messages: 0
+
+ok login user pass
+ok select rotatetest
+ok search subject foo
+* search 1 2 3
