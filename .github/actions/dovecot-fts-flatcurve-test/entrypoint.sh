@@ -62,7 +62,7 @@ run_test "Testing GitHub Issue #11 (DB Rotation/Deletion)" \
 
 TESTBOX=rotatetest
 restart_dovecot /dovecot/configs/dovecot.conf.issue-11
-doveadm mailbox delete -u $TESTUSER $TESTBOX
+doveadm mailbox delete -u $TESTUSER $TESTBOX &> /dev/null
 doveadm mailbox create -u $TESTUSER $TESTBOX
 echo "Subject: foo" | doveadm save -u $TESTUSER -m $TESTBOX
 sleep 2
@@ -72,6 +72,7 @@ do
 done
 echo "Subject: foo" | doveadm save -u $TESTUSER -m $TESTBOX
 echo "Subject: foo" | doveadm save -u $TESTUSER -m $TESTBOX
+sleep 5
 run_test "Testing DB Rotation/Deletion (multiple current DBs)" \
 	/dovecot/configs/dovecot.conf.issue-11 \
 	/dovecot/imaptest/multiple-current-db
