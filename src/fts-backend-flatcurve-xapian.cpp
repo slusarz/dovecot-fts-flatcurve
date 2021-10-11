@@ -112,9 +112,8 @@ enum flatcurve_xapian_db_opts {
 	FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT = BIT(0)
 };
 enum flatcurve_xapian_wdb {
-	FLATCURVE_XAPIAN_WDB_NONE = BIT(0),
-	FLATCURVE_XAPIAN_WDB_CREATE = BIT(1),
-	FLATCURVE_XAPIAN_WDB_NODEBUG = BIT(2)
+	FLATCURVE_XAPIAN_WDB_CREATE = BIT(0),
+	FLATCURVE_XAPIAN_WDB_NODEBUG = BIT(1)
 };
 enum flatcurve_xapian_db_close {
 	FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT = BIT(0),
@@ -272,14 +271,14 @@ fts_flatcurve_xapian_db_iter_deinit(struct flatcurve_xapian_db_iter **_iter)
 static struct flatcurve_xapian_db *
 fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 				  struct flatcurve_xapian_db *xdb,
-				  enum flatcurve_xapian_wdb opts)
+				  enum flatcurve_xapian_wdb wopts)
 {
 	int db_flags;
 
 	if (xdb->dbw != NULL)
 		return xdb;
 
-	db_flags = (HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_WDB_CREATE)
+	db_flags = (HAS_ALL_BITS(wopts, FLATCURVE_XAPIAN_WDB_CREATE)
 		? Xapian::DB_CREATE_OR_OPEN : Xapian::DB_OPEN) |
 #ifdef XAPIAN_HAS_RETRY_LOCK
 		Xapian::DB_RETRY_LOCK |
@@ -298,7 +297,7 @@ fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 	if (xdb->current_db)
 		xdb->dbw_doccount = xdb->dbw->get_doccount();
 
-	if (HAS_NO_BITS(opts, FLATCURVE_XAPIAN_WDB_NODEBUG))
+	if (HAS_NO_BITS(wopts, FLATCURVE_XAPIAN_WDB_NODEBUG))
 		e_debug(backend->event, "Opened DB (RW; %s) mailbox=%s "
 			"messages=%u version=%u", xdb->dbpath->fname,
 			str_c(backend->boxname), xdb->dbw->get_doccount(),
@@ -405,6 +404,8 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 	struct flatcurve_xapian_db_path *dbpath;
 	struct flatcurve_xapian_db_iter *iter;
 	std::ostringstream s;
+	enum flatcurve_xapian_wdb wopts = (enum flatcurve_xapian_wdb)
+		(FLATCURVE_XAPIAN_WDB_CREATE | FLATCURVE_XAPIAN_WDB_NODEBUG);
 	struct flatcurve_xapian *xapian = backend->xapian;
 	struct flatcurve_xapian_db *xdb;
 
@@ -430,7 +431,7 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 		dbpath = fts_flatcurve_xapian_create_db_path(backend,
 							     s.str().c_str());
 		xdb = fts_flatcurve_xapian_db_add(backend, dbpath);
-		if (fts_flatcurve_xapian_write_db_get(backend, xdb, (enum flatcurve_xapian_wdb)(FLATCURVE_XAPIAN_WDB_CREATE | FLATCURVE_XAPIAN_WDB_NODEBUG)) == NULL)
+		if (fts_flatcurve_xapian_write_db_get(backend, xdb, wopts) == NULL)
 			return FALSE;
 		fts_flatcurve_xapian_close_db(xdb);
 	}
@@ -442,6 +443,7 @@ static struct flatcurve_xapian_db *
 fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend,
 				      enum flatcurve_xapian_db_opts opts)
 {
+	enum flatcurve_xapian_wdb wopts = FLATCURVE_XAPIAN_WDB_CREATE;
 	struct flatcurve_xapian *xapian = backend->xapian;
 	struct flatcurve_xapian_db *xdb;
 
@@ -452,7 +454,7 @@ fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend,
 		return NULL;
 
 	xdb = fts_flatcurve_xapian_write_db_get(backend, xapian->dbw_current,
-						FLATCURVE_XAPIAN_WDB_CREATE);
+						wopts);
 	if (xdb == NULL)
 		return NULL;
 
@@ -545,6 +547,7 @@ fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 	std::ostringstream ss;
 	int v;
 	std::string ver;
+	enum flatcurve_xapian_wdb wopts;
 
 	ver = db->get_metadata(FLATCURVE_XAPIAN_DB_VERSION_KEY);
 	v = ver.empty() ? 0 : std::atoi(ver.c_str());
@@ -555,7 +558,7 @@ fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 	/* If we need to upgrade DB, and this is NOT the write DB, open the
 	* write DB, do the changes there, and reopen the read DB. */
 	if (!xdb->dbw) {
-		(void)fts_flatcurve_xapian_write_db_get(backend, xdb, FLATCURVE_XAPIAN_WDB_NONE);
+		(void)fts_flatcurve_xapian_write_db_get(backend, xdb, wopts);
 		fts_flatcurve_xapian_close_db(xdb);
 		(void)xdb->db->reopen();
 		return;
@@ -603,6 +606,7 @@ fts_flatcurve_xapian_write_db_by_uid(struct flatcurve_fts_backend *backend,
 				     uint32_t uid)
 {
 	enum flatcurve_xapian_db_opts opts;
+	enum flatcurve_xapian_wdb wopts;
 	struct flatcurve_xapian_db *xdb;
 
 	(void)fts_flatcurve_xapian_read_db(backend, opts);
@@ -610,7 +614,7 @@ fts_flatcurve_xapian_write_db_by_uid(struct flatcurve_fts_backend *backend,
 
 	return (xdb == NULL)
 		? NULL
-		: fts_flatcurve_xapian_write_db_get(backend, xdb, FLATCURVE_XAPIAN_WDB_NONE);
+		: fts_flatcurve_xapian_write_db_get(backend, xdb, wopts);
 }
 
 static void
