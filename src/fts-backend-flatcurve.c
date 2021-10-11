@@ -328,7 +328,7 @@ fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
 				 struct mailbox *box,
 				 pool_t pool)
 {
-	bool dbexist = TRUE;
+	bool dbexist = FALSE;
 	struct event_passthrough *e;
 	struct fts_flatcurve_xapian_query_iter *iter;
 	struct seq_range_iter iter2;
@@ -360,12 +360,13 @@ fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
 		switch (fts_flatcurve_xapian_uid_exists(backend, mail->uid)) {
 		case -1:
 			/* DB doesn't exist. No sense in continuing. */
-			dbexist = FALSE;
 			goto end;
 		case 0:
 			seq_range_array_add(&missing, mail->uid);
+			dbexist = TRUE;
 			break;
 		default:
+			dbexist = TRUE;
 			break;
 		}
 	}
