@@ -108,6 +108,9 @@ struct flatcurve_xapian_db_iter {
 	struct flatcurve_xapian_db_path *path;
 };
 
+enum flatcurve_xapian_db_opts {
+	FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT = BIT(0)
+};
 enum flatcurve_xapian_wdb {
 	FLATCURVE_XAPIAN_WDB_NONE = BIT(0),
 	FLATCURVE_XAPIAN_WDB_CREATE = BIT(1),
@@ -396,7 +399,8 @@ fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
 }
 
 static bool
-fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend)
+fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
+				 enum flatcurve_xapian_db_opts opts)
 {
 	struct flatcurve_xapian_db_path *dbpath;
 	struct flatcurve_xapian_db_iter *iter;
@@ -416,7 +420,8 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend)
 	}
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
-	if (xapian->dbw_current == NULL) {
+	if ((xapian->dbw_current == NULL) &&
+	    HAS_NO_BITS(opts, FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT)) {
 		/* The current DB has filename of the format PREFIX.timestamp.
 		 * This ensures that we will catch any current DB renaming
 		 * done by another process (reopen() on the DB will fail,
@@ -434,7 +439,8 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend)
 }
 
 static struct flatcurve_xapian_db *
-fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend)
+fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend,
+				      enum flatcurve_xapian_db_opts opts)
 {
 	struct flatcurve_xapian *xapian = backend->xapian;
 	struct flatcurve_xapian_db *xdb;
@@ -442,7 +448,7 @@ fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend)
 	if ((xapian->dbw_current != NULL) && (xapian->dbw_current->dbw != NULL))
 		return xapian->dbw_current;
 
-	if (!fts_flatcurve_xapian_db_populate(backend))
+	if (!fts_flatcurve_xapian_db_populate(backend, opts))
 		return NULL;
 
 	xdb = fts_flatcurve_xapian_write_db_get(backend, xapian->dbw_current,
@@ -456,7 +462,8 @@ fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend)
 }
 
 static Xapian::Database *
-fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
+fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
+			     enum flatcurve_xapian_db_opts opts)
 {
 	struct hash_iterate_context *iter;
 	void *key, *val;
@@ -472,7 +479,7 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 			 * changed (i.e. DB rotation by another process).
 			 * Close all DBs and reopen. */
 			 fts_flatcurve_xapian_close(backend);
-			 return fts_flatcurve_xapian_read_db(backend);
+			 return fts_flatcurve_xapian_read_db(backend, opts);
 		}
 
 		return xapian->db_read;
@@ -495,7 +502,7 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend)
 	 * to be handled separately, as a WritableDatabase object only
 	 * supports a single on-disk DB at a time. */
 
-	if (!fts_flatcurve_xapian_db_populate(backend))
+	if (!fts_flatcurve_xapian_db_populate(backend, opts))
 		return NULL;
 
 	xapian->db_read = new Xapian::Database();
@@ -595,9 +602,10 @@ static struct flatcurve_xapian_db *
 fts_flatcurve_xapian_write_db_by_uid(struct flatcurve_fts_backend *backend,
 				     uint32_t uid)
 {
+	enum flatcurve_xapian_db_opts opts;
 	struct flatcurve_xapian_db *xdb;
 
-	(void)fts_flatcurve_xapian_read_db(backend);
+	(void)fts_flatcurve_xapian_read_db(backend, opts);
 	xdb = fts_flatcurve_xapian_uid_exists_db(backend, uid);
 
 	return (xdb == NULL)
@@ -635,10 +643,11 @@ static void
 fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 {
 	struct flatcurve_xapian *xapian = backend->xapian;
+	enum flatcurve_xapian_db_opts opts;
 	struct flatcurve_xapian_db *xdb;
 
 	if ((xapian->doc == NULL) ||
-	    ((xdb = fts_flatcurve_xapian_write_db_current(backend)) == NULL))
+	    ((xdb = fts_flatcurve_xapian_write_db_current(backend, opts)) == NULL))
 		return;
 
 	try {
@@ -804,8 +813,9 @@ void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 				       uint32_t *last_uid_r)
 {
 	Xapian::Database *db;
+	enum flatcurve_xapian_db_opts opts;
 
-	if ((db = fts_flatcurve_xapian_read_db(backend)) != NULL) {
+	if ((db = fts_flatcurve_xapian_read_db(backend, opts)) != NULL) {
 		try {
 			/* Optimization: if last used ID still exists in
 			 * mailbox, this is a cheap call. */
@@ -829,7 +839,10 @@ void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 int fts_flatcurve_xapian_uid_exists(struct flatcurve_fts_backend *backend,
 				    uint32_t uid)
 {
-	return (fts_flatcurve_xapian_read_db(backend) == NULL)
+	enum flatcurve_xapian_db_opts opts =
+		FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT;
+
+	return (fts_flatcurve_xapian_read_db(backend, opts) == NULL)
 		? -1
 		: (int)(fts_flatcurve_xapian_uid_exists_db(backend, uid) != NULL);
 }
@@ -863,6 +876,7 @@ fts_flatcurve_xapian_init_msg(struct flatcurve_fts_backend_update_context *ctx)
 {
 	Xapian::Document doc;
 	struct flatcurve_xapian *xapian = ctx->backend->xapian;
+	enum flatcurve_xapian_db_opts opts;
 	struct flatcurve_xapian_db *xdb;
 
 	if (ctx->uid == xapian->doc_uid) {
@@ -871,7 +885,7 @@ fts_flatcurve_xapian_init_msg(struct flatcurve_fts_backend_update_context *ctx)
 
 	fts_flatcurve_xapian_clear_document(ctx->backend);
 
-	if ((xdb = fts_flatcurve_xapian_write_db_current(ctx->backend)) == NULL)
+	if ((xdb = fts_flatcurve_xapian_write_db_current(ctx->backend, opts)) == NULL)
 		return FALSE;
 
 	try {
@@ -979,8 +993,10 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 	struct flatcurve_xapian_db_iter *iter;
 	struct flatcurve_xapian_db_path *n, *npath, *o;
 	struct timeval now, start;
+	enum flatcurve_xapian_db_opts opts =
+		FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT;
 
-	if ((db = fts_flatcurve_xapian_read_db(backend)) == NULL)
+	if ((db = fts_flatcurve_xapian_read_db(backend, opts)) == NULL)
 		return;
 
 	e_debug(event_create_passthrough(backend->event)->
@@ -1045,6 +1061,7 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	struct flatcurve_fts_query_arg *a;
 	Xapian::Database *db;
 	string_t *hdr, *hdr2;
+	enum flatcurve_xapian_db_opts opts;
 	std::string t;
 	struct flatcurve_fts_query_xapian *x = query->xapian;
 
@@ -1102,7 +1119,7 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	t.erase(std::remove(t.begin(), t.end(), '"'), t.end());
 
 	if (t.find_first_of(' ') != std::string::npos) {
-		if (((db = fts_flatcurve_xapian_read_db(query->backend)) == NULL) ||
+		if (((db = fts_flatcurve_xapian_read_db(query->backend, opts)) == NULL) ||
 		    !db->has_positions()) {
 			/* Phrase searching not available. */
 			array_pop_back(&x->args);
@@ -1273,11 +1290,12 @@ struct fts_flatcurve_xapian_query_result *
 fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iter *iter)
 {
 	Xapian::MSet m;
+	enum flatcurve_xapian_db_opts opts;
 
 	if (iter->size == 0) {
 		if (iter->enquire == NULL) {
 			if ((iter->query->xapian->query == NULL) ||
-			    ((iter->db = fts_flatcurve_xapian_read_db(iter->query->backend)) == NULL))
+			    ((iter->db = fts_flatcurve_xapian_read_db(iter->query->backend, opts)) == NULL))
 				return NULL;
 
 			iter->enquire = new Xapian::Enquire(*iter->db);
