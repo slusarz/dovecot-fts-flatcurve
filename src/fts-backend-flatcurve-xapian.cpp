@@ -139,7 +139,7 @@ static void
 fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 				      struct flatcurve_xapian_db *xdb);
 static void
-fts_flatcurve_xapian_close_db(struct flatcurve_xapian_db *xdb);
+fts_flatcurve_xapian_close_dbw(struct flatcurve_xapian_db *xdb);
 static void
 fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 			       enum flatcurve_xapian_db_close opts);
@@ -444,7 +444,7 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 		xdb = fts_flatcurve_xapian_db_add(backend, dbpath);
 		if (fts_flatcurve_xapian_write_db_get(backend, xdb, wopts) == NULL)
 			return FALSE;
-		fts_flatcurve_xapian_close_db(xdb);
+		fts_flatcurve_xapian_close_dbw(xdb);
 	}
 
 	return TRUE;
@@ -573,7 +573,7 @@ fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 	* write DB, do the changes there, and reopen the read DB. */
 	if (!xdb->dbw) {
 		(void)fts_flatcurve_xapian_write_db_get(backend, xdb, wopts);
-		fts_flatcurve_xapian_close_db(xdb);
+		fts_flatcurve_xapian_close_dbw(xdb);
 		(void)xdb->db->reopen();
 		return;
         }
@@ -717,7 +717,7 @@ fts_flatcurve_xapian_close_dbw_commit(struct flatcurve_fts_backend *backend,
 }
 
 static void
-fts_flatcurve_xapian_close_db(struct flatcurve_xapian_db *xdb)
+fts_flatcurve_xapian_close_dbw(struct flatcurve_xapian_db *xdb)
 {
 	xdb->dbw->close();
 	delete(xdb->dbw);
@@ -745,7 +745,7 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 			i_gettimeofday(&start);
 
 			if (HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE)) {
-				fts_flatcurve_xapian_close_db(xdb);
+				fts_flatcurve_xapian_close_dbw(xdb);
 				if (xdb->current_db)
 					xdb_dbw_closed = xdb;
 				fts_flatcurve_xapian_close_dbw_commit(backend, xdb, &start);
