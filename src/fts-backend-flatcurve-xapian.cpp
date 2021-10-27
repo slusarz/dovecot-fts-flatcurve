@@ -367,7 +367,7 @@ fts_flatcurve_xapian_optimize_mailbox(struct flatcurve_fts_backend *backend)
 				  p_strdup(backend->pool, str_c(backend->db_path)));
 }
 
-static flatcurve_xapian_db *
+static struct flatcurve_xapian_db *
 fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
 			    struct flatcurve_xapian_db_path *dbpath)
 {
