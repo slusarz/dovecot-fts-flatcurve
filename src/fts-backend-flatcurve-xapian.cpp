@@ -110,9 +110,6 @@ struct flatcurve_xapian_db_iter {
 	struct flatcurve_xapian_db_path *path;
 };
 
-enum flatcurve_xapian_db_iter_opts {
-	FLATCURVE_XAPIAN_DB_ITER_NOCREATE = BIT(0)
-};
 enum flatcurve_xapian_db_opts {
 	FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT = BIT(0),
 	FLATCURVE_XAPIAN_DB_IGNORE_EMPTY = BIT(1)
@@ -211,14 +208,14 @@ fts_flatcurve_xapian_delete_db_dir(struct flatcurve_fts_backend *backend,
 
 static struct flatcurve_xapian_db_iter *
 fts_flatcurve_xapian_db_iter_init(struct flatcurve_fts_backend *backend,
-				  enum flatcurve_xapian_db_iter_opts dopts)
+				  enum flatcurve_xapian_db_opts opts)
 {
 	DIR *dirp;
 	struct flatcurve_xapian_db_iter *iter;
 
 	dirp = opendir(str_c(backend->db_path));
 	if ((dirp == NULL) &&
-	    HAS_NO_BITS(dopts, FLATCURVE_XAPIAN_DB_ITER_NOCREATE)) {
+	    HAS_NO_BITS(opts, FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT)) {
 		if (errno == ENOENT) {
 			if (mailbox_list_mkdir_root(backend->backend.ns->list, str_c(backend->db_path), MAILBOX_LIST_PATH_TYPE_INDEX) < 0) {
 				e_debug(backend->event, "Cannot create DB "
@@ -227,8 +224,7 @@ fts_flatcurve_xapian_db_iter_init(struct flatcurve_fts_backend *backend,
 					str_c(backend->db_path));
 				return NULL;
 			}
-			return fts_flatcurve_xapian_db_iter_init(backend,
-								 dopts);
+			return fts_flatcurve_xapian_db_iter_init(backend, opts);
 		}
 
 		e_debug(backend->event, "Cannot open DB (RO) mailbox=%s; "
@@ -417,10 +413,6 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 				 enum flatcurve_xapian_db_opts opts)
 {
 	struct flatcurve_xapian_db_path *dbpath;
-	enum flatcurve_xapian_db_iter_opts dopts =
-		(enum flatcurve_xapian_db_iter_opts)
-		(HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT)
-		 ? FLATCURVE_XAPIAN_DB_ITER_NOCREATE : 0);
 	struct flatcurve_xapian_db_iter *iter;
 	std::ostringstream s;
 	enum flatcurve_xapian_wdb wopts = (enum flatcurve_xapian_wdb)
@@ -433,7 +425,7 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 		return TRUE;
 	}
 
-	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, dopts)) == NULL)
+	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, opts)) == NULL)
 		return FALSE;
 	while (fts_flatcurve_xapian_db_iter_next(iter)) {
 		(void)fts_flatcurve_xapian_db_add(backend, iter->path);
@@ -1018,7 +1010,6 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 #ifdef XAPIAN_HAS_COMPACT
 	Xapian::Database *db;
 	int diff;
-	enum flatcurve_xapian_db_iter_opts dopts;
 	struct flatcurve_xapian_db_iter *iter;
 	struct flatcurve_xapian_db_path *n, *npath, *o;
 	struct timeval now, start;
@@ -1063,7 +1054,7 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 
 	/* Delete old indexes except for new DB. */
 	fts_flatcurve_xapian_close(backend);
-	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, dopts)) == NULL) {
+	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, opts)) == NULL) {
 		e_error(backend->event, "Activating new index (%s -> %s) "
 			"failed mailbox=%s; %m", o->fname, npath->fname,
 			str_c(backend->boxname));
