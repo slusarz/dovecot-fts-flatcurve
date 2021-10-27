@@ -159,20 +159,20 @@ void fts_flatcurve_xapian_deinit(struct flatcurve_fts_backend *backend)
 {
 	struct hash_iterate_context *iter;
 	void *key, *val;
-	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian *x = backend->xapian;
 
-	if (hash_table_is_created(xapian->optimize)) {
-		iter = hash_table_iterate_init(xapian->optimize);
-	        while (hash_table_iterate(iter, xapian->optimize, &key, &val)) {
+	if (hash_table_is_created(x->optimize)) {
+		iter = hash_table_iterate_init(x->optimize);
+	        while (hash_table_iterate(iter, x->optimize, &key, &val)) {
 			str_append(backend->boxname, (const char *)key);
 			str_append(backend->db_path, (const char *)val);
 			fts_flatcurve_xapian_optimize_box(backend);
 		}
 		hash_table_iterate_deinit(&iter);
-		hash_table_destroy(&xapian->optimize);
+		hash_table_destroy(&x->optimize);
 	}
-	hash_table_destroy(&xapian->dbs);
-	pool_unref(&xapian->pool);
+	hash_table_destroy(&x->dbs);
+	pool_unref(&x->pool);
 }
 
 static struct flatcurve_xapian_db_path *
@@ -354,13 +354,13 @@ fts_flatcurve_xapian_rename_db(struct flatcurve_fts_backend *backend,
 static void
 fts_flatcurve_xapian_optimize_mailbox(struct flatcurve_fts_backend *backend)
 {
-	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian *x = backend->xapian;
 
-	if (!hash_table_is_created(xapian->optimize))
-		hash_table_create(&xapian->optimize, backend->pool, 0,
-				  str_hash, strcmp);
-	if (hash_table_lookup(xapian->optimize, str_c(backend->boxname)) == NULL)
-		hash_table_insert(xapian->optimize,
+	if (!hash_table_is_created(x->optimize))
+		hash_table_create(&x->optimize, backend->pool, 0, str_hash,
+				  strcmp);
+	if (hash_table_lookup(x->optimize, str_c(backend->boxname)) == NULL)
+		hash_table_insert(x->optimize,
 				  p_strdup(backend->pool, str_c(backend->boxname)),
 				  p_strdup(backend->pool, str_c(backend->db_path)));
 }
@@ -371,16 +371,16 @@ fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
 {
 	struct flatcurve_xapian_db_path *n, *r;
 	struct flatcurve_xapian_db *xdb;
-	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian *x = backend->xapian;
 
 	/* If multiple current DBs exist, rename the oldest. */
-	if ((xapian->dbw_current != NULL) &&
+	if ((x->dbw_current != NULL) &&
 	    str_begins(dbpath->fname, FLATCURVE_XAPIAN_DB_CURRENT_PREFIX)) {
-		if (strcmp(dbpath->fname, xapian->dbw_current->dbpath->fname) > 0) {
+		if (strcmp(dbpath->fname, x->dbw_current->dbpath->fname) > 0) {
 			n = fts_flatcurve_xapian_rename_db(backend,
-							   xapian->dbw_current->dbpath);
-			r = xapian->dbw_current->dbpath;
-			xapian->dbw_current->current_db = FALSE;
+							   x->dbw_current->dbpath);
+			r = x->dbw_current->dbpath;
+			x->dbw_current->current_db = FALSE;
 		} else {
 			n = fts_flatcurve_xapian_rename_db(backend, dbpath);
 			r = dbpath;
@@ -395,11 +395,11 @@ fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
 			r = n;
 	}
 
-	xdb = p_new(xapian->pool, struct flatcurve_xapian_db, 1);
+	xdb = p_new(x->pool, struct flatcurve_xapian_db, 1);
 	xdb->dbpath = dbpath;
-	hash_table_insert(xapian->dbs, dbpath->fname, xdb);
+	hash_table_insert(x->dbs, dbpath->fname, xdb);
 	if (str_begins(dbpath->fname, FLATCURVE_XAPIAN_DB_CURRENT_PREFIX)) {
-		xapian->dbw_current = xdb;
+		x->dbw_current = xdb;
 		xdb->current_db = TRUE;
 	}
 
@@ -419,11 +419,11 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 	std::ostringstream s;
 	enum flatcurve_xapian_wdb wopts = (enum flatcurve_xapian_wdb)
 		(FLATCURVE_XAPIAN_WDB_CREATE | FLATCURVE_XAPIAN_WDB_NODEBUG);
-	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian *x = backend->xapian;
 	struct flatcurve_xapian_db *xdb;
 
 	/* Build the DB list, if we haven't already done so. */
-	if (hash_table_count(xapian->dbs) != 0) {
+	if (hash_table_count(x->dbs) != 0) {
 		return TRUE;
 	}
 
@@ -434,7 +434,7 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 	}
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
-	if ((xapian->dbw_current == NULL) &&
+	if ((x->dbw_current == NULL) &&
 	    HAS_NO_BITS(opts, FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT)) {
 		/* The current DB has filename of the format PREFIX.timestamp.
 		 * This ensures that we will catch any current DB renaming
@@ -457,23 +457,22 @@ fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend,
 				      enum flatcurve_xapian_db_opts opts)
 {
 	enum flatcurve_xapian_wdb wopts = FLATCURVE_XAPIAN_WDB_CREATE;
-	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian *x = backend->xapian;
 	struct flatcurve_xapian_db *xdb;
 
-	if ((xapian->dbw_current != NULL) && (xapian->dbw_current->dbw != NULL))
-		return xapian->dbw_current;
+	if ((x->dbw_current != NULL) && (x->dbw_current->dbw != NULL))
+		return x->dbw_current;
 
 	if (!fts_flatcurve_xapian_db_populate(backend, opts))
 		return NULL;
 
-	xdb = fts_flatcurve_xapian_write_db_get(backend, xapian->dbw_current,
-						wopts);
+	xdb = fts_flatcurve_xapian_write_db_get(backend, x->dbw_current, wopts);
 	if (xdb == NULL)
 		return NULL;
 
 	fts_flatcurve_xapian_check_db_version(backend, xdb);
 
-	return xapian->dbw_current;
+	return x->dbw_current;
 }
 
 static Xapian::Database *
@@ -483,12 +482,12 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 	struct hash_iterate_context *iter;
 	void *key, *val;
 	unsigned int shards = 0;
-	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian *x = backend->xapian;
 	struct flatcurve_xapian_db *xdb;
 
-	if (xapian->db_read != NULL) {
+	if (x->db_read != NULL) {
 		try {
-			(void)xapian->db_read->reopen();
+			(void)x->db_read->reopen();
 		} catch (Xapian::DatabaseNotFoundError &e) {
 			/* This means that the underlying databases have
 			 * changed (i.e. DB rotation by another process).
@@ -497,7 +496,7 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 			 return fts_flatcurve_xapian_read_db(backend, opts);
 		}
 
-		return xapian->db_read;
+		return x->db_read;
 	}
 
 	/* How Xapian DBs work in fts-flatcurve: generally, on init, there
@@ -521,13 +520,13 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 		return NULL;
 
 	if (HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_IGNORE_EMPTY) &&
-	    (hash_table_count(xapian->dbs) == 0))
+	    (hash_table_count(x->dbs) == 0))
 		return NULL;
 
-	xapian->db_read = new Xapian::Database();
+	x->db_read = new Xapian::Database();
 
-        iter = hash_table_iterate_init(xapian->dbs);
-        while (hash_table_iterate(iter, xapian->dbs, &key, &val)) {
+        iter = hash_table_iterate_init(x->dbs);
+        while (hash_table_iterate(iter, x->dbs, &key, &val)) {
 		xdb = (struct flatcurve_xapian_db *)val;
 		try {
 			xdb->db = new Xapian::Database(xdb->dbpath->path);
@@ -539,21 +538,21 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 			return NULL;
 		}
 		fts_flatcurve_xapian_check_db_version(backend, xdb);
-		xapian->db_read->add_database(*(xdb->db));
+		x->db_read->add_database(*(xdb->db));
 		++shards;
 	}
 	hash_table_iterate_deinit(&iter);
 
 	e_debug(backend->event, "Opened DB (RO) mailbox=%s messages=%u "
 		"version=%u shards=%u", str_c(backend->boxname),
-		xapian->db_read->get_doccount(), FLATCURVE_XAPIAN_DB_VERSION,
+		x->db_read->get_doccount(), FLATCURVE_XAPIAN_DB_VERSION,
 		shards);
 
 	if ((backend->fuser->set.optimize_limit > 0) &&
 	    (shards >= backend->fuser->set.optimize_limit))
 		fts_flatcurve_xapian_optimize_mailbox(backend);
 
-	return xapian->db_read;
+	return x->db_read;
 }
 
 static void
@@ -639,9 +638,9 @@ fts_flatcurve_xapian_check_commit_limit(struct flatcurve_fts_backend *backend,
 					struct flatcurve_xapian_db *xdb)
 {
 	struct fts_flatcurve_user *fuser = backend->fuser;
-	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian *x = backend->xapian;
 
-	++xapian->doc_updates;
+	++x->doc_updates;
 	++xdb->changes;
 
 	if (xdb->current_db &&
@@ -650,7 +649,7 @@ fts_flatcurve_xapian_check_commit_limit(struct flatcurve_fts_backend *backend,
 		xdb->need_rotate = TRUE;
 		fts_flatcurve_xapian_close(backend);
 	} else if ((fuser->set.commit_limit > 0) &&
-		   (xapian->doc_updates >= fuser->set.commit_limit)) {
+		   (x->doc_updates >= fuser->set.commit_limit)) {
 		fts_flatcurve_xapian_close_dbs(
 			backend, FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT);
 		e_debug(backend->event, "Committing DB as update "
@@ -663,33 +662,33 @@ fts_flatcurve_xapian_check_commit_limit(struct flatcurve_fts_backend *backend,
 static void
 fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 {
-	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian *x = backend->xapian;
 	enum flatcurve_xapian_db_opts opts;
 	struct flatcurve_xapian_db *xdb;
 
-	if ((xapian->doc == NULL) ||
+	if ((x->doc == NULL) ||
 	    ((xdb = fts_flatcurve_xapian_write_db_current(backend, opts)) == NULL))
 		return;
 
 	try {
-		xdb->dbw->replace_document(xapian->doc_uid, *xapian->doc);
+		xdb->dbw->replace_document(x->doc_uid, *x->doc);
 	} catch (std::bad_alloc &b) {
 		i_fatal(FTS_FLATCURVE_DEBUG_PREFIX "Out of memory "
 			"when indexing mail (%s); mailbox=%s UID=%d "
 			"(Hint: increase indexing process vsz_limit or define "
 			"smaller commit_limit value in plugin config)",
-			b.what(), str_c(backend->boxname), xapian->doc_uid);
+			b.what(), str_c(backend->boxname), x->doc_uid);
 	} catch (Xapian::Error &e) {
 		e_warning(backend->event, "Could not write message data: "
 			  "mailbox=%s uid=%u; %s", str_c(backend->boxname),
-			  xapian->doc_uid, e.get_msg().c_str());
+			  x->doc_uid, e.get_msg().c_str());
 	}
 
-	if (xapian->doc_created)
-		delete(xapian->doc);
-	xapian->doc = NULL;
-	xapian->doc_created = FALSE;
-	xapian->doc_uid = 0;
+	if (x->doc_created)
+		delete(x->doc);
+	x->doc = NULL;
+	x->doc_created = FALSE;
+	x->doc_uid = 0;
 
 	if (xdb->current_db)
 		++xdb->dbw_doccount;
@@ -736,13 +735,13 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 	struct hash_iterate_context *iter;
 	void *key, *val;
 	struct timeval start;
-	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian *x = backend->xapian;
 	struct flatcurve_xapian_db *xdb, *xdb_dbw_closed = NULL;
 
 	fts_flatcurve_xapian_clear_document(backend);
 
-	iter = hash_table_iterate_init(xapian->dbs);
-	while (hash_table_iterate(iter, xapian->dbs, &key, &val)) {
+	iter = hash_table_iterate_init(x->dbs);
+	while (hash_table_iterate(iter, x->dbs, &key, &val)) {
 		xdb = (struct flatcurve_xapian_db *)val;
 		if (xdb->dbw != NULL) {
 			i_gettimeofday(&start);
@@ -765,7 +764,7 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 	}
 	hash_table_iterate_deinit(&iter);
 
-	xapian->doc_updates = 0;
+	x->doc_updates = 0;
 
 	if ((xdb_dbw_closed != NULL) && xdb_dbw_closed->need_rotate) {
 		xdb_dbw_closed->need_rotate = FALSE;
@@ -795,23 +794,23 @@ void fts_flatcurve_xapian_refresh(struct flatcurve_fts_backend *backend)
 
 void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 {
-	struct flatcurve_xapian *xapian = backend->xapian;
+	struct flatcurve_xapian *x = backend->xapian;
 
 	fts_flatcurve_xapian_close_dbs(backend,
 				       (enum flatcurve_xapian_db_close)
 				       (FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE |
 					FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE));
-	hash_table_clear(backend->xapian->dbs, TRUE);
+	hash_table_clear(x->dbs, TRUE);
 
-	xapian->dbw_current = NULL;
+	x->dbw_current = NULL;
 
-	if (xapian->db_read != NULL) {
-		xapian->db_read->close();
-		delete(xapian->db_read);
-		xapian->db_read = NULL;
+	if (x->db_read != NULL) {
+		x->db_read->close();
+		delete(x->db_read);
+		x->db_read = NULL;
 	}
 
-	p_clear(xapian->pool);
+	p_clear(x->pool);
 }
 
 static uint32_t
@@ -898,11 +897,11 @@ bool
 fts_flatcurve_xapian_init_msg(struct flatcurve_fts_backend_update_context *ctx)
 {
 	Xapian::Document doc;
-	struct flatcurve_xapian *xapian = ctx->backend->xapian;
+	struct flatcurve_xapian *x = ctx->backend->xapian;
 	enum flatcurve_xapian_db_opts opts;
 	struct flatcurve_xapian_db *xdb;
 
-	if (ctx->uid == xapian->doc_uid) {
+	if (ctx->uid == x->doc_uid) {
 		return TRUE;
 	}
 
@@ -913,16 +912,16 @@ fts_flatcurve_xapian_init_msg(struct flatcurve_fts_backend_update_context *ctx)
 
 	try {
 		doc = xdb->dbw->get_document(ctx->uid);
-		xapian->doc = &doc;
+		x->doc = &doc;
 	} catch (Xapian::DocNotFoundError &e) {
-		xapian->doc = new Xapian::Document();
-		xapian->doc_created = TRUE;
+		x->doc = new Xapian::Document();
+		x->doc_created = TRUE;
 	} catch (Xapian::Error &e) {
 		ctx->ctx.failed = TRUE;
 		return FALSE;
 	}
 
-	xapian->doc_uid = ctx->uid;
+	x->doc_uid = ctx->uid;
 
 	return TRUE;
 }
@@ -935,14 +934,14 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 	std::string h;
 	int32_t i = 0;
 	icu::UnicodeString s, temp;
-	struct flatcurve_xapian *xapian = ctx->backend->xapian;
+	struct flatcurve_xapian *x = ctx->backend->xapian;
 
 	if (!fts_flatcurve_xapian_init_msg(ctx))
 		return;
 
 	if (str_len(ctx->hdr_name)) {
 		h = str_lcase(str_c_modifiable(ctx->hdr_name));
-		xapian->doc->add_boolean_term(
+		x->doc->add_boolean_term(
 			FLATCURVE_XAPIAN_BOOLEAN_FIELD_PREFIX + h);
 	}
 
@@ -963,10 +962,10 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 		temp.toUTF8String(t);
 
 		if (ctx->indexed_hdr) {
-			xapian->doc->add_term(
+			x->doc->add_term(
 				FLATCURVE_XAPIAN_HEADER_PREFIX + h + t);
 		}
-		xapian->doc->add_term(FLATCURVE_XAPIAN_ALL_HEADERS_PREFIX + t);
+		x->doc->add_term(FLATCURVE_XAPIAN_ALL_HEADERS_PREFIX + t);
 	} while (fuser->set.substring_search &&
 		 ((unsigned)temp.length() >= fuser->set.min_term_size));
 }
@@ -978,7 +977,7 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 	struct fts_flatcurve_user *fuser = ctx->backend->fuser;
 	int32_t i = 0;
 	icu::UnicodeString s, temp;
-	struct flatcurve_xapian *xapian = ctx->backend->xapian;
+	struct flatcurve_xapian *x = ctx->backend->xapian;
 
 	if (!fts_flatcurve_xapian_init_msg(ctx))
 		return;
@@ -997,7 +996,7 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 		temp = s.tempSubString(i++);
 		temp.toUTF8String(t);
 
-		xapian->doc->add_term(t);
+		x->doc->add_term(t);
 	} while (fuser->set.substring_search &&
 		 ((unsigned)temp.length() >= fuser->set.min_term_size));
 }
