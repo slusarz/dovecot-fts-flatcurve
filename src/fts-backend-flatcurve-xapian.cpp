@@ -13,6 +13,7 @@ extern "C" {
 #include "str.h"
 #include "mail-storage-private.h"
 #include "mail-search.h"
+#include "sleep.h"
 #include "time-util.h"
 #include "unlink-directory.h"
 #include "fts-backend-flatcurve.h"
@@ -46,6 +47,7 @@ extern "C" {
 	FTS_FLATCURVE_LABEL
 #define FLATCURVE_XAPIAN_DB_VERSION 1
 
+#define FLATCURVE_DBW_LOCK_RETRY_SECS 1
 #define FLATCURVE_MSET_RANGE 10
 
 struct flatcurve_xapian_db_path {
@@ -289,18 +291,22 @@ fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 
 	db_flags = (HAS_ALL_BITS(wopts, FLATCURVE_XAPIAN_WDB_CREATE)
 		? Xapian::DB_CREATE_OR_OPEN : Xapian::DB_OPEN) |
-#ifdef XAPIAN_HAS_RETRY_LOCK
-		Xapian::DB_RETRY_LOCK |
-#endif
 		Xapian::DB_NO_SYNC;
 
-	try {
-		xdb->dbw = new Xapian::WritableDatabase(xdb->dbpath->path,
-							db_flags);
-	} catch (Xapian::Error &e) {
-		e_debug(backend->event, "Cannot open DB (RW) mailbox=%s; %s",
-			str_c(backend->boxname), e.get_msg().c_str());
-		return NULL;
+	while (xdb->dbw == NULL) {
+		try {
+			xdb->dbw = new Xapian::WritableDatabase(
+						xdb->dbpath->path, db_flags);
+		} catch (Xapian::DatabaseLockError &e) {
+			e_debug(backend->event, "Waiting for DB (RW) lock "
+				"mailbox=%s", str_c(backend->boxname));
+			i_sleep_intr_secs(FLATCURVE_DBW_LOCK_RETRY_SECS);
+		} catch (Xapian::Error &e) {
+			e_debug(backend->event, "Cannot open DB (RW) "
+				"mailbox=%s; %s", str_c(backend->boxname),
+				e.get_msg().c_str());
+			return NULL;
+		}
 	}
 
 	if (xdb->current_db)
