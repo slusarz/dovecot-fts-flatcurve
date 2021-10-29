@@ -225,19 +225,28 @@ fts_flatcurve_xapian_create_db_path(struct flatcurve_fts_backend *backend,
 
 // dbpath = NULL: delete the entire flatcurve index
 static void
-fts_flatcurve_xapian_delete_db_dir(struct flatcurve_fts_backend *backend,
-				   struct flatcurve_xapian_db_path *dbpath)
+fts_flatcurve_xapian_delete(struct flatcurve_fts_backend *backend,
+			    struct flatcurve_xapian_db_path *dbpath)
 {
-	const char *dir, *error;
+	const char *error, *path;
+	struct stat st;
 	enum unlink_directory_flags unlink_flags = UNLINK_DIRECTORY_FLAG_RMDIR;
 
-	dir = (dbpath == NULL)
+	path = (dbpath == NULL)
 		? str_c(backend->db_path)
 		: dbpath->path;
 
-	if (unlink_directory(dir, unlink_flags, &error) < 0)
-		e_debug(backend->event, "Deleting index failed mailbox=%s; %s",
-			str_c(backend->boxname), error);
+	if (stat(path, &st) < 0)
+		return;
+
+	if (S_ISDIR(st.st_mode)) {
+		if (unlink_directory(path, unlink_flags, &error) < 0)
+			e_debug(backend->event, "Deleting fts data failed "
+				"mailbox=%s dir=%s; %s",
+				str_c(backend->boxname), path, error);
+	} else if (unlink(path) < 0)
+		e_debug(backend->event, "Deleting fts data failed mailbox=%s "
+			"file=%s", str_c(backend->boxname), path);
 }
 
 static struct flatcurve_xapian_db_iter *
@@ -1033,7 +1042,7 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 void fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend)
 {
 	fts_flatcurve_xapian_close(backend);
-	fts_flatcurve_xapian_delete_db_dir(backend, NULL);
+	fts_flatcurve_xapian_delete(backend, NULL);
 }
 
 void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
@@ -1059,7 +1068,7 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 
 	o = fts_flatcurve_xapian_create_db_path(
 		backend, FLATCURVE_XAPIAN_DB_OPTIMIZE);
-	fts_flatcurve_xapian_delete_db_dir(backend, o);
+	fts_flatcurve_xapian_delete(backend, o);
 	i_gettimeofday(&start);
 
 	try {
@@ -1079,20 +1088,20 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 	/* Delete old indexes. */
 	fts_flatcurve_xapian_close(backend);
 	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, opts)) == NULL) {
-		fts_flatcurve_xapian_delete_db_dir(backend, n);
+		fts_flatcurve_xapian_delete(backend, n);
 		e_error(backend->event, "Optimize failed mailbox=%s",
 			str_c(backend->boxname));
 		return;
 	}
 	while (fts_flatcurve_xapian_db_iter_next(iter)) {
 		if (iter->type != FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE)
-			fts_flatcurve_xapian_delete_db_dir(backend, iter->path);
+			fts_flatcurve_xapian_delete(backend, iter->path);
 	}
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
 	/* Rename optimize index to an active index. */
 	if (fts_flatcurve_xapian_rename_db(backend, n) == NULL) {
-		fts_flatcurve_xapian_delete_db_dir(backend, n);
+		fts_flatcurve_xapian_delete(backend, n);
 		e_error(backend->event, "Optimize failed mailbox=%s",
 			str_c(backend->boxname));
 		return;
