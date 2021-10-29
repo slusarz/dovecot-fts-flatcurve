@@ -22,9 +22,35 @@ extern "C" {
 #include <stdio.h>
 };
 
+/* How Xapian DBs work in fts-flatcurve: all data lives in under one
+ * per-mailbox directory (FTS_FLATCURVE_LABEL) stored at the root of the
+ * mailbox indexes directory.
+ *
+ * There are two different permanent data types within that library:
+ * - "index.###": The actual Xapian DB shards. Combined, this comprises the
+ *   FTS data for the mailbox. These shards may be directly written to, but
+ *   only when deleting messages - new messages are never stored directly to
+ *   this DB. Additionally, these DBs are never directly queried; a dummy
+ *   object is used to indirectly query them. These indexes may occasionally
+ *   be combined into a single index via optimization processes.
+ * - "current.###": Xapian DB that contains the index shard where new messages
+ *   are stored. Once this index reaches certain (configurable) limits, a new
+ *   shard is created and rotated in as the new current index by creating
+ *   a shard with a suffix higher than the previous current DB.
+ *
+ * Within a session, we create a dummy Xapian::Database object, scan the data
+ * directory for all indexes, and add each of them to the dummy object. For
+ * queries, we then just need to query the dummy object and Xapian handles
+ * everything for us. Writes need to be handled separately, as a
+ * WritableDatabase object only supports a single on-disk DB at a time; a DB
+ * shard, whether "index" or "current", must be directly written to in order
+ * to modify. */
 #define FLATCURVE_XAPIAN_DB_PREFIX "index."
 #define FLATCURVE_XAPIAN_DB_CURRENT_PREFIX "current."
-#define FLATCURVE_XAPIAN_DB_OPTIMIZE "optimize.temp"
+
+/* These are temporary data types that may appear in the fts directory. They
+ * are not intended to perservere between sessions. */
+#define FLATCURVE_XAPIAN_DB_OPTIMIZE "optimize"
 
 /* Xapian "recommendations" are that you begin your local prefix identifier
  * with "X" for data that doesn't match with a data type listed as a Xapian
@@ -496,23 +522,6 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 
 		return x->db_read;
 	}
-
-	/* How Xapian DBs work in fts-flatcurve: generally, on init, there
-	 * should be 2 on-disk databases: one that contains the "old"
-	 * read-only optimized indexes and the "current" database that is
-	 * written to. Once the "current" database reaches a certain size,
-	 * it is swapped out for a new database. If, at the end of a
-	 * session, there are multiple "old" databases, we will combine and
-	 * optimize them into a single database. However, we cannot guarantee
-	 * that this optimization will occur successfully, so we always assume
-	 * there may be multiple read-only indexes at all times.
-	 *
-	 * Within a session, we create a dummy Xapian::Database object,
-	 * scan the data directory for all databases, and add each of them
-	 * to the dummy object. For queries, we then just need to query the
-	 * dummy object and Xapian handles everything for us. Writes need
-	 * to be handled separately, as a WritableDatabase object only
-	 * supports a single on-disk DB at a time. */
 
 	if (!fts_flatcurve_xapian_db_populate(backend, opts))
 		return NULL;
