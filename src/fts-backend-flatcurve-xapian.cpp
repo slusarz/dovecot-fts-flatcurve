@@ -81,14 +81,21 @@ struct flatcurve_xapian_db_path {
 	const char *path;
 };
 
+enum flatcurve_xapian_db_type {
+	FLATCURVE_XAPIAN_DB_TYPE_INDEX,
+	FLATCURVE_XAPIAN_DB_TYPE_CURRENT,
+	FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE,
+	FLATCURVE_XAPIAN_DB_TYPE_UNKNOWN
+};
+
 struct flatcurve_xapian_db {
 	Xapian::Database *db;
 	Xapian::WritableDatabase *dbw;
 	struct flatcurve_xapian_db_path *dbpath;
 	size_t dbw_doccount;
 	unsigned int changes;
+	enum flatcurve_xapian_db_type type;
 
-	bool current_db:1;
 	bool need_rotate:1;
 };
 HASH_TABLE_DEFINE_TYPE(xapian_db, char *, struct flatcurve_xapian_db *);
@@ -126,13 +133,6 @@ struct flatcurve_fts_query_xapian {
 	Xapian::Query *query;
 	Xapian::QueryParser *qp;
 	ARRAY_TYPE(flatcurve_fts_query_arg) args;
-};
-
-enum flatcurve_xapian_db_type {
-	FLATCURVE_XAPIAN_DB_TYPE_INDEX,
-	FLATCURVE_XAPIAN_DB_TYPE_CURRENT,
-	FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE,
-	FLATCURVE_XAPIAN_DB_TYPE_UNKNOWN
 };
 
 struct flatcurve_xapian_db_iter {
@@ -346,7 +346,7 @@ fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 		}
 	}
 
-	if (xdb->current_db)
+	if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
 		xdb->dbw_doccount = xdb->dbw->get_doccount();
 
 	if (HAS_NO_BITS(wopts, FLATCURVE_XAPIAN_WDB_NODEBUG))
@@ -410,20 +410,25 @@ fts_flatcurve_xapian_optimize_mailbox(struct flatcurve_fts_backend *backend)
 
 static struct flatcurve_xapian_db *
 fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
-			    struct flatcurve_xapian_db_path *dbpath)
+			    struct flatcurve_xapian_db_path *dbpath,
+			    enum flatcurve_xapian_db_type type)
 {
 	struct flatcurve_xapian_db_path *n, *r;
 	struct flatcurve_xapian_db *xdb;
 	struct flatcurve_xapian *x = backend->xapian;
 
+	if ((type != FLATCURVE_XAPIAN_DB_TYPE_INDEX) &&
+	    (type != FLATCURVE_XAPIAN_DB_TYPE_CURRENT))
+		return NULL;
+
 	/* If multiple current DBs exist, rename the oldest. */
-	if ((x->dbw_current != NULL) &&
-	    str_begins(dbpath->fname, FLATCURVE_XAPIAN_DB_CURRENT_PREFIX)) {
+	if ((type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
+	    (x->dbw_current != NULL)) {
 		if (strcmp(dbpath->fname, x->dbw_current->dbpath->fname) > 0) {
 			n = fts_flatcurve_xapian_rename_db(backend,
 							   x->dbw_current->dbpath);
 			r = x->dbw_current->dbpath;
-			x->dbw_current->current_db = FALSE;
+			x->dbw_current->type = FLATCURVE_XAPIAN_DB_TYPE_INDEX;
 		} else {
 			n = fts_flatcurve_xapian_rename_db(backend, dbpath);
 			r = dbpath;
@@ -440,11 +445,10 @@ fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
 
 	xdb = p_new(x->pool, struct flatcurve_xapian_db, 1);
 	xdb->dbpath = dbpath;
+	xdb->type = type;
 	hash_table_insert(x->dbs, dbpath->fname, xdb);
-	if (str_begins(dbpath->fname, FLATCURVE_XAPIAN_DB_CURRENT_PREFIX)) {
+	if (type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
 		x->dbw_current = xdb;
-		xdb->current_db = TRUE;
-	}
 
 	return xdb;
 }
@@ -471,7 +475,8 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 	while (fts_flatcurve_xapian_db_iter_next(iter)) {
 		if ((iter->type == FLATCURVE_XAPIAN_DB_TYPE_INDEX) ||
 		    (iter->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT))
-			(void)fts_flatcurve_xapian_db_add(backend, iter->path);
+			(void)fts_flatcurve_xapian_db_add(backend, iter->path,
+							  iter->type);
 	}
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
@@ -484,7 +489,7 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 		s << FLATCURVE_XAPIAN_DB_CURRENT_PREFIX << i_microseconds();
 		dbpath = fts_flatcurve_xapian_create_db_path(backend,
 							     s.str().c_str());
-		xdb = fts_flatcurve_xapian_db_add(backend, dbpath);
+		xdb = fts_flatcurve_xapian_db_add(backend, dbpath, FLATCURVE_XAPIAN_DB_TYPE_CURRENT);
 		if (fts_flatcurve_xapian_write_db_get(backend, xdb, wopts) == NULL)
 			return FALSE;
 		fts_flatcurve_xapian_close_dbw(xdb);
@@ -667,7 +672,7 @@ fts_flatcurve_xapian_check_commit_limit(struct flatcurve_fts_backend *backend,
 	++x->doc_updates;
 	++xdb->changes;
 
-	if (xdb->current_db &&
+	if ((xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
 	    (fuser->set.rotate_size > 0) &&
 	    (xdb->dbw_doccount >= fuser->set.rotate_size)) {
 		xdb->need_rotate = TRUE;
@@ -714,7 +719,7 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 	x->doc_created = FALSE;
 	x->doc_uid = 0;
 
-	if (xdb->current_db)
+	if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
 		++xdb->dbw_doccount;
 
 	fts_flatcurve_xapian_check_commit_limit(backend, xdb);
@@ -737,7 +742,7 @@ fts_flatcurve_xapian_close_dbw_commit(struct flatcurve_fts_backend *backend,
 
 	xdb->changes = 0;
 	xdb->need_rotate = xdb->need_rotate ||
-			   (xdb->current_db &&
+			   ((xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
 			    (backend->fuser->set.rotate_time > 0) &&
 			    (diff > backend->fuser->set.rotate_time));
 }
@@ -748,7 +753,7 @@ fts_flatcurve_xapian_close_dbw(struct flatcurve_xapian_db *xdb)
 	xdb->dbw->close();
 	delete(xdb->dbw);
 	xdb->dbw = NULL;
-	if (xdb->current_db)
+	if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
 		xdb->dbw_doccount = 0;
 }
 
@@ -772,7 +777,7 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 
 			if (HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE)) {
 				fts_flatcurve_xapian_close_dbw(xdb);
-				if (xdb->current_db)
+				if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
 					xdb_dbw_closed = xdb;
 				fts_flatcurve_xapian_close_dbw_commit(backend, xdb, &start);
 			} else if (HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT)) {
@@ -908,7 +913,7 @@ void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 
 	try {
 		xdb->dbw->delete_document(uid);
-		if (xdb->current_db)
+		if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
 			--xdb->dbw_doccount;
 		fts_flatcurve_xapian_check_commit_limit(backend, xdb);
 	} catch (Xapian::Error &e) {
