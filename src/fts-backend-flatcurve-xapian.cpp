@@ -568,16 +568,16 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 		xdb = (struct flatcurve_xapian_db *)val;
 		try {
 			xdb->db = new Xapian::Database(xdb->dbpath->path);
+			fts_flatcurve_xapian_check_db_version(backend, xdb);
+			++shards;
+			x->db_read->add_database(*(xdb->db));
 		} catch (Xapian::Error &e) {
 			e_debug(backend->event, "Cannot open DB (RO) "
 				"mailbox=%s; %s", str_c(backend->boxname),
 				e.get_msg().c_str());
-			hash_table_iterate_deinit(&iter);
-			return NULL;
+			/* If we can't open a DB, delete it. */
+			fts_flatcurve_xapian_delete(backend, xdb->dbpath);
 		}
-		fts_flatcurve_xapian_check_db_version(backend, xdb);
-		x->db_read->add_database(*(xdb->db));
-		++shards;
 	}
 	hash_table_iterate_deinit(&iter);
 
