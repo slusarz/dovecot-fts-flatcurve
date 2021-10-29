@@ -128,12 +128,20 @@ struct flatcurve_fts_query_xapian {
 	ARRAY_TYPE(flatcurve_fts_query_arg) args;
 };
 
+enum flatcurve_xapian_db_type {
+	FLATCURVE_XAPIAN_DB_TYPE_INDEX,
+	FLATCURVE_XAPIAN_DB_TYPE_CURRENT,
+	FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE,
+	FLATCURVE_XAPIAN_DB_TYPE_UNKNOWN
+};
+
 struct flatcurve_xapian_db_iter {
 	struct flatcurve_fts_backend *backend;
 	DIR *dirp;
 
-	/* This is set every time next() is run. */
+	/* These are set every time next() is run. */
 	struct flatcurve_xapian_db_path *path;
+	enum flatcurve_xapian_db_type type;
 };
 
 enum flatcurve_xapian_db_opts {
@@ -272,21 +280,28 @@ fts_flatcurve_xapian_db_iter_next(struct flatcurve_xapian_db_iter *iter)
 	struct dirent *d;
 	struct stat st;
 
-	while ((iter->dirp != NULL) &&
-	       (d = readdir(iter->dirp)) != NULL) {
-		/* Ignore all files in this directory other than directories
-		 * that begin with FLATCURVE_XAPIAN_DB_PREFIX. */
-		if (str_begins(d->d_name, FLATCURVE_XAPIAN_DB_PREFIX) ||
-		    str_begins(d->d_name, FLATCURVE_XAPIAN_DB_CURRENT_PREFIX)) {
-			iter->path = fts_flatcurve_xapian_create_db_path(
-				iter->backend, d->d_name);
-			if ((stat(iter->path->path, &st) >= 0) &&
-			    S_ISDIR(st.st_mode))
-				return TRUE;
-		}
+	if ((iter->dirp == NULL) || (d = readdir(iter->dirp)) == NULL)
+		return FALSE;
+
+	if ((strcmp(d->d_name, ".") == 0) || (strcmp(d->d_name, "..") == 0))
+		return fts_flatcurve_xapian_db_iter_next(iter);
+
+	iter->path = fts_flatcurve_xapian_create_db_path(iter->backend,
+							 d->d_name);
+	iter->type = FLATCURVE_XAPIAN_DB_TYPE_UNKNOWN;
+
+	if (str_begins(d->d_name, FLATCURVE_XAPIAN_DB_PREFIX)) {
+		if ((stat(iter->path->path, &st) >= 0) && S_ISDIR(st.st_mode))
+			iter->type = FLATCURVE_XAPIAN_DB_TYPE_INDEX;
+	} else if (str_begins(d->d_name, FLATCURVE_XAPIAN_DB_CURRENT_PREFIX)) {
+		if ((stat(iter->path->path, &st) >= 0) && S_ISDIR(st.st_mode))
+			iter->type = FLATCURVE_XAPIAN_DB_TYPE_CURRENT;
+	} else if (strcmp(d->d_name, FLATCURVE_XAPIAN_DB_OPTIMIZE) == 0) {
+		if ((stat(iter->path->path, &st) >= 0) && S_ISDIR(st.st_mode))
+			iter->type = FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE;
 	}
 
-	return FALSE;
+	return TRUE;
 }
 
 static void
@@ -454,7 +469,9 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, opts)) == NULL)
 		return FALSE;
 	while (fts_flatcurve_xapian_db_iter_next(iter)) {
-		(void)fts_flatcurve_xapian_db_add(backend, iter->path);
+		if ((iter->type == FLATCURVE_XAPIAN_DB_TYPE_INDEX) ||
+		    (iter->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT))
+			(void)fts_flatcurve_xapian_db_add(backend, iter->path);
 	}
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
