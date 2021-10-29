@@ -162,7 +162,7 @@ void fts_flatcurve_xapian_deinit(struct flatcurve_fts_backend *backend)
 
 	if (hash_table_is_created(x->optimize)) {
 		iter = hash_table_iterate_init(x->optimize);
-	        while (hash_table_iterate(iter, x->optimize, &key, &val)) {
+		while (hash_table_iterate(iter, x->optimize, &key, &val)) {
 			str_append(backend->boxname, (const char *)key);
 			str_append(backend->db_path, (const char *)val);
 			fts_flatcurve_xapian_optimize_box(backend);
@@ -192,7 +192,7 @@ fts_flatcurve_xapian_create_db_path(struct flatcurve_fts_backend *backend,
 // dbpath = NULL: delete the entire flatcurve index
 static void
 fts_flatcurve_xapian_delete_db_dir(struct flatcurve_fts_backend *backend,
-			           struct flatcurve_xapian_db_path *dbpath)
+				   struct flatcurve_xapian_db_path *dbpath)
 {
 	const char *dir, *error;
 	enum unlink_directory_flags unlink_flags = UNLINK_DIRECTORY_FLAG_RMDIR;
@@ -523,8 +523,8 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 
 	x->db_read = new Xapian::Database();
 
-        iter = hash_table_iterate_init(x->dbs);
-        while (hash_table_iterate(iter, x->dbs, &key, &val)) {
+	iter = hash_table_iterate_init(x->dbs);
+	while (hash_table_iterate(iter, x->dbs, &key, &val)) {
 		xdb = (struct flatcurve_xapian_db *)val;
 		try {
 			xdb->db = new Xapian::Database(xdb->dbpath->path);
@@ -570,7 +570,7 @@ fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 		return;
 
 	/* If we need to upgrade DB, and this is NOT the write DB, open the
-	* write DB, do the changes there, and reopen the read DB. */
+	 * write DB, do the changes there, and reopen the read DB. */
 	if (!xdb->dbw) {
 		(void)fts_flatcurve_xapian_write_db_get(backend, xdb, wopts);
 		fts_flatcurve_xapian_close_dbw(xdb);
