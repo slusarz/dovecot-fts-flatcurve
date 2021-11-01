@@ -428,41 +428,28 @@ fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
 			    struct flatcurve_xapian_db_path *dbpath,
 			    enum flatcurve_xapian_db_type type)
 {
-	struct flatcurve_xapian_db_path *n, *r;
-	struct flatcurve_xapian_db *xdb;
+	struct flatcurve_xapian_db *o, *xdb;
 	struct flatcurve_xapian *x = backend->xapian;
 
 	if ((type != FLATCURVE_XAPIAN_DB_TYPE_INDEX) &&
 	    (type != FLATCURVE_XAPIAN_DB_TYPE_CURRENT))
 		return NULL;
 
-	/* If multiple current DBs exist, rename the oldest. */
-	if ((type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
-	    (x->dbw_current != NULL)) {
-		if (strcmp(dbpath->fname, x->dbw_current->dbpath->fname) > 0) {
-			n = fts_flatcurve_xapian_rename_db(backend,
-							   x->dbw_current->dbpath);
-			r = x->dbw_current->dbpath;
-			x->dbw_current->type = FLATCURVE_XAPIAN_DB_TYPE_INDEX;
-		} else {
-			n = fts_flatcurve_xapian_rename_db(backend, dbpath);
-			r = dbpath;
-		}
-
-		/* If rename fails, use the folders as-is but mark the most
-		 * recent folder as "current". Flag this mailbox to be
-		 * optimized on shutdown. */
-		if (n == NULL)
-			fts_flatcurve_xapian_optimize_mailbox(backend);
-		else
-			r = n;
-	}
-
 	xdb = p_new(x->pool, struct flatcurve_xapian_db, 1);
 	xdb->dbpath = dbpath;
 	xdb->type = type;
 	hash_table_insert(x->dbs, dbpath->fname, xdb);
-	if (type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
+
+	/* If multiple current DBs exist, rename the oldest. */
+	if ((type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
+	    (x->dbw_current != NULL)) {
+		o = (strcmp(dbpath->fname, x->dbw_current->dbpath->fname) > 0)
+			? x->dbw_current : xdb;
+		(void)fts_flatcurve_xapian_rename_db(backend, o->dbpath);
+		o->type = FLATCURVE_XAPIAN_DB_TYPE_INDEX;
+	}
+
+	if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
 		x->dbw_current = xdb;
 
 	return xdb;
