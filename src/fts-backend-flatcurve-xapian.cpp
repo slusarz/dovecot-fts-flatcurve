@@ -371,12 +371,13 @@ static struct flatcurve_xapian_db_path *
 fts_flatcurve_xapian_rename_db(struct flatcurve_fts_backend *backend,
 			       struct flatcurve_xapian_db_path *path)
 {
+	unsigned int i;
 	std::string new_fname;
 	struct flatcurve_xapian_db_path *newpath;
-	bool retry;
+	bool retry = FALSE;
 	std::ostringstream ss;
 
-	for (;;) {
+	for (i = 0; i < 5; ++i) {
 		new_fname.clear();
 		new_fname = FLATCURVE_XAPIAN_DB_PREFIX;
 		ss << i_rand_limit(8192);
@@ -401,6 +402,11 @@ fts_flatcurve_xapian_rename_db(struct flatcurve_fts_backend *backend,
 			return newpath;
 		}
 	}
+
+	/* If we still haven't found a valid filename, something is very
+	 * wrong. Exit before we enter an infinite loop and consume all the
+	 * memory. */
+	i_unreached();
 }
 
 static void
