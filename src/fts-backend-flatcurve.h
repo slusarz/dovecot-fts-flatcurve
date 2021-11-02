@@ -31,6 +31,7 @@ struct flatcurve_fts_backend_update_context {
 	uint32_t uid;
 
 	bool indexed_hdr:1;
+	bool skip_uid:1;
 };
 
 struct flatcurve_fts_query {

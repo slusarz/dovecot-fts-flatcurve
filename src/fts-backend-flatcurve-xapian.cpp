@@ -975,9 +975,8 @@ void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 bool
 fts_flatcurve_xapian_init_msg(struct flatcurve_fts_backend_update_context *ctx)
 {
-	Xapian::Document doc;
-	struct flatcurve_xapian *x = ctx->backend->xapian;
 	enum flatcurve_xapian_db_opts opts;
+	struct flatcurve_xapian *x = ctx->backend->xapian;
 	struct flatcurve_xapian_db *xdb;
 
 	if (ctx->uid == x->doc_uid) {
@@ -990,8 +989,8 @@ fts_flatcurve_xapian_init_msg(struct flatcurve_fts_backend_update_context *ctx)
 		return FALSE;
 
 	try {
-		doc = xdb->dbw->get_document(ctx->uid);
-		x->doc = &doc;
+		(void)xdb->dbw->get_document(ctx->uid);
+		return FALSE;
 	} catch (Xapian::DocNotFoundError &e) {
 		x->doc = new Xapian::Document();
 		x->doc_created = TRUE;

@@ -216,27 +216,34 @@ fts_backend_flatcurve_update_set_build_key(struct fts_backend_update_context *_c
 
 	i_assert(str_len(ctx->backend->boxname));
 
-	if (_ctx->failed)
+	if (_ctx->failed || ctx->skip_uid)
 		return FALSE;
 
 	if (ctx->uid != key->uid) {
+		changed = TRUE;
+		ctx->skip_uid = FALSE;
+		ctx->uid = key->uid;
+	}
+	ctx->type = key->type;
+
+	/* Specifically init message, as there is a chance that there
+	 * is no valid search info in a message so the message will
+	 * not be saved to DB after processing. */
+	if (changed) {
+		if (!fts_flatcurve_xapian_init_msg(ctx)) {
+			/* This UID has already been indexed, so skip all
+			 * future update calls. */
+			ctx->skip_uid = TRUE;
+			return FALSE;
+		}
+
 		e_debug(event_create_passthrough(ctx->backend->event)->
 			set_name("fts_flatcurve_index")->
 			add_str("mailbox", str_c(ctx->backend->boxname))->
 			add_int("uid", key->uid)->event(),
 			"Indexing mailbox=%s uid=%d",
 			str_c(ctx->backend->boxname), key->uid);
-		changed = TRUE;
 	}
-
-	ctx->type = key->type;
-	ctx->uid = key->uid;
-
-	/* Specifically init message, as there is a chance that there
-	 * is no valid search info in a message so the message will
-	 * not be saved to DB after processing. */
-	if (changed)
-		fts_flatcurve_xapian_init_msg(ctx);
 
 	switch (key->type) {
 	case FTS_BACKEND_BUILD_KEY_HDR:
@@ -273,7 +280,7 @@ fts_backend_flatcurve_update_build_more(struct fts_backend_update_context *_ctx,
 
 	i_assert(ctx->uid != 0);
 
-	if (_ctx->failed)
+	if (_ctx->failed || ctx->skip_uid)
 		return -1;
 
 	if (size < ctx->backend->fuser->set.min_term_size)
