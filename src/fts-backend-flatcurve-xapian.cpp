@@ -44,7 +44,13 @@ extern "C" {
  * everything for us. Writes need to be handled separately, as a
  * WritableDatabase object only supports a single on-disk DB at a time; a DB
  * shard, whether "index" or "current", must be directly written to in order
- * to modify. */
+ * to modify.
+ *
+ * Data storage: Xapian does not support substring searches by default, so
+ * (if substring searching is enabled) we instead need to explicitly store all
+ * substrings of the string, up to the point where the substring becomes
+ * smaller than min_term_size. Requires libicu in order to correctly handle
+ * multi-byte characters. */
 #define FLATCURVE_XAPIAN_DB_PREFIX "index."
 #define FLATCURVE_XAPIAN_DB_CURRENT_PREFIX "current."
 
@@ -1018,11 +1024,6 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 			FLATCURVE_XAPIAN_BOOLEAN_FIELD_PREFIX + h);
 	}
 
-	/* Xapian does not support substring searches by default, so we
-	 * instead need to explicitly store all substrings of a string, up
-	 * to the point where the substring becomes smaller than
-	 * min_term_size. We need to use icu in order to correctly handle
-	 * multi-byte characters. */
 	s = icu::UnicodeString::fromUTF8(
 		icu::StringPiece((const char *)data, size));
 	if (ctx->indexed_hdr)
@@ -1055,11 +1056,6 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 	if (!fts_flatcurve_xapian_init_msg(ctx))
 		return;
 
-	/* Xapian does not support substring searches by default, so we
-	 * instead need to explicitly store all substrings of a string, up
-	 * to the point where the substring becomes smaller than
-	 * min_term_size. We need to use icu in order to correctly handle
-	 * multi-byte characters. */
 	s = icu::UnicodeString::fromUTF8(
 		icu::StringPiece((const char *)data, size));
 
