@@ -1260,10 +1260,10 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 				str_printfa(a->value, "%s:%s*",
 					    FLATCURVE_XAPIAN_ALL_HEADERS_QP,
 					    t.c_str());
-				/* We can only match if it appears in the pool
-				 * of header terms, not to a specific header,
-				 * so this is a maybe match. */
-				/* FIXME: Add header names to search? */
+				/* Non-indexed headers only match if it
+				 * appears in the general pool of header
+				 * terms for the message, not to a specific
+				 * header, so this is only a maybe match. */
 				query->maybe = TRUE;
 			}
 		} else {
