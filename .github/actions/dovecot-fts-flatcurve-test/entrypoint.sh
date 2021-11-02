@@ -77,3 +77,7 @@ run_test "Testing DB Rotation/Deletion (multiple current DBs)" \
 	/dovecot/configs/dovecot.conf.issue-11 \
 	/dovecot/imaptest/multiple-current-db
 TESTBOX=imaptest
+
+run_test "Testing optimize_limit" \
+        /dovecot/configs/dovecot.conf.optimize_limit \
+        /dovecot/imaptest/optimize_limit
