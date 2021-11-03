@@ -387,6 +387,8 @@ fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 		return NULL;
 	}
 
+	fts_flatcurve_xapian_check_db_version(backend, xdb);
+
 	if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
 		xdb->dbw_doccount = xdb->dbw->get_doccount();
 
@@ -571,13 +573,8 @@ fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend,
 	if (!fts_flatcurve_xapian_db_populate(backend, opts))
 		return NULL;
 
-	xdb = fts_flatcurve_xapian_write_db_get(backend, x->dbw_current, wopts);
-	if (xdb == NULL)
-		return NULL;
-
-	fts_flatcurve_xapian_check_db_version(backend, xdb);
-
-	return x->dbw_current;
+	return fts_flatcurve_xapian_write_db_get(backend, x->dbw_current,
+						 wopts);
 }
 
 static Xapian::Database *
