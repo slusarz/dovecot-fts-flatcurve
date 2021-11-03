@@ -824,7 +824,7 @@ static void
 fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 			       enum flatcurve_xapian_db_close opts)
 {
-	bool commit;
+	bool commit, rotated = FALSE;
 	struct hash_iterate_context *iter;
 	void *key, *val;
 	struct timeval start;
@@ -850,11 +850,13 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 
 			if (commit &&
 			    (fts_flatcurve_xapian_close_dbw_commit(backend, xdb, &start) ||
-			     HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_ROTATE))) {
+			     ((xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
+			       HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_ROTATE))) &&
+			    !rotated) {
 				fts_flatcurve_xapian_rotate(backend);
 				fts_flatcurve_xapian_close_dbw(xdb);
+				rotated = TRUE;
 			}
-
 		}
 		if ((xdb->db != NULL) &&
 		    HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE)) {
