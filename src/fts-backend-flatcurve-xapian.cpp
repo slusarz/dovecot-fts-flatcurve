@@ -1227,7 +1227,7 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	case SEARCH_TEXT:
 		x->qp->add_prefix(FLATCURVE_XAPIAN_ALL_HEADERS_QP,
 				  FLATCURVE_XAPIAN_ALL_HEADERS_PREFIX);
-		str_printfa(a->value, "%s:%s* OR %s*",
+		str_printfa(a->value, "(%s:%s* OR %s*)",
 			    FLATCURVE_XAPIAN_ALL_HEADERS_QP, t.c_str(),
 			    t.c_str());
 		break;
