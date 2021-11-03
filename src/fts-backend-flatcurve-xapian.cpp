@@ -154,8 +154,7 @@ enum flatcurve_xapian_db_opts {
 	FLATCURVE_XAPIAN_DB_NOCLOSE_CURRENT  = BIT(2)
 };
 enum flatcurve_xapian_wdb {
-	FLATCURVE_XAPIAN_WDB_CREATE  = BIT(0),
-	FLATCURVE_XAPIAN_WDB_NODEBUG = BIT(1)
+	FLATCURVE_XAPIAN_WDB_CREATE = BIT(0)
 };
 enum flatcurve_xapian_db_close {
 	FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT = BIT(0),
@@ -392,11 +391,10 @@ fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 		xdb->dbw_doccount = xdb->dbw->get_doccount();
 	}
 
-	if (HAS_NO_BITS(wopts, FLATCURVE_XAPIAN_WDB_NODEBUG))
-		e_debug(backend->event, "Opened DB (RW; %s) mailbox=%s "
-			"messages=%u version=%u", xdb->dbpath->fname,
-			str_c(backend->boxname), xdb->dbw->get_doccount(),
-			FLATCURVE_XAPIAN_DB_VERSION);
+	e_debug(backend->event, "Opened DB (RW; %s) mailbox=%s "
+		"messages=%u version=%u", xdb->dbpath->fname,
+		str_c(backend->boxname), xdb->dbw->get_doccount(),
+		FLATCURVE_XAPIAN_DB_VERSION);
 
 	return xdb;
 }
@@ -508,8 +506,7 @@ fts_flatcurve_xapian_create_current(struct flatcurve_fts_backend *backend,
 {
 	struct flatcurve_xapian_db_path *dbpath;
 	std::ostringstream s;
-	enum flatcurve_xapian_wdb wopts = (enum flatcurve_xapian_wdb)
-		(FLATCURVE_XAPIAN_WDB_CREATE | FLATCURVE_XAPIAN_WDB_NODEBUG);
+	enum flatcurve_xapian_wdb wopts = FLATCURVE_XAPIAN_WDB_CREATE;
 	struct flatcurve_xapian_db *xdb;
 
 	/* The current shard has filename of the format PREFIX.timestamp. This
