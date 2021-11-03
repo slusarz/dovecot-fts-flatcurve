@@ -793,9 +793,11 @@ fts_flatcurve_xapian_close_dbw_commit(struct flatcurve_fts_backend *backend,
 	i_gettimeofday(&now);
 	diff = timeval_diff_msecs(&now, start);
 
-	e_debug(backend->event, "Committed %u changes to DB (RW; %s) in "
-		"%u.%03u secs; mailbox=%s", xdb->changes, xdb->dbpath->fname,
-		diff/1000, diff%1000, str_c(backend->boxname));
+	if (xdb->changes > 0)
+		e_debug(backend->event, "Committed %u changes to DB (RW; %s) "
+			"in %u.%03u secs; mailbox=%s", xdb->changes,
+			xdb->dbpath->fname, diff/1000, diff%1000,
+			str_c(backend->boxname));
 
 	xdb->changes = 0;
 
