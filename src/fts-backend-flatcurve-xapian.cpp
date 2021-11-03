@@ -387,10 +387,10 @@ fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 		return NULL;
 	}
 
-	fts_flatcurve_xapian_check_db_version(backend, xdb);
-
-	if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
+	if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) {
+		fts_flatcurve_xapian_check_db_version(backend, xdb);
 		xdb->dbw_doccount = xdb->dbw->get_doccount();
+	}
 
 	if (HAS_NO_BITS(wopts, FLATCURVE_XAPIAN_WDB_NODEBUG))
 		e_debug(backend->event, "Opened DB (RW; %s) mailbox=%s "
