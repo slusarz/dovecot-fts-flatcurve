@@ -382,7 +382,7 @@ fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 	} catch (Xapian::Error &e) {
 		e_debug(backend->event, "Cannot open DB (RW; %s) "
 			"mailbox=%s; %s", xdb->dbpath->fname,
-			str_c(backend->boxname), e.get_msg().c_str());
+			str_c(backend->boxname), e.get_description().c_str());
 		return NULL;
 	}
 
@@ -618,7 +618,8 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 		} catch (Xapian::Error &e) {
 			e_debug(backend->event, "Cannot open DB (RO; %s) "
 				"mailbox=%s; %s", xdb->dbpath->fname,
-				str_c(backend->boxname), e.get_msg().c_str());
+				str_c(backend->boxname),
+				e.get_description().c_str());
 			/* If we can't open a DB, delete it. */
 			fts_flatcurve_xapian_delete(backend, xdb->dbpath);
 		}
@@ -761,7 +762,7 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 	} catch (Xapian::Error &e) {
 		e_warning(backend->event, "Could not write message data: "
 			  "mailbox=%s uid=%u; %s", str_c(backend->boxname),
-			  x->doc_uid, e.get_msg().c_str());
+			  x->doc_uid, e.get_description().c_str());
 	}
 
 	if (x->doc_created)
@@ -966,7 +967,7 @@ void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 		fts_flatcurve_xapian_check_commit_limit(backend, xdb);
 	} catch (Xapian::Error &e) {
 		e_debug(backend->event, "update_expunge (%s)",
-			e.get_msg().c_str());
+			e.get_description().c_str());
 	}
 }
 
@@ -1105,7 +1106,7 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 				     Xapian::Compactor::FULLER);
 	} catch (Xapian::Error &e) {
 		e_error(backend->event, "Optimize failed mailbox=%s; %s",
-			str_c(backend->boxname), e.get_msg().c_str());
+			str_c(backend->boxname), e.get_description().c_str());
 		return;
 	}
 
@@ -1351,8 +1352,8 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query)
 		));
 	} catch (Xapian::QueryParserError &e) {
 		e_error(query->backend->event,
-			"Parsing query failed: %s (query: %s)",
-			e.get_msg().c_str(), str.c_str());
+			"Parsing query failed (query: %s); %s",
+			str.c_str(), e.get_description().c_str());
 		ret = FALSE;
 	}
 
