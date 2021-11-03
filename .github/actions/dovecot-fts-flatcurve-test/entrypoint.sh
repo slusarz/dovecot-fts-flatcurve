@@ -85,4 +85,4 @@ run_test "Testing optimize_limit" \
 run_test "Testing Concurrent Indexing" \
         /dovecot/configs/dovecot.conf \
         /dovecot/imaptest/concurrent-index
-doveadm -D index -u $TESTUSER $TESTBOX
+doveadm index -u $TESTUSER $TESTBOX
