@@ -81,3 +81,8 @@ TESTBOX=imaptest
 run_test "Testing optimize_limit" \
         /dovecot/configs/dovecot.conf.optimize_limit \
         /dovecot/imaptest/optimize_limit
+
+run_test "Testing Concurrent Indexing" \
+        /dovecot/configs/dovecot.conf \
+        /dovecot/imaptest/concurrent-index
+doveadm -D index -u $TESTUSER $TESTBOX
