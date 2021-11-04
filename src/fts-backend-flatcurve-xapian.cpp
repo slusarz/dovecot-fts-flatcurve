@@ -802,17 +802,23 @@ fts_flatcurve_xapian_close_dbw_commit(struct flatcurve_fts_backend *backend,
 }
 
 static void
-fts_flatcurve_xapian_rotate(struct flatcurve_fts_backend *backend)
+fts_flatcurve_xapian_rotate(struct flatcurve_fts_backend *backend,
+			    struct flatcurve_xapian_db *xdb)
 {
+	const char *fname = t_strdup(xdb->dbpath->fname);
+
 	if (!fts_flatcurve_xapian_create_current(backend, TRUE))
-		e_debug(backend->event, "Error when rotating DB mailbox=%s",
-			str_c(backend->boxname));
+		e_debug(backend->event, "Error when rotating DB mailbox=%s "
+			"(%s)", str_c(backend->boxname), xdb->dbpath->fname);
 	else
 		e_debug(event_create_passthrough(backend->event)->
 			set_name("fts_flatcurve_rotate")->
 			add_str("mailbox", str_c(backend->boxname))->
-			event(), "Rotating index mailbox=%s",
-			str_c(backend->boxname));
+			event(),
+			"Rotating index mailbox=%s (from: %s, to: %s)",
+			str_c(backend->boxname), fname, xdb->dbpath->fname);
+
+	fts_flatcurve_xapian_close_dbw(xdb);
 }
 
 static void
@@ -848,8 +854,7 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 			     ((xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
 			       HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_ROTATE))) &&
 			    !rotated) {
-				fts_flatcurve_xapian_rotate(backend);
-				fts_flatcurve_xapian_close_dbw(xdb);
+				fts_flatcurve_xapian_rotate(backend, xdb);
 				rotated = TRUE;
 			}
 		}
