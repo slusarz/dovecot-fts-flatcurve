@@ -3,12 +3,23 @@
 
 #include "lib.h"
 #include "array.h"
-#include "str.h"
+#include "file-dotlock.h"
 #include "mail-storage-private.h"
 #include "mail-search-build.h"
 #include "mailbox-list-iter.h"
+#include "str.h"
 #include "fts-backend-flatcurve.h"
 #include "fts-backend-flatcurve-xapian.h"
+
+#define FTS_FLATCURVE_LOCK_TIMEOUT_SECS 5
+#define FTS_FLATCURVE_LOCK_STALE_TIMEOUT_SECS 10
+
+static const struct dotlock_settings fts_backend_flatcurve_dotlock_set = {
+	.lock_suffix = "",
+	.timeout = FTS_FLATCURVE_LOCK_TIMEOUT_SECS,
+	.stale_timeout = FTS_FLATCURVE_LOCK_STALE_TIMEOUT_SECS,
+	.use_io_notify = TRUE
+};
 
 enum fts_backend_flatcurve_action {
 	FTS_BACKEND_FLATCURVE_ACTION_OPTIMIZE,
@@ -104,6 +115,7 @@ fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
 				  struct mailbox *box)
 {
 	const char *path;
+	struct mail_storage *storage;
 
 	if (str_len(backend->boxname) &&
 	    (strcasecmp(box->vname, str_c(backend->boxname)) == 0))
@@ -116,7 +128,11 @@ fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
 
 	str_append(backend->boxname, box->vname);
 	str_printfa(backend->db_path, "%s/%s/", path, FTS_FLATCURVE_LABEL);
-	fts_flatcurve_xapian_set_mailbox(backend, box);
+
+	storage = mailbox_get_storage(box);
+	backend->dotlock_set = fts_backend_flatcurve_dotlock_set;
+	backend->dotlock_set.nfs_flush = storage->set->mail_nfs_index;
+	backend->dotlock_set.use_excl_lock = storage->set->dotlock_use_excl;
 }
 
 static int

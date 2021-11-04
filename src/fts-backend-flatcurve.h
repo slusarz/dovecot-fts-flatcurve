@@ -4,6 +4,7 @@
 #ifndef FTS_FLATCURVE_BACKEND_H
 #define FTS_FLATCURVE_BACKEND_H
 
+#include "file-dotlock.h"
 #include "fts-flatcurve-plugin.h"
 
 #define FTS_FLATCURVE_PLUGIN_LABEL "fts_flatcurve"
@@ -18,6 +19,8 @@ struct flatcurve_fts_backend {
 
 	struct fts_flatcurve_user *fuser;
 	struct flatcurve_xapian *xapian;
+
+	struct dotlock_settings dotlock_set;
 
 	pool_t pool;
 };

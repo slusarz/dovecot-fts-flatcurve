@@ -122,7 +122,6 @@ struct flatcurve_xapian {
 
 	/* Dotlocking for current shard manipulation. */
 	struct dotlock *dotlock;
-	struct dotlock_settings dotlock_set;
 	const char *dotlock_path;
 
 	/* Xapian pool: used for per mailbox DB info, so it can be easily
@@ -179,13 +178,6 @@ enum flatcurve_xapian_db_close {
 	FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE  = BIT(1),
 	FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE   = BIT(2),
 	FLATCURVE_XAPIAN_DB_CLOSE_ROTATE     = BIT(3)
-};
-
-static const struct dotlock_settings fts_flatcurve_xapian_dotlock_set = {
-	.lock_suffix = "",
-	.timeout = FLATCURVE_XAPIAN_LOCK_TIMEOUT_SECS,
-	.stale_timeout = FLATCURVE_XAPIAN_LOCK_STALE_TIMEOUT_SECS,
-	.use_io_notify = TRUE
 };
 
 /* Externally accessible struct. */
@@ -544,8 +536,8 @@ static int fts_flatcurve_xapian_lock(struct flatcurve_fts_backend *backend)
 			x->pool, "%s" FLATCURVE_XAPIAN_LOCK_FNAME,
 			str_c(backend->db_path));
 
-	ret = file_dotlock_create(&x->dotlock_set, x->dotlock_path, flags,
-				  &x->dotlock);
+	ret = file_dotlock_create(&backend->dotlock_set, x->dotlock_path,
+				  flags, &x->dotlock);
 	if (ret < 0)
 		e_error(backend->event, "dotlock create failed mailbox=%s: %m",
 			str_c(backend->boxname));
@@ -1000,19 +992,6 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 	}
 
 	p_clear(x->pool);
-}
-
-void fts_flatcurve_xapian_set_mailbox(struct flatcurve_fts_backend *backend,
-                                      struct mailbox *box)
-{
-	struct dotlock_settings *set = &backend->xapian->dotlock_set;
-	struct mail_storage *storage;
-
-	/* Need to store these settings locally, as optimize needs to lock
-	 * and may run during deinit. */
-	storage = mailbox_get_storage(box);
-	set->nfs_flush = storage->set->mail_nfs_index;
-	set->use_excl_lock = storage->set->dotlock_use_excl;
 }
 
 static uint32_t
