@@ -455,38 +455,6 @@ fts_flatcurve_xapian_optimize_mailbox(struct flatcurve_fts_backend *backend)
 				  p_strdup(backend->pool, str_c(backend->db_path)));
 }
 
-static struct flatcurve_xapian_db *
-fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
-			    struct flatcurve_xapian_db_path *dbpath,
-			    enum flatcurve_xapian_db_type type)
-{
-	struct flatcurve_xapian_db *o, *xdb;
-	struct flatcurve_xapian *x = backend->xapian;
-
-	if ((type != FLATCURVE_XAPIAN_DB_TYPE_INDEX) &&
-	    (type != FLATCURVE_XAPIAN_DB_TYPE_CURRENT))
-		return NULL;
-
-	xdb = p_new(x->pool, struct flatcurve_xapian_db, 1);
-	xdb->dbpath = dbpath;
-	xdb->type = type;
-	hash_table_insert(x->dbs, dbpath->fname, xdb);
-
-	/* If multiple current DBs exist, rename the oldest. */
-	if ((type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
-	    (x->dbw_current != NULL)) {
-		o = (strcmp(dbpath->fname, x->dbw_current->dbpath->fname) > 0)
-			? x->dbw_current : xdb;
-		o->dbpath = fts_flatcurve_xapian_rename_db(backend, o->dbpath);
-		o->type = FLATCURVE_XAPIAN_DB_TYPE_INDEX;
-	}
-
-	if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
-		x->dbw_current = xdb;
-
-	return xdb;
-}
-
 static void
 fts_flatcurve_xapian_close_dbw(struct flatcurve_xapian_db *xdb)
 {
@@ -496,17 +464,59 @@ fts_flatcurve_xapian_close_dbw(struct flatcurve_xapian_db *xdb)
 	xdb->dbw->close();
 	delete(xdb->dbw);
 	xdb->dbw = NULL;
+	xdb->dbw_doccount = 0;
+}
+
+static struct flatcurve_xapian_db *
+fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
+			    struct flatcurve_xapian_db_path *dbpath,
+			    enum flatcurve_xapian_db_type type,
+			    bool open_wdb)
+{
+	struct flatcurve_xapian_db_path *newpath;
+	struct flatcurve_xapian_db *o, *xdb;
+	struct flatcurve_xapian *x = backend->xapian;
+	enum flatcurve_xapian_wdb wopts = FLATCURVE_XAPIAN_WDB_CREATE;
+
+	if ((type != FLATCURVE_XAPIAN_DB_TYPE_INDEX) &&
+	    (type != FLATCURVE_XAPIAN_DB_TYPE_CURRENT))
+		return NULL;
+
+	xdb = p_new(x->pool, struct flatcurve_xapian_db, 1);
+	xdb->dbpath = dbpath;
+	xdb->type = type;
+
+	if (open_wdb &&
+	    (fts_flatcurve_xapian_write_db_get(backend, xdb, wopts) == NULL))
+		return NULL;
+
+	hash_table_insert(x->dbs, dbpath->fname, xdb);
+
+	/* If multiple current DBs exist, rename the oldest. */
+	if ((type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
+	    (x->dbw_current != NULL)) {
+		o = (strcmp(dbpath->fname, x->dbw_current->dbpath->fname) > 0)
+			? x->dbw_current : xdb;
+		newpath = fts_flatcurve_xapian_rename_db(backend, o->dbpath);
+		fts_flatcurve_xapian_close_dbw(o);
+		hash_table_remove(x->dbs, o->dbpath->fname);
+		hash_table_insert(x->dbs, newpath->fname, o);
+
+		o->dbpath = newpath;
+		o->type = FLATCURVE_XAPIAN_DB_TYPE_INDEX;
+	}
+
 	if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
-		xdb->dbw_doccount = 0;
+		x->dbw_current = xdb;
+
+	return xdb;
 }
 
 static bool
 fts_flatcurve_xapian_create_current(struct flatcurve_fts_backend *backend,
 				    bool keep_open)
 {
-	struct flatcurve_xapian_db_path *dbpath;
 	std::ostringstream s;
-	enum flatcurve_xapian_wdb wopts = FLATCURVE_XAPIAN_WDB_CREATE;
 	struct flatcurve_xapian_db *xdb;
 
 	/* The current shard has filename of the format PREFIX.timestamp. This
@@ -514,10 +524,11 @@ fts_flatcurve_xapian_create_current(struct flatcurve_fts_backend *backend,
 	 * process (reopen() on the DB will fail, causing the entire DB to be
 	 * closed/reopened). */
 	s << FLATCURVE_XAPIAN_DB_CURRENT_PREFIX << i_microseconds();
-	dbpath = fts_flatcurve_xapian_create_db_path(backend, s.str().c_str());
-	xdb = fts_flatcurve_xapian_db_add(backend, dbpath,
-					  FLATCURVE_XAPIAN_DB_TYPE_CURRENT);
-	if (fts_flatcurve_xapian_write_db_get(backend, xdb, wopts) == NULL)
+	xdb = fts_flatcurve_xapian_db_add(
+		backend,
+		fts_flatcurve_xapian_create_db_path(backend, s.str().c_str()),
+		FLATCURVE_XAPIAN_DB_TYPE_CURRENT, TRUE);
+	if (xdb == NULL)
 		return FALSE;
 
 	if (!keep_open)
@@ -544,7 +555,7 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 		if ((iter->type == FLATCURVE_XAPIAN_DB_TYPE_INDEX) ||
 		    (iter->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT))
 			(void)fts_flatcurve_xapian_db_add(backend, iter->path,
-							  iter->type);
+							  iter->type, FALSE);
 	}
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
@@ -817,8 +828,6 @@ fts_flatcurve_xapian_rotate(struct flatcurve_fts_backend *backend,
 			event(),
 			"Rotating index mailbox=%s (from: %s, to: %s)",
 			str_c(backend->boxname), fname, xdb->dbpath->fname);
-
-	fts_flatcurve_xapian_close_dbw(xdb);
 }
 
 static void
