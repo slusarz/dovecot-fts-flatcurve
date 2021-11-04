@@ -9,11 +9,12 @@
 #include "fts-flatcurve-config.h"
 extern "C" {
 #include "lib.h"
+#include "file-dotlock.h"
 #include "hash.h"
-#include "str.h"
 #include "mail-storage-private.h"
 #include "mail-search.h"
 #include "sleep.h"
+#include "str.h"
 #include "time-util.h"
 #include "unlink-directory.h"
 #include "fts-backend-flatcurve.h"
@@ -82,6 +83,13 @@ extern "C" {
 #define FLATCURVE_DBW_LOCK_RETRY_SECS 1
 #define FLATCURVE_MSET_RANGE 10
 
+/* Dotlock: needed to ensure we don't run into race conditions when
+ * manipulating current directory. */
+#define FLATCURVE_XAPIAN_LOCK_FNAME "flatcurve-dotlock"
+#define FLATCURVE_XAPIAN_LOCK_TIMEOUT_SECS 5
+#define FLATCURVE_XAPIAN_LOCK_STALE_TIMEOUT_SECS 10
+
+
 struct flatcurve_xapian_db_path {
 	const char *fname;
 	const char *path;
@@ -91,6 +99,7 @@ enum flatcurve_xapian_db_type {
 	FLATCURVE_XAPIAN_DB_TYPE_INDEX,
 	FLATCURVE_XAPIAN_DB_TYPE_CURRENT,
 	FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE,
+	FLATCURVE_XAPIAN_DB_TYPE_DOTLOCK,
 	FLATCURVE_XAPIAN_DB_TYPE_UNKNOWN
 };
 
@@ -109,6 +118,11 @@ struct flatcurve_xapian {
 	struct flatcurve_xapian_db *dbw_current;
 	Xapian::Database *db_read;
 	HASH_TABLE_TYPE(xapian_db) dbs;
+
+	/* Dotlocking for current shard manipulation. */
+	struct dotlock *dotlock;
+	struct dotlock_settings dotlock_set;
+	const char *dotlock_path;
 
 	/* Xapian pool: used for per mailbox DB info, so it can be easily
 	 * cleared when switching mailboxes. Not for use with long
@@ -161,6 +175,13 @@ enum flatcurve_xapian_db_close {
 	FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE  = BIT(1),
 	FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE   = BIT(2),
 	FLATCURVE_XAPIAN_DB_CLOSE_ROTATE     = BIT(3)
+};
+
+static const struct dotlock_settings fts_flatcurve_xapian_dotlock_set = {
+	.lock_suffix = "",
+	.timeout = FLATCURVE_XAPIAN_LOCK_TIMEOUT_SECS,
+	.stale_timeout = FLATCURVE_XAPIAN_LOCK_STALE_TIMEOUT_SECS,
+	.use_io_notify = TRUE
 };
 
 /* Externally accessible struct. */
@@ -265,17 +286,6 @@ fts_flatcurve_xapian_db_iter_init(struct flatcurve_fts_backend *backend,
 	dirp = opendir(str_c(backend->db_path));
 	if ((dirp == NULL) &&
 	    HAS_NO_BITS(opts, FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT)) {
-		if (errno == ENOENT) {
-			if (mailbox_list_mkdir_root(backend->backend.ns->list, str_c(backend->db_path), MAILBOX_LIST_PATH_TYPE_INDEX) < 0) {
-				e_debug(backend->event, "Cannot create DB "
-					"(RW) mailbox=%s; %s",
-					str_c(backend->boxname),
-					str_c(backend->db_path));
-				return NULL;
-			}
-			return fts_flatcurve_xapian_db_iter_init(backend, opts);
-		}
-
 		e_debug(backend->event, "Cannot open DB (RO) mailbox=%s; "
 			"opendir(%s) failed: %m", str_c(backend->boxname),
 			str_c(backend->db_path));
@@ -311,6 +321,8 @@ fts_flatcurve_xapian_db_iter_next(struct flatcurve_xapian_db_iter *iter)
 	} else if (str_begins(d->d_name, FLATCURVE_XAPIAN_DB_CURRENT_PREFIX)) {
 		if ((stat(iter->path->path, &st) >= 0) && S_ISDIR(st.st_mode))
 			iter->type = FLATCURVE_XAPIAN_DB_TYPE_CURRENT;
+	} else if (str_begins(d->d_name, FLATCURVE_XAPIAN_LOCK_FNAME)) {
+		iter->type = FLATCURVE_XAPIAN_DB_TYPE_DOTLOCK;
 	} else if (strcmp(d->d_name, FLATCURVE_XAPIAN_DB_OPTIMIZE) == 0) {
 		if ((stat(iter->path->path, &st) >= 0) && S_ISDIR(st.st_mode))
 			iter->type = FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE;
@@ -348,15 +360,6 @@ fts_flatcurve_xapian_write_db_get_do(struct flatcurve_fts_backend *backend,
 			e_debug(backend->event, "Waiting for DB (RW) lock "
 				"mailbox=%s", str_c(backend->boxname));
 			i_sleep_intr_secs(FLATCURVE_DBW_LOCK_RETRY_SECS);
-		} catch (Xapian::DatabaseOpeningError &e) {
-			if (xdb->type != FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
-				throw;
-			/* The current DB has changed via another process.
-			 * Close all DBs and reload. */
-			fts_flatcurve_xapian_close(backend);
-			if (!fts_flatcurve_xapian_db_populate(backend, opts))
-				throw;
-			xdb = backend->xapian->dbw_current;
 		}
 	}
 
@@ -512,6 +515,34 @@ fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
 	return xdb;
 }
 
+static int fts_flatcurve_xapian_lock(struct flatcurve_fts_backend *backend)
+{
+	enum dotlock_create_flags flags;
+	int ret;
+	struct flatcurve_xapian *x = backend->xapian;
+
+	if (x->dotlock_path == NULL)
+		x->dotlock_path = p_strdup_printf(
+			x->pool, "%s" FLATCURVE_XAPIAN_LOCK_FNAME,
+			str_c(backend->db_path));
+
+	ret = file_dotlock_create(&x->dotlock_set, x->dotlock_path, flags,
+				  &x->dotlock);
+	if (ret < 0)
+		e_error(backend->event, "dotlock create failed mailbox=%s: %m",
+			str_c(backend->boxname));
+
+	return ret;
+}
+
+static void fts_flatcurve_xapian_unlock(struct flatcurve_fts_backend *backend)
+{
+	struct flatcurve_xapian *x = backend->xapian;
+
+	if (x->dotlock != NULL)
+		file_dotlock_delete(&x->dotlock);
+}
+
 static bool
 fts_flatcurve_xapian_create_current(struct flatcurve_fts_backend *backend,
 				    bool keep_open)
@@ -542,15 +573,33 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 				 enum flatcurve_xapian_db_opts opts)
 {
 	struct flatcurve_xapian_db_iter *iter;
+	bool lock, ret;
+	struct stat st;
 	struct flatcurve_xapian *x = backend->xapian;
 
-	/* Build the DB list, if we haven't already done so. */
-	if (hash_table_count(x->dbs) != 0) {
+	if (hash_table_count(backend->xapian->dbs) != 0)
 		return TRUE;
+
+	if (HAS_NO_BITS(opts, FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT)) {
+		if (mailbox_list_mkdir_root(backend->backend.ns->list, str_c(backend->db_path), MAILBOX_LIST_PATH_TYPE_INDEX) < 0) {
+			e_debug(backend->event, "Cannot create DB (RW) "
+				"mailbox=%s; %s", str_c(backend->boxname),
+				str_c(backend->db_path));
+			return FALSE;
+		}
+		lock = TRUE;
+	} else
+		lock = ((stat(str_c(backend->db_path), &st) >= 0) &&
+			S_ISDIR(st.st_mode));
+
+	if (lock && (fts_flatcurve_xapian_lock(backend) < 0))
+		return FALSE;
+
+	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, opts)) == NULL) {
+		fts_flatcurve_xapian_unlock(backend);
+		return FALSE;
 	}
 
-	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, opts)) == NULL)
-		return FALSE;
 	while (fts_flatcurve_xapian_db_iter_next(iter)) {
 		if ((iter->type == FLATCURVE_XAPIAN_DB_TYPE_INDEX) ||
 		    (iter->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT))
@@ -559,12 +608,14 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 	}
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
-	if ((x->dbw_current == NULL) &&
-	    HAS_NO_BITS(opts, FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT) &&
-	    !fts_flatcurve_xapian_create_current(backend, HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_NOCLOSE_CURRENT)))
-		return FALSE;
+	ret = ((x->dbw_current == NULL) &&
+	       HAS_NO_BITS(opts, FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT))
+		? fts_flatcurve_xapian_create_current(backend, HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_NOCLOSE_CURRENT))
+		: TRUE;
 
-	return TRUE;
+	fts_flatcurve_xapian_unlock(backend);
+
+	return ret;
 }
 
 static struct flatcurve_xapian_db *
@@ -812,22 +863,36 @@ fts_flatcurve_xapian_close_dbw_commit(struct flatcurve_fts_backend *backend,
 		(diff > backend->fuser->set.rotate_time));
 }
 
-static void
+static bool
 fts_flatcurve_xapian_rotate(struct flatcurve_fts_backend *backend,
 			    struct flatcurve_xapian_db *xdb)
 {
-	const char *fname = t_strdup(xdb->dbpath->fname);
+	const char *fname;
+	bool ret;
+	struct flatcurve_xapian *x = backend->xapian;
 
-	if (!fts_flatcurve_xapian_create_current(backend, TRUE))
+	if (fts_flatcurve_xapian_lock(backend) < 0)
+		return FALSE;
+
+	fname = p_strdup(x->pool, xdb->dbpath->fname);
+
+	if (!fts_flatcurve_xapian_create_current(backend, TRUE)) {
 		e_debug(backend->event, "Error when rotating DB mailbox=%s "
 			"(%s)", str_c(backend->boxname), xdb->dbpath->fname);
-	else
+		ret = FALSE;
+	} else {
 		e_debug(event_create_passthrough(backend->event)->
 			set_name("fts_flatcurve_rotate")->
 			add_str("mailbox", str_c(backend->boxname))->
 			event(),
 			"Rotating index mailbox=%s (from: %s, to: %s)",
 			str_c(backend->boxname), fname, xdb->dbpath->fname);
+		ret = TRUE;
+	}
+
+	fts_flatcurve_xapian_unlock(backend);
+
+	return ret;
 }
 
 static void
@@ -862,10 +927,8 @@ fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 			    (fts_flatcurve_xapian_close_dbw_commit(backend, xdb, &start) ||
 			     ((xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
 			       HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_ROTATE))) &&
-			    !rotated) {
-				fts_flatcurve_xapian_rotate(backend, xdb);
-				rotated = TRUE;
-			}
+			    !rotated)
+				rotated = fts_flatcurve_xapian_rotate(backend, xdb);
 		}
 		if ((xdb->db != NULL) &&
 		    HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE)) {
@@ -894,6 +957,7 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 					FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE));
 	hash_table_clear(x->dbs, TRUE);
 
+	x->dotlock_path = NULL;
 	x->dbw_current = NULL;
 
 	if (x->db_read != NULL) {
@@ -903,6 +967,19 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 	}
 
 	p_clear(x->pool);
+}
+
+void fts_flatcurve_xapian_set_mailbox(struct flatcurve_fts_backend *backend,
+                                      struct mailbox *box)
+{
+	struct dotlock_settings *set = &backend->xapian->dotlock_set;
+	struct mail_storage *storage;
+
+	/* Need to store these settings locally, as optimize needs to lock
+	 * and may run during deinit. */
+	storage = mailbox_get_storage(box);
+	set->nfs_flush = storage->set->mail_nfs_index;
+	set->use_excl_lock = storage->set->dotlock_use_excl;
 }
 
 static uint32_t
@@ -925,7 +1002,10 @@ void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 				       uint32_t *last_uid_r)
 {
 	Xapian::Database *db;
-	enum flatcurve_xapian_db_opts opts;
+	enum flatcurve_xapian_db_opts opts =
+		(enum flatcurve_xapian_db_opts)
+		(FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT |
+		 FLATCURVE_XAPIAN_DB_IGNORE_EMPTY);
 
 	if ((db = fts_flatcurve_xapian_read_db(backend, opts)) != NULL) {
 		try {
@@ -1088,12 +1168,34 @@ void fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend)
 	fts_flatcurve_xapian_delete(backend, NULL);
 }
 
+#ifdef XAPIAN_HAS_COMPACT
+static bool
+fts_flatcurve_xapian_optimize_box_do(struct flatcurve_fts_backend *backend,
+				     struct flatcurve_xapian_db_path *newpath)
+{
+	struct flatcurve_xapian_db_iter *iter;
+	enum flatcurve_xapian_db_opts opts;
+
+	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, opts)) == NULL) {
+		return FALSE;
+	}
+	while (fts_flatcurve_xapian_db_iter_next(iter)) {
+		if ((iter->type != FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE) &&
+		    (iter->type != FLATCURVE_XAPIAN_DB_TYPE_DOTLOCK))
+			fts_flatcurve_xapian_delete(backend, iter->path);
+	}
+	fts_flatcurve_xapian_db_iter_deinit(&iter);
+
+	/* Rename optimize index to an active index. */
+	return (fts_flatcurve_xapian_rename_db(backend, newpath) != NULL);
+}
+#endif
+
 void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 {
 #ifdef XAPIAN_HAS_COMPACT
 	Xapian::Database *db;
 	int diff;
-	struct flatcurve_xapian_db_iter *iter;
 	struct flatcurve_xapian_db_path *n, *o;
 	struct timeval now, start;
 	enum flatcurve_xapian_db_opts opts =
@@ -1130,31 +1232,21 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 
 	/* Delete old indexes. */
 	fts_flatcurve_xapian_close(backend);
-	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, opts)) == NULL) {
+	if ((fts_flatcurve_xapian_lock(backend) < 0) ||
+	    !fts_flatcurve_xapian_optimize_box_do(backend, n)) {
 		fts_flatcurve_xapian_delete(backend, n);
 		e_error(backend->event, "Optimize failed mailbox=%s",
 			str_c(backend->boxname));
-		return;
-	}
-	while (fts_flatcurve_xapian_db_iter_next(iter)) {
-		if (iter->type != FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE)
-			fts_flatcurve_xapian_delete(backend, iter->path);
-	}
-	fts_flatcurve_xapian_db_iter_deinit(&iter);
+	} else {
+		i_gettimeofday(&now);
+		diff = timeval_diff_msecs(&now, &start);
 
-	/* Rename optimize index to an active index. */
-	if (fts_flatcurve_xapian_rename_db(backend, n) == NULL) {
-		fts_flatcurve_xapian_delete(backend, n);
-		e_error(backend->event, "Optimize failed mailbox=%s",
+		e_debug(backend->event, "Optimized DB in %u.%03u secs; "
+			"mailbox=%s", diff/1000, diff%1000,
 			str_c(backend->boxname));
-		return;
 	}
 
-	i_gettimeofday(&now);
-	diff = timeval_diff_msecs(&now, &start);
-
-	e_debug(backend->event, "Optimized DB in %u.%03u secs; mailbox=%s",
-		diff/1000, diff%1000, str_c(backend->boxname));
+	fts_flatcurve_xapian_unlock(backend);
 #endif
 }
 

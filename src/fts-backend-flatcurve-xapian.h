@@ -16,6 +16,9 @@ void fts_flatcurve_xapian_refresh(struct flatcurve_fts_backend *backend);
 void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend);
 void fts_flatcurve_xapian_deinit(struct flatcurve_fts_backend *backend);
 
+void fts_flatcurve_xapian_set_mailbox(struct flatcurve_fts_backend *backend,
+				      struct mailbox *box);
+
 void fts_flatcurve_xapian_get_last_uid(struct flatcurve_fts_backend *backend,
 				       uint32_t *last_uid_r);
 /* Return -1 if DB doesn't exist, 0 if UID doesn't exist, 1 if UID exists */
