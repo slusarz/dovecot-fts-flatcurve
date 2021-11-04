@@ -609,15 +609,21 @@ static bool
 fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 				 enum flatcurve_xapian_db_opts opts)
 {
+	bool dbs_exist, lock, no_create, ret;
 	struct flatcurve_xapian_db_iter *iter;
-	bool lock, ret;
 	struct stat st;
 	struct flatcurve_xapian *x = backend->xapian;
 
-	if (hash_table_count(backend->xapian->dbs) != 0)
+	dbs_exist = (hash_table_count(backend->xapian->dbs) > 0);
+	no_create = HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT);
+
+	if (dbs_exist && (no_create || (x->dbw_current != NULL)))
 		return TRUE;
 
-	if (HAS_NO_BITS(opts, FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT)) {
+	if (no_create) {
+		lock = ((stat(str_c(backend->db_path), &st) >= 0) &&
+			S_ISDIR(st.st_mode));
+	} else {
 		if (mailbox_list_mkdir_root(backend->backend.ns->list, str_c(backend->db_path), MAILBOX_LIST_PATH_TYPE_INDEX) < 0) {
 			e_debug(backend->event, "Cannot create DB (RW) "
 				"mailbox=%s; %s", str_c(backend->boxname),
@@ -625,31 +631,31 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 			return FALSE;
 		}
 		lock = TRUE;
-	} else
-		lock = ((stat(str_c(backend->db_path), &st) >= 0) &&
-			S_ISDIR(st.st_mode));
+	}
 
 	if (lock && (fts_flatcurve_xapian_lock(backend) < 0))
 		return FALSE;
 
-	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, opts)) == NULL) {
-		fts_flatcurve_xapian_unlock(backend);
-		return FALSE;
+	if (!dbs_exist) {
+		if ((iter = fts_flatcurve_xapian_db_iter_init(backend, opts)) == NULL) {
+			fts_flatcurve_xapian_unlock(backend);
+			return FALSE;
+		}
+
+		while (fts_flatcurve_xapian_db_iter_next(iter)) {
+			if ((iter->type == FLATCURVE_XAPIAN_DB_TYPE_INDEX) ||
+			    (iter->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT))
+				(void)fts_flatcurve_xapian_db_add(backend,
+								  iter->path,
+								  iter->type,
+								  FALSE);
+		}
+		fts_flatcurve_xapian_db_iter_deinit(&iter);
 	}
 
-	while (fts_flatcurve_xapian_db_iter_next(iter)) {
-		if ((iter->type == FLATCURVE_XAPIAN_DB_TYPE_INDEX) ||
-		    (iter->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT))
-			(void)fts_flatcurve_xapian_db_add(backend, iter->path,
-							  iter->type, FALSE);
-	}
-	fts_flatcurve_xapian_db_iter_deinit(&iter);
-
-	ret = ((x->dbw_current == NULL) &&
-	       HAS_NO_BITS(opts, FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT))
-		? fts_flatcurve_xapian_create_current(backend, HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_NOCLOSE_CURRENT))
+	ret = (!no_create && (x->dbw_current == NULL))
+		?  fts_flatcurve_xapian_create_current(backend, HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_NOCLOSE_CURRENT))
 		: TRUE;
-
 	fts_flatcurve_xapian_unlock(backend);
 
 	return ret;
