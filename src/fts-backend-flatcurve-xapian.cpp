@@ -118,6 +118,7 @@ struct flatcurve_xapian {
 	struct flatcurve_xapian_db *dbw_current;
 	Xapian::Database *db_read;
 	HASH_TABLE_TYPE(xapian_db) dbs;
+	unsigned int shards;
 
 	/* Dotlocking for current shard manipulation. */
 	struct dotlock *dotlock;
@@ -137,6 +138,9 @@ struct flatcurve_xapian {
 
 	/* List of mailboxes to optimize at shutdown. */
 	HASH_TABLE(char *, char *) optimize;
+
+	/* Are we in deinit mode? */
+	bool deinit:1;
 };
 
 struct flatcurve_fts_query_arg {
@@ -221,6 +225,7 @@ void fts_flatcurve_xapian_deinit(struct flatcurve_fts_backend *backend)
 	void *key, *val;
 	struct flatcurve_xapian *x = backend->xapian;
 
+	x->deinit = TRUE;
 	if (hash_table_is_created(x->optimize)) {
 		iter = hash_table_iterate_init(x->optimize);
 		while (hash_table_iterate(iter, x->optimize, &key, &val)) {
@@ -233,6 +238,7 @@ void fts_flatcurve_xapian_deinit(struct flatcurve_fts_backend *backend)
 	}
 	hash_table_destroy(&x->dbs);
 	pool_unref(&x->pool);
+	x->deinit = FALSE;
 }
 
 static struct flatcurve_xapian_db_path *
@@ -444,10 +450,22 @@ fts_flatcurve_xapian_rename_db(struct flatcurve_fts_backend *backend,
 	i_unreached();
 }
 
+static bool
+fts_flatcurve_xapian_need_optimize(struct flatcurve_fts_backend *backend)
+{
+	struct flatcurve_xapian *x = backend->xapian;
+
+	return ((backend->fuser->set.optimize_limit > 0) &&
+		(x->shards >= backend->fuser->set.optimize_limit));
+}
+
 static void
 fts_flatcurve_xapian_optimize_mailbox(struct flatcurve_fts_backend *backend)
 {
 	struct flatcurve_xapian *x = backend->xapian;
+
+	if (x->deinit || !fts_flatcurve_xapian_need_optimize(backend))
+		return;
 
 	if (!hash_table_is_created(x->optimize))
 		hash_table_create(&x->optimize, backend->pool, 0, str_hash,
@@ -642,7 +660,6 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 {
 	struct hash_iterate_context *iter;
 	void *key, *val;
-	unsigned int shards = 0;
 	struct flatcurve_xapian *x = backend->xapian;
 	struct flatcurve_xapian_db *xdb;
 
@@ -675,7 +692,7 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 		try {
 			xdb->db = new Xapian::Database(xdb->dbpath->path);
 			fts_flatcurve_xapian_check_db_version(backend, xdb);
-			++shards;
+			++x->shards;
 			x->db_read->add_database(*(xdb->db));
 		} catch (Xapian::Error &e) {
 			e_debug(backend->event, "Cannot open DB (RO; %s) "
@@ -691,11 +708,9 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 	e_debug(backend->event, "Opened DB (RO) mailbox=%s messages=%u "
 		"version=%u shards=%u", str_c(backend->boxname),
 		x->db_read->get_doccount(), FLATCURVE_XAPIAN_DB_VERSION,
-		shards);
+		x->shards);
 
-	if ((backend->fuser->set.optimize_limit > 0) &&
-	    (shards >= backend->fuser->set.optimize_limit))
-		fts_flatcurve_xapian_optimize_mailbox(backend);
+	fts_flatcurve_xapian_optimize_mailbox(backend);
 
 	return x->db_read;
 }
@@ -959,6 +974,7 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 
 	x->dotlock_path = NULL;
 	x->dbw_current = NULL;
+	x->shards = 0;
 
 	if (x->db_read != NULL) {
 		x->db_read->close();
@@ -1204,6 +1220,10 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 		 FLATCURVE_XAPIAN_DB_IGNORE_EMPTY);
 
 	if ((db = fts_flatcurve_xapian_read_db(backend, opts)) == NULL)
+		return;
+
+	if (backend->xapian->deinit &&
+	    !fts_flatcurve_xapian_need_optimize(backend))
 		return;
 
 	e_debug(event_create_passthrough(backend->event)->
