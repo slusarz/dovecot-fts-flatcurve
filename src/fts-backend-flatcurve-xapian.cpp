@@ -647,6 +647,8 @@ fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend,
 	if ((x->dbw_current != NULL) && (x->dbw_current->dbw != NULL))
 		return x->dbw_current;
 
+	opts = (enum flatcurve_xapian_db_opts)
+		(opts | FLATCURVE_XAPIAN_DB_NOCLOSE_CURRENT);
 	if (!fts_flatcurve_xapian_db_populate(backend, opts))
 		return NULL;
 
