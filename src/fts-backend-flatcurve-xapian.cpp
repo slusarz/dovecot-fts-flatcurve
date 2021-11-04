@@ -562,6 +562,33 @@ static void fts_flatcurve_xapian_unlock(struct flatcurve_fts_backend *backend)
 }
 
 static bool
+fts_flatcurve_xapian_db_read_add(struct flatcurve_fts_backend *backend,
+				 struct flatcurve_xapian_db *xdb)
+{
+	struct flatcurve_xapian *x = backend->xapian;
+
+	if (x->db_read == NULL)
+		return TRUE;
+
+	try {
+		xdb->db = new Xapian::Database(xdb->dbpath->path);
+	} catch (Xapian::Error &e) {
+		e_debug(backend->event, "Cannot open DB (RO; %s) mailbox=%s; "
+			"%s", xdb->dbpath->fname, str_c(backend->boxname),
+			e.get_description().c_str());
+		return FALSE;
+	}
+
+	fts_flatcurve_xapian_check_db_version(backend, xdb);
+	++x->shards;
+	x->db_read->add_database(*(xdb->db));
+
+	fts_flatcurve_xapian_optimize_mailbox(backend);
+
+	return TRUE;
+}
+
+static bool
 fts_flatcurve_xapian_create_current(struct flatcurve_fts_backend *backend,
 				    bool keep_open)
 {
@@ -577,7 +604,7 @@ fts_flatcurve_xapian_create_current(struct flatcurve_fts_backend *backend,
 		backend,
 		fts_flatcurve_xapian_create_db_path(backend, s.str().c_str()),
 		FLATCURVE_XAPIAN_DB_TYPE_CURRENT, TRUE);
-	if (xdb == NULL)
+	if (xdb == NULL || !fts_flatcurve_xapian_db_read_add(backend, xdb))
 		return FALSE;
 
 	if (!keep_open)
@@ -691,19 +718,9 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 	iter = hash_table_iterate_init(x->dbs);
 	while (hash_table_iterate(iter, x->dbs, &key, &val)) {
 		xdb = (struct flatcurve_xapian_db *)val;
-		try {
-			xdb->db = new Xapian::Database(xdb->dbpath->path);
-			fts_flatcurve_xapian_check_db_version(backend, xdb);
-			++x->shards;
-			x->db_read->add_database(*(xdb->db));
-		} catch (Xapian::Error &e) {
-			e_debug(backend->event, "Cannot open DB (RO; %s) "
-				"mailbox=%s; %s", xdb->dbpath->fname,
-				str_c(backend->boxname),
-				e.get_description().c_str());
+		if (!fts_flatcurve_xapian_db_read_add(backend, xdb))
 			/* If we can't open a DB, delete it. */
 			fts_flatcurve_xapian_delete(backend, xdb->dbpath);
-		}
 	}
 	hash_table_iterate_deinit(&iter);
 
@@ -711,8 +728,6 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 		"version=%u shards=%u", str_c(backend->boxname),
 		x->db_read->get_doccount(), FLATCURVE_XAPIAN_DB_VERSION,
 		x->shards);
-
-	fts_flatcurve_xapian_optimize_mailbox(backend);
 
 	return x->db_read;
 }
