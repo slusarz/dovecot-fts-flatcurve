@@ -111,15 +111,6 @@ static void fts_flatcurve_mail_user_created(struct mail_user *user)
 	struct fts_flatcurve_user *fuser;
 	const char *env, *error;
 
-#ifdef HAVE_FTS_MAIL_USER_INIT_2_3_17
-	if (fts_mail_user_init(user, TRUE, &error) < 0) {
-#else
-	if (fts_mail_user_init(user, &error) < 0) {
-#endif
-		i_error(FTS_FLATCURVE_DEBUG_PREFIX "%s", error);
-		return;
-	}
-
 	fuser = p_new(user->pool, struct fts_flatcurve_user, 1);
 	env = mail_user_plugin_getenv(user, FTS_FLATCURVE_PLUGIN_LABEL);
 	if (env == NULL)
@@ -127,6 +118,15 @@ static void fts_flatcurve_mail_user_created(struct mail_user *user)
 
 	if (fts_flatcurve_plugin_init_settings(&fuser->set, env) < 0) {
 		/* Invalid settings, disabling */
+		return;
+	}
+
+#ifdef HAVE_FTS_MAIL_USER_INIT_2_3_17
+	if (fts_mail_user_init(user, TRUE, &error) < 0) {
+#else
+	if (fts_mail_user_init(user, &error) < 0) {
+#endif
+		i_error(FTS_FLATCURVE_DEBUG_PREFIX "%s", error);
 		return;
 	}
 
