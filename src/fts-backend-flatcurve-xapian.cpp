@@ -477,7 +477,7 @@ fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
 	    (x->dbw_current != NULL)) {
 		o = (strcmp(dbpath->fname, x->dbw_current->dbpath->fname) > 0)
 			? x->dbw_current : xdb;
-		(void)fts_flatcurve_xapian_rename_db(backend, o->dbpath);
+		o->dbpath = fts_flatcurve_xapian_rename_db(backend, o->dbpath);
 		o->type = FLATCURVE_XAPIAN_DB_TYPE_INDEX;
 	}
 
