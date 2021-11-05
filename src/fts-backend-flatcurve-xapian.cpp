@@ -1051,8 +1051,7 @@ void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 	xdb = fts_flatcurve_xapian_write_db_by_uid(backend, uid);
 	if (xdb == NULL) {
 		e_debug(backend->event, "Expunge failed mailbox=%s uid=%u; "
-			"could not open DB to expunge",
-			str_c(backend->boxname), uid);
+			"UID not found", str_c(backend->boxname), uid);
 		return;
 	}
 
