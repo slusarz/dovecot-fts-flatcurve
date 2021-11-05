@@ -138,8 +138,8 @@ struct flatcurve_xapian {
 	/* List of mailboxes to optimize at shutdown. */
 	HASH_TABLE(char *, char *) optimize;
 
-	/* Are we in deinit mode? */
 	bool deinit:1;
+	bool closing:1;
 };
 
 struct flatcurve_fts_query_arg {
@@ -175,9 +175,10 @@ enum flatcurve_xapian_wdb {
 };
 enum flatcurve_xapian_db_close {
 	FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT = BIT(0),
-	FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE  = BIT(1),
-	FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE   = BIT(2),
-	FLATCURVE_XAPIAN_DB_CLOSE_ROTATE     = BIT(3)
+	FLATCURVE_XAPIAN_DB_CLOSE_WDB        = BIT(1),
+	FLATCURVE_XAPIAN_DB_CLOSE_DB         = BIT(2),
+	FLATCURVE_XAPIAN_DB_CLOSE_ROTATE     = BIT(3),
+	FLATCURVE_XAPIAN_DB_CLOSE_MBOX       = BIT(4)
 };
 
 /* Externally accessible struct. */
@@ -194,6 +195,10 @@ struct fts_flatcurve_xapian_query_iter {
 static void
 fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 				      struct flatcurve_xapian_db *xdb);
+static void
+fts_flatcurve_xapian_close_db(struct flatcurve_fts_backend *backend,
+			      struct flatcurve_xapian_db *xdb,
+			      enum flatcurve_xapian_db_close opts);
 static void
 fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 			       enum flatcurve_xapian_db_close opts);
@@ -468,18 +473,6 @@ fts_flatcurve_xapian_optimize_mailbox(struct flatcurve_fts_backend *backend)
 				  p_strdup(backend->pool, str_c(backend->db_path)));
 }
 
-static void
-fts_flatcurve_xapian_close_dbw(struct flatcurve_xapian_db *xdb)
-{
-	if (xdb->dbw == NULL)
-		return;
-
-	xdb->dbw->close();
-	delete(xdb->dbw);
-	xdb->dbw = NULL;
-	xdb->dbw_doccount = 0;
-}
-
 static struct flatcurve_xapian_db *
 fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
 			    struct flatcurve_xapian_db_path *dbpath,
@@ -511,7 +504,8 @@ fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
 		o = (strcmp(dbpath->fname, x->dbw_current->dbpath->fname) > 0)
 			? x->dbw_current : xdb;
 		newpath = fts_flatcurve_xapian_rename_db(backend, o->dbpath);
-		fts_flatcurve_xapian_close_dbw(o);
+		fts_flatcurve_xapian_close_db(backend, o,
+					      FLATCURVE_XAPIAN_DB_CLOSE_WDB);
 		hash_table_remove(x->dbs, o->dbpath->fname);
 		hash_table_insert(x->dbs, newpath->fname, o);
 
@@ -600,7 +594,8 @@ fts_flatcurve_xapian_create_current(struct flatcurve_fts_backend *backend,
 		return FALSE;
 
 	if (!keep_open)
-		fts_flatcurve_xapian_close_dbw(xdb);
+		fts_flatcurve_xapian_close_db(backend, xdb,
+					      FLATCURVE_XAPIAN_DB_CLOSE_WDB);
 
 	return TRUE;
 }
@@ -750,7 +745,8 @@ fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 	 * write DB, do the changes there, and reopen the read DB. */
 	if (!xdb->dbw) {
 		(void)fts_flatcurve_xapian_write_db_get(backend, xdb, wopts);
-		fts_flatcurve_xapian_close_dbw(xdb);
+		fts_flatcurve_xapian_close_db(backend, xdb,
+					      FLATCURVE_XAPIAN_DB_CLOSE_WDB);
 		(void)xdb->db->reopen();
 		return;
         }
@@ -819,8 +815,8 @@ fts_flatcurve_xapian_check_commit_limit(struct flatcurve_fts_backend *backend,
 	if ((xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
 	    (fuser->set.rotate_size > 0) &&
 	    (xdb->dbw_doccount >= fuser->set.rotate_size)) {
-		fts_flatcurve_xapian_close_dbs(
-			backend, FLATCURVE_XAPIAN_DB_CLOSE_ROTATE);
+		fts_flatcurve_xapian_close_db(
+			backend, xdb, FLATCURVE_XAPIAN_DB_CLOSE_ROTATE);
 	} else if ((fuser->set.commit_limit > 0) &&
 		   (x->doc_updates >= fuser->set.commit_limit)) {
 		fts_flatcurve_xapian_close_dbs(
@@ -869,122 +865,110 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 	fts_flatcurve_xapian_check_commit_limit(backend, xdb);
 }
 
-static bool
-fts_flatcurve_xapian_close_dbw_commit(struct flatcurve_fts_backend *backend,
-				      struct flatcurve_xapian_db *xdb,
-				      const struct timeval *start)
+static void
+fts_flatcurve_xapian_close_db(struct flatcurve_fts_backend *backend,
+			      struct flatcurve_xapian_db *xdb,
+			      enum flatcurve_xapian_db_close opts)
 {
+	bool commit = FALSE, rotate = FALSE;
 	int diff;
-	struct timeval now;
-
-	i_gettimeofday(&now);
-	diff = timeval_diff_msecs(&now, start);
-
-	if (xdb->changes > 0)
-		e_debug(backend->event, "Committed %u changes to DB (RW; %s) "
-			"in %u.%03u secs; mailbox=%s", xdb->changes,
-			xdb->dbpath->fname, diff/1000, diff%1000,
-			str_c(backend->boxname));
-
-	xdb->changes = 0;
-
-	return ((xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
-		(backend->fuser->set.rotate_time > 0) &&
-		(diff > backend->fuser->set.rotate_time));
-}
-
-static bool
-fts_flatcurve_xapian_rotate(struct flatcurve_fts_backend *backend,
-			    struct flatcurve_xapian_db *xdb)
-{
 	const char *fname;
-	bool ret;
+	struct timeval now, start;
 	struct flatcurve_xapian *x = backend->xapian;
 
-	if (fts_flatcurve_xapian_lock(backend) < 0)
-		return FALSE;
+	fts_flatcurve_xapian_clear_document(backend);
 
-	fname = p_strdup(x->pool, xdb->dbpath->fname);
+	if (xdb->dbw != NULL) {
+		i_gettimeofday(&start);
 
-	if (!fts_flatcurve_xapian_create_current(backend, TRUE)) {
-		e_debug(backend->event, "Error when rotating DB mailbox=%s "
-			"(%s)", str_c(backend->boxname), xdb->dbpath->fname);
-		ret = FALSE;
-	} else {
-		e_debug(event_create_passthrough(backend->event)->
-			set_name("fts_flatcurve_rotate")->
-			add_str("mailbox", str_c(backend->boxname))->
-			event(),
-			"Rotating index mailbox=%s (from: %s, to: %s)",
-			str_c(backend->boxname), fname, xdb->dbpath->fname);
-		ret = TRUE;
+		if (HAS_ANY_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_WDB | FLATCURVE_XAPIAN_DB_CLOSE_MBOX)) {
+			xdb->dbw->close();
+			delete(xdb->dbw);
+			xdb->dbw = NULL;
+			xdb->dbw_doccount = 0;
+			commit = TRUE;
+		} else if (HAS_ANY_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT | FLATCURVE_XAPIAN_DB_CLOSE_ROTATE)) {
+			xdb->dbw->commit();
+			commit = TRUE;
+		}
 	}
 
-	fts_flatcurve_xapian_unlock(backend);
+	if (commit) {
+		x->doc_updates = 0;
 
-	return ret;
+		i_gettimeofday(&now);
+		diff = timeval_diff_msecs(&now, &start);
+
+		if (xdb->changes > 0)
+			e_debug(backend->event, "Committed %u changes to DB "
+				"(RW; %s) in %u.%03u secs; mailbox=%s",
+				xdb->changes, xdb->dbpath->fname, diff/1000,
+				diff%1000, str_c(backend->boxname));
+
+		xdb->changes = 0;
+
+		if ((xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
+		    (HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_ROTATE) ||
+		     (backend->fuser->set.rotate_time > 0) &&
+		     (diff > backend->fuser->set.rotate_time)))
+			rotate = TRUE;
+	}
+
+	if (rotate && (fts_flatcurve_xapian_lock(backend) >= 0)) {
+		fname = p_strdup(x->pool, xdb->dbpath->fname);
+
+		if (!fts_flatcurve_xapian_create_current(backend, !x->closing))
+			e_debug(backend->event, "Error when rotating DB "
+				"mailbox=%s (%s)", str_c(backend->boxname),
+				xdb->dbpath->fname);
+		else
+			e_debug(event_create_passthrough(backend->event)->
+				set_name("fts_flatcurve_rotate")->
+				add_str("mailbox", str_c(backend->boxname))->
+				event(),
+				"Rotating index mailbox=%s (from: %s, to: %s)",
+				str_c(backend->boxname), fname,
+				xdb->dbpath->fname);
+
+		fts_flatcurve_xapian_unlock(backend);
+	}
+
+	if ((xdb->db != NULL) &&
+	    HAS_ANY_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_DB | FLATCURVE_XAPIAN_DB_CLOSE_MBOX)) {
+		delete(xdb->db);
+		xdb->db = NULL;
+	}
 }
 
 static void
 fts_flatcurve_xapian_close_dbs(struct flatcurve_fts_backend *backend,
 			       enum flatcurve_xapian_db_close opts)
 {
-	bool commit, rotated = FALSE;
 	struct hash_iterate_context *iter;
 	void *key, *val;
-	struct timeval start;
 	struct flatcurve_xapian *x = backend->xapian;
-	struct flatcurve_xapian_db *xdb;
-
-	fts_flatcurve_xapian_clear_document(backend);
 
 	iter = hash_table_iterate_init(x->dbs);
 	while (hash_table_iterate(iter, x->dbs, &key, &val)) {
-		xdb = (struct flatcurve_xapian_db *)val;
-		if (xdb->dbw != NULL) {
-			i_gettimeofday(&start);
-			commit = FALSE;
-
-			if (HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE)) {
-				fts_flatcurve_xapian_close_dbw(xdb);
-				commit = TRUE;
-			} else if (HAS_ANY_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT | FLATCURVE_XAPIAN_DB_CLOSE_ROTATE)) {
-				xdb->dbw->commit();
-				commit = TRUE;
-			}
-
-			if (commit &&
-			    (fts_flatcurve_xapian_close_dbw_commit(backend, xdb, &start) ||
-			     ((xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
-			       HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_ROTATE))) &&
-			    !rotated)
-				rotated = fts_flatcurve_xapian_rotate(backend, xdb);
-		}
-		if ((xdb->db != NULL) &&
-		    HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE)) {
-			delete(xdb->db);
-			xdb->db = NULL;
-		}
+		fts_flatcurve_xapian_close_db(
+			backend, (struct flatcurve_xapian_db *)val, opts);
 	}
 	hash_table_iterate_deinit(&iter);
-
-	x->doc_updates = 0;
 }
 
 void fts_flatcurve_xapian_refresh(struct flatcurve_fts_backend *backend)
 {
-	fts_flatcurve_xapian_close_dbs(backend,
-				       FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE);
+	fts_flatcurve_xapian_close_dbs(backend, FLATCURVE_XAPIAN_DB_CLOSE_WDB);
 }
 
 void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 {
 	struct flatcurve_xapian *x = backend->xapian;
 
-	fts_flatcurve_xapian_close_dbs(backend,
-				       (enum flatcurve_xapian_db_close)
-				       (FLATCURVE_XAPIAN_DB_CLOSE_WDB_CLOSE |
-					FLATCURVE_XAPIAN_DB_CLOSE_DB_CLOSE));
+	x->closing = TRUE;
+	fts_flatcurve_xapian_close_dbs(backend, FLATCURVE_XAPIAN_DB_CLOSE_MBOX);
+	x->closing = FALSE;
+
 	hash_table_clear(x->dbs, TRUE);
 
 	x->dotlock_path = NULL;
