@@ -575,7 +575,7 @@ fts_flatcurve_xapian_db_read_add(struct flatcurve_fts_backend *backend,
 
 static bool
 fts_flatcurve_xapian_create_current(struct flatcurve_fts_backend *backend,
-				    bool keep_open)
+				    enum flatcurve_xapian_db_close copts)
 {
 	std::ostringstream s;
 	struct flatcurve_xapian_db *xdb;
@@ -592,9 +592,8 @@ fts_flatcurve_xapian_create_current(struct flatcurve_fts_backend *backend,
 	if (xdb == NULL || !fts_flatcurve_xapian_db_read_add(backend, xdb))
 		return FALSE;
 
-	if (!keep_open)
-		fts_flatcurve_xapian_close_db(backend, xdb,
-					      FLATCURVE_XAPIAN_DB_CLOSE_WDB);
+	if (copts)
+		fts_flatcurve_xapian_close_db(backend, xdb, copts);
 
 	return TRUE;
 }
@@ -644,7 +643,7 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 	}
 
 	ret = (!no_create && (x->dbw_current == NULL))
-		?  fts_flatcurve_xapian_create_current(backend, HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_NOCLOSE_CURRENT))
+		? fts_flatcurve_xapian_create_current(backend, (enum flatcurve_xapian_db_close)(HAS_ALL_BITS(opts, FLATCURVE_XAPIAN_DB_NOCLOSE_CURRENT) ? 0 : FLATCURVE_XAPIAN_DB_CLOSE_WDB))
 		: TRUE;
 	fts_flatcurve_xapian_unlock(backend);
 
@@ -912,7 +911,7 @@ fts_flatcurve_xapian_close_db(struct flatcurve_fts_backend *backend,
 	if (rotate && (fts_flatcurve_xapian_lock(backend) >= 0)) {
 		fname = p_strdup(x->pool, xdb->dbpath->fname);
 
-		if (!fts_flatcurve_xapian_create_current(backend, !x->closing))
+		if (!fts_flatcurve_xapian_create_current(backend, (enum flatcurve_xapian_db_close)(x->closing ? FLATCURVE_XAPIAN_DB_CLOSE_MBOX : 0)))
 			e_debug(backend->event, "Error when rotating DB "
 				"mailbox=%s (%s)", str_c(backend->boxname),
 				xdb->dbpath->fname);
