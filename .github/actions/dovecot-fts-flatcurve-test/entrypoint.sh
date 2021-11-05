@@ -6,10 +6,10 @@ TESTBOX=imaptest
 DOVECOT_LOG=/var/log/dovecot.log
 
 ulimit -c unlimited
+rm -f $DOVECOT_LOG
 
 function restart_dovecot() {
 	doveadm stop &> /dev/null
-	rm -f $DOVECOT_LOG
 	dovecot -c $1
 }
 
@@ -62,16 +62,16 @@ run_test "Testing GitHub Issue #11 (DB Rotation/Deletion)" \
 
 TESTBOX=rotatetest
 restart_dovecot /dovecot/configs/dovecot.conf.issue-11
-doveadm mailbox delete -u $TESTUSER $TESTBOX &> /dev/null
-doveadm mailbox create -u $TESTUSER $TESTBOX
-echo "Subject: foo" | doveadm save -u $TESTUSER -m $TESTBOX
+doveadm -D mailbox delete -u $TESTUSER $TESTBOX &>> $DOVECOT_LOG
+doveadm -D mailbox create -u $TESTUSER $TESTBOX &>> $DOVECOT_LOG
+echo "Subject: foo" | doveadm -D save -u $TESTUSER -m $TESTBOX &>> $DOVECOT_LOG
 sleep 2
 for i in /dovecot/sdbox/user/sdbox/mailboxes/$TESTBOX/dbox-Mails/fts-flatcurve/current.*
 do
 	runuser -u vmail -- cp -r $i ${i}1
 done
-echo "Subject: foo" | doveadm save -u $TESTUSER -m $TESTBOX
-echo "Subject: foo" | doveadm save -u $TESTUSER -m $TESTBOX
+echo "Subject: foo" | doveadm -D save -u $TESTUSER -m $TESTBOX &>> $DOVECOT_LOG
+echo "Subject: foo" | doveadm -D save -u $TESTUSER -m $TESTBOX &>> $DOVECOT_LOG
 sleep 5
 run_test "Testing DB Rotation/Deletion (multiple current DBs)" \
 	/dovecot/configs/dovecot.conf.issue-11 \
@@ -85,7 +85,7 @@ run_test "Testing optimize_limit" \
 run_test "Testing Concurrent Indexing" \
         /dovecot/configs/dovecot.conf \
         /dovecot/imaptest/concurrent-index
-doveadm index -u $TESTUSER $TESTBOX
+doveadm -D index -u $TESTUSER $TESTBOX &>> $DOVECOT_LOG
 # Need to let indexing complete before we run next test, or else
 # indexer-worker won't be killed when we restart Dovecot
 sleep 3
