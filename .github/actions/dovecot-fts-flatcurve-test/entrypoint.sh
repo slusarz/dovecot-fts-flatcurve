@@ -86,3 +86,11 @@ run_test "Testing Concurrent Indexing" \
         /dovecot/configs/dovecot.conf \
         /dovecot/imaptest/concurrent-index
 doveadm index -u $TESTUSER $TESTBOX
+
+run_test "Testing large mailbox" \
+        /dovecot/configs/dovecot.conf \
+        /dovecot/imaptest/large_mailbox
+
+run_test "Testing small mailbox (and large expunge from previous test)" \
+        /dovecot/configs/dovecot.conf \
+        /dovecot/imaptest/small_mailbox
