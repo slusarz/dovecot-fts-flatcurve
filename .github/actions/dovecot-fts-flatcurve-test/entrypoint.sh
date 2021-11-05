@@ -86,6 +86,9 @@ run_test "Testing Concurrent Indexing" \
         /dovecot/configs/dovecot.conf \
         /dovecot/imaptest/concurrent-index
 doveadm index -u $TESTUSER $TESTBOX
+# Need to let indexing complete before we run next test, or else
+# indexer-worker won't be killed when we restart Dovecot
+sleep 3
 
 run_test "Testing large mailbox" \
         /dovecot/configs/dovecot.conf \
