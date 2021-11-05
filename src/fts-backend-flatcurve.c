@@ -69,9 +69,6 @@ fts_backend_flatcurve_init(struct fts_backend *_backend, const char **error_r)
 	event_add_category(backend->event, &event_category_fts_flatcurve);
 	event_set_append_log_prefix(backend->event, FTS_FLATCURVE_DEBUG_PREFIX);
 
-        e_debug(backend->event, "Xapian library version: %s",
-		fts_flatcurve_xapian_library_version());
-
 	return 0;
 }
 
@@ -133,6 +130,12 @@ fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
 	backend->dotlock_set = fts_backend_flatcurve_dotlock_set;
 	backend->dotlock_set.nfs_flush = storage->set->mail_nfs_index;
 	backend->dotlock_set.use_excl_lock = storage->set->dotlock_use_excl;
+
+	if (!backend->debug_init) {
+		e_debug(backend->event, "Xapian library version: %s",
+			fts_flatcurve_xapian_library_version());
+		backend->debug_init = TRUE;
+	}
 }
 
 static int

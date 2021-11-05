@@ -23,6 +23,8 @@ struct flatcurve_fts_backend {
 	struct dotlock_settings dotlock_set;
 
 	pool_t pool;
+
+	bool debug_init:1;
 };
 
 struct flatcurve_fts_backend_update_context {
