@@ -1170,16 +1170,54 @@ void fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend)
 }
 
 #ifdef XAPIAN_HAS_COMPACT
+// Return value = whether to output debug error message; not success
 static bool
 fts_flatcurve_xapian_optimize_box_do(struct flatcurve_fts_backend *backend,
-				     struct flatcurve_xapian_db_path *newpath)
+				     Xapian::Database *db)
 {
+	int diff;
+	struct hash_iterate_context *hiter;
 	struct flatcurve_xapian_db_iter *iter;
+	void *key, *val;
+	struct flatcurve_xapian_db_path *n, *o;
+	struct timeval now, start;
 	enum flatcurve_xapian_db_opts opts;
+	struct flatcurve_xapian *x = backend->xapian;
+	enum flatcurve_xapian_wdb wopts;
 
-	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, opts)) == NULL) {
-		return FALSE;
+	/* We need to lock all of the mailboxes so nothing changes while we
+	 * are optimizing. */
+	hiter = hash_table_iterate_init(x->dbs);
+	while (hash_table_iterate(hiter, x->dbs, &key, &val)) {
+		(void)fts_flatcurve_xapian_write_db_get(
+			backend, (struct flatcurve_xapian_db *)val, wopts);
 	}
+	hash_table_iterate_deinit(&hiter);
+
+	/* Create the optimize target. */
+	o = fts_flatcurve_xapian_create_db_path(backend,
+						FLATCURVE_XAPIAN_DB_OPTIMIZE);
+	fts_flatcurve_xapian_delete(backend, o);
+	i_gettimeofday(&start);
+
+	try {
+		(void)db->reopen();
+		db->compact(o->path, Xapian::DBCOMPACT_NO_RENUMBER |
+				     Xapian::DBCOMPACT_MULTIPASS |
+				     Xapian::Compactor::FULLER);
+	} catch (Xapian::Error &e) {
+		e_error(backend->event, "Optimize failed mailbox=%s; %s",
+			str_c(backend->boxname), e.get_description().c_str());
+		return TRUE;
+	}
+
+	n = p_new(x->pool, struct flatcurve_xapian_db_path, 1);
+	n->fname = p_strdup(x->pool, o->fname);
+	n->path = p_strdup(x->pool, o->path);
+
+	/* Delete old indexes. */
+	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, opts)) == NULL)
+		return FALSE;
 	while (fts_flatcurve_xapian_db_iter_next(iter)) {
 		if ((iter->type != FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE) &&
 		    (iter->type != FLATCURVE_XAPIAN_DB_TYPE_DOTLOCK))
@@ -1188,7 +1226,18 @@ fts_flatcurve_xapian_optimize_box_do(struct flatcurve_fts_backend *backend,
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
 
 	/* Rename optimize index to an active index. */
-	return (fts_flatcurve_xapian_rename_db(backend, newpath) != NULL);
+	if (fts_flatcurve_xapian_rename_db(backend, n) == NULL) {
+		fts_flatcurve_xapian_delete(backend, o);
+		return FALSE;
+	}
+
+	i_gettimeofday(&now);
+	diff = timeval_diff_msecs(&now, &start);
+
+	e_debug(backend->event, "Optimized DB in %u.%03u secs; mailbox=%s",
+		diff/1000, diff%1000, str_c(backend->boxname));
+
+	return TRUE;
 }
 #endif
 
@@ -1196,9 +1245,6 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 {
 #ifdef XAPIAN_HAS_COMPACT
 	Xapian::Database *db;
-	int diff;
-	struct flatcurve_xapian_db_path *n, *o;
-	struct timeval now, start;
 	enum flatcurve_xapian_db_opts opts =
 		(enum flatcurve_xapian_db_opts)
 		(FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT |
@@ -1216,41 +1262,14 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 		add_str("mailbox", str_c(backend->boxname))->event(),
 		"Optimizing mailbox=%s", str_c(backend->boxname));
 
-	o = fts_flatcurve_xapian_create_db_path(
-		backend, FLATCURVE_XAPIAN_DB_OPTIMIZE);
-	fts_flatcurve_xapian_delete(backend, o);
-	i_gettimeofday(&start);
-
-	try {
-		db->compact(o->path, Xapian::DBCOMPACT_NO_RENUMBER |
-				     Xapian::DBCOMPACT_MULTIPASS |
-				     Xapian::Compactor::FULLER);
-	} catch (Xapian::Error &e) {
-		e_error(backend->event, "Optimize failed mailbox=%s; %s",
-			str_c(backend->boxname), e.get_description().c_str());
+	if (fts_flatcurve_xapian_lock(backend) < 0)
 		return;
-	}
 
-	n = t_new(struct flatcurve_xapian_db_path, 1);
-	n->fname = t_strdup(o->fname);
-	n->path = t_strdup(o->path);
-
-	/* Delete old indexes. */
-	fts_flatcurve_xapian_close(backend);
-	if ((fts_flatcurve_xapian_lock(backend) < 0) ||
-	    !fts_flatcurve_xapian_optimize_box_do(backend, n)) {
-		fts_flatcurve_xapian_delete(backend, n);
+	if (!fts_flatcurve_xapian_optimize_box_do(backend, db))
 		e_error(backend->event, "Optimize failed mailbox=%s",
 			str_c(backend->boxname));
-	} else {
-		i_gettimeofday(&now);
-		diff = timeval_diff_msecs(&now, &start);
 
-		e_debug(backend->event, "Optimized DB in %u.%03u secs; "
-			"mailbox=%s", diff/1000, diff%1000,
-			str_c(backend->boxname));
-	}
-
+	fts_flatcurve_xapian_close(backend);
 	fts_flatcurve_xapian_unlock(backend);
 #endif
 }
