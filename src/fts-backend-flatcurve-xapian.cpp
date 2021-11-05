@@ -360,8 +360,9 @@ fts_flatcurve_xapian_write_db_get_do(struct flatcurve_fts_backend *backend,
 			xdb->dbw = new Xapian::WritableDatabase(
 					xdb->dbpath->path, db_flags);
 		} catch (Xapian::DatabaseLockError &e) {
-			e_debug(backend->event, "Waiting for DB (RW) lock "
-				"mailbox=%s", str_c(backend->boxname));
+			e_debug(backend->event, "Waiting for DB (RW; %s) lock "
+				"mailbox=%s", xdb->dbpath->fname,
+				str_c(backend->boxname));
 			i_sleep_intr_secs(FLATCURVE_DBW_LOCK_RETRY_SECS);
 		}
 	}
