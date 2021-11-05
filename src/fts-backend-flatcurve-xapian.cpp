@@ -983,14 +983,13 @@ static uint32_t
 fts_flatcurve_xapian_get_last_uid_query(struct flatcurve_fts_backend *backend,
 					Xapian::Database *db)
 {
-	Xapian::Enquire *enquire;
+	Xapian::Enquire enquire(*db);
 	Xapian::MSet m;
 
-	enquire = new Xapian::Enquire(*db);
-	enquire->set_docid_order(Xapian::Enquire::DESCENDING);
-	enquire->set_query(Xapian::Query::MatchAll);
+	enquire.set_docid_order(Xapian::Enquire::DESCENDING);
+	enquire.set_query(Xapian::Query::MatchAll);
 
-	m = enquire->get_mset(0, 1);
+	m = enquire.get_mset(0, 1);
 	return (m.empty())
 		? 0 : m.begin().get_document().get_docid();
 }
