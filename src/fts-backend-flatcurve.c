@@ -8,6 +8,7 @@
 #include "mail-search-build.h"
 #include "mailbox-list-iter.h"
 #include "str.h"
+#include "time-util.h"
 #include "fts-backend-flatcurve.h"
 #include "fts-backend-flatcurve-xapian.h"
 
@@ -171,6 +172,7 @@ static struct fts_backend_update_context
 	ctx->ctx.backend = _backend;
 	ctx->backend = backend;
 	ctx->hdr_name = str_new(backend->pool, 128);
+	i_gettimeofday(&ctx->start);
 
 	return &ctx->ctx;
 }
@@ -180,7 +182,16 @@ fts_backend_flatcurve_update_deinit(struct fts_backend_update_context *_ctx)
 {
 	struct flatcurve_fts_backend_update_context *ctx =
 		(struct flatcurve_fts_backend_update_context *)_ctx;
-	int ret = _ctx->failed ? -1 : 0;
+	int diff, ret = _ctx->failed ? -1 : 0;
+	struct timeval now;
+
+	if (ret == 0) {
+		i_gettimeofday(&now);
+		diff = timeval_diff_msecs(&now, &ctx->start);
+
+		e_debug(ctx->backend->event, "Update transaction completed in "
+			"%u.%03u secs", diff/1000, diff%1000);
+	}
 
 	str_free(&ctx->hdr_name);
 	p_free(ctx->backend->pool, ctx);

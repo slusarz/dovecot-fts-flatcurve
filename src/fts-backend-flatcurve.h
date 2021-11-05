@@ -34,6 +34,7 @@ struct flatcurve_fts_backend_update_context {
 	enum fts_backend_build_key_type type;
 	string_t *hdr_name;
 	uint32_t uid;
+	struct timeval start;
 
 	bool indexed_hdr:1;
 	bool skip_uid:1;
