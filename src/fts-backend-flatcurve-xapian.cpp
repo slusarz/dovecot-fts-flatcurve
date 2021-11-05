@@ -1249,18 +1249,18 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 		return;
 
 	if (backend->xapian->deinit &&
-	    !fts_flatcurve_xapian_need_optimize(backend))
+	    !fts_flatcurve_xapian_need_optimize(backend)) {
+		fts_flatcurve_xapian_close(backend);
 		return;
+	}
 
 	e_debug(event_create_passthrough(backend->event)->
 		set_name("fts_flatcurve_optimize")->
 		add_str("mailbox", str_c(backend->boxname))->event(),
 		"Optimizing mailbox=%s", str_c(backend->boxname));
 
-	if (fts_flatcurve_xapian_lock(backend) < 0)
-		return;
-
-	if (!fts_flatcurve_xapian_optimize_box_do(backend, db))
+	if ((fts_flatcurve_xapian_lock(backend) >= 0) &&
+	    (!fts_flatcurve_xapian_optimize_box_do(backend, db)))
 		e_error(backend->event, "Optimize failed mailbox=%s",
 			str_c(backend->boxname));
 
