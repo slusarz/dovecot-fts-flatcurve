@@ -639,12 +639,8 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 		}
 
 		while (fts_flatcurve_xapian_db_iter_next(iter)) {
-			if ((iter->type == FLATCURVE_XAPIAN_DB_TYPE_INDEX) ||
-			    (iter->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT))
-				(void)fts_flatcurve_xapian_db_add(backend,
-								  iter->path,
-								  iter->type,
-								  FALSE);
+			(void)fts_flatcurve_xapian_db_add(backend, iter->path,
+							  iter->type, FALSE);
 		}
 		fts_flatcurve_xapian_db_iter_deinit(&iter);
 	}
