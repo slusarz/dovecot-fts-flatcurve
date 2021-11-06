@@ -122,4 +122,4 @@ echo "Success!"
 
 echo
 echo "Testing 'doveadm fts-flatcurve remove'"
-run_doveadm "fts-dovecot remove -u $TESTUSER '$TESTBOX'"
+run_doveadm "fts-flatcurve remove -u $TESTUSER '$TESTBOX'"
