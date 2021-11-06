@@ -36,6 +36,14 @@ function run_doveadm() {
 	fi
 }
 
+function run_not_exists_dir() {
+	if [ -d "$1" ]; then
+		echo "ERROR: Failed test!"
+		cat $DOVECOT_LOG
+		exit 1
+	fi
+}
+
 run_test "Testing RFC Compliant (substring) configuration" \
 	/dovecot/configs/dovecot.conf \
 	/dovecot/imaptest/fts-test
@@ -120,6 +128,9 @@ echo "Testing optimize"
 run_doveadm "fts optimize -u $TESTUSER"
 echo "Success!"
 
+TESTBOX=INBOX
 echo
 echo "Testing 'doveadm fts-flatcurve remove'"
-run_doveadm "fts-flatcurve remove -u $TESTUSER '$TESTBOX'"
+run_doveadm "fts-flatcurve remove -u $TESTUSER $TESTBOX"
+run_not_exists_dir /dovecot/sdbox/user/sdbox/mailboxes/$TESTBOX/dbox-Mails/fts-flatcurve/
+echo "Success!"
