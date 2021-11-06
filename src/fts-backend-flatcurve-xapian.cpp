@@ -106,7 +106,6 @@ struct flatcurve_xapian_db {
 	Xapian::Database *db;
 	Xapian::WritableDatabase *dbw;
 	struct flatcurve_xapian_db_path *dbpath;
-	size_t dbw_doccount;
 	unsigned int changes;
 	enum flatcurve_xapian_db_type type;
 };
@@ -391,10 +390,8 @@ fts_flatcurve_xapian_write_db_get(struct flatcurve_fts_backend *backend,
 		return NULL;
 	}
 
-	if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) {
+	if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
 		fts_flatcurve_xapian_check_db_version(backend, xdb);
-		xdb->dbw_doccount = xdb->dbw->get_doccount();
-	}
 
 	e_debug(backend->event, "Opened DB (RW; %s) mailbox=%s "
 		"messages=%u version=%u", xdb->dbpath->fname,
@@ -808,7 +805,7 @@ fts_flatcurve_xapian_check_commit_limit(struct flatcurve_fts_backend *backend,
 
 	if ((xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT) &&
 	    (fuser->set.rotate_size > 0) &&
-	    (xdb->dbw_doccount >= fuser->set.rotate_size)) {
+	    (xdb->dbw->get_doccount() >= fuser->set.rotate_size)) {
 		fts_flatcurve_xapian_close_db(
 			backend, xdb, FLATCURVE_XAPIAN_DB_CLOSE_ROTATE);
 	} else if ((fuser->set.commit_limit > 0) &&
@@ -853,9 +850,6 @@ fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 	x->doc_created = FALSE;
 	x->doc_uid = 0;
 
-	if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
-		++xdb->dbw_doccount;
-
 	fts_flatcurve_xapian_check_commit_limit(backend, xdb);
 }
 
@@ -879,7 +873,6 @@ fts_flatcurve_xapian_close_db(struct flatcurve_fts_backend *backend,
 			xdb->dbw->close();
 			delete(xdb->dbw);
 			xdb->dbw = NULL;
-			xdb->dbw_doccount = 0;
 			commit = TRUE;
 		} else if (HAS_ANY_BITS(opts, FLATCURVE_XAPIAN_DB_CLOSE_WDB_COMMIT | FLATCURVE_XAPIAN_DB_CLOSE_ROTATE)) {
 			xdb->dbw->commit();
@@ -1050,8 +1043,6 @@ void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 
 	try {
 		xdb->dbw->delete_document(uid);
-		if (xdb->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT)
-			--xdb->dbw_doccount;
 		fts_flatcurve_xapian_check_commit_limit(backend, xdb);
 	} catch (Xapian::Error &e) {
 		e_debug(backend->event, "update_expunge (%s)",
