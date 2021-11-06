@@ -5,6 +5,7 @@
 #include "doveadm-mail.h"
 #include "doveadm-mailbox-list-iter.h"
 #include "doveadm-print.h"
+#include "mail-search.h"
 #include "str.h"
 #include "fts-backend-flatcurve.h"
 #include "fts-backend-flatcurve-xapian.h"
@@ -94,12 +95,23 @@ cmd_fts_flatcurve_remove_init(struct doveadm_mail_cmd_context *_ctx,
 	ctx->search_args = doveadm_mail_mailbox_search_args_build(args);
 }
 
+static void
+cmd_fts_flatcurve_remove_deinit(struct doveadm_mail_cmd_context *_ctx)
+{
+	struct fts_flatcurve_remove_cmd_context *ctx =
+		(struct fts_flatcurve_remove_cmd_context *)_ctx;
+
+	if (ctx->search_args != NULL)
+		mail_search_args_unref(&ctx->search_args);
+}
+
 static struct doveadm_mail_cmd_context *cmd_fts_flatcurve_remove_alloc(void)
 {
 	struct fts_flatcurve_remove_cmd_context *ctx;
 
 	ctx = doveadm_mail_cmd_alloc(struct fts_flatcurve_remove_cmd_context);
 	ctx->ctx.v.init = cmd_fts_flatcurve_remove_init;
+	ctx->ctx.v.deinit = cmd_fts_flatcurve_remove_deinit;
 	ctx->ctx.v.run = cmd_fts_flatcurve_remove_run;
 
 	return &ctx->ctx;
