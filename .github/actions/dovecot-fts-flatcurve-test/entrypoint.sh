@@ -28,6 +28,10 @@ function run_test() {
 	run_imaptest $3
 }
 
+function run_doveadm() {
+	/usr/bin/valgrind --vgdb=no --num-callers=50 --keep-debuginfo=yes --leak-check=full --trace-children=yes doveadm -D $1 &>> $DOVECOT_LOG
+}
+
 run_test "Testing RFC Compliant (substring) configuration" \
 	/dovecot/configs/dovecot.conf \
 	/dovecot/imaptest/fts-test
@@ -62,16 +66,16 @@ run_test "Testing GitHub Issue #11 (DB Rotation/Deletion)" \
 
 TESTBOX=rotatetest
 restart_dovecot /dovecot/configs/dovecot.conf.issue-11
-doveadm -D mailbox delete -u $TESTUSER $TESTBOX &>> $DOVECOT_LOG
-doveadm -D mailbox create -u $TESTUSER $TESTBOX &>> $DOVECOT_LOG
-echo "Subject: foo" | doveadm -D save -u $TESTUSER -m $TESTBOX &>> $DOVECOT_LOG
+run_doveadm "mailbox delete -u $TESTUSER $TESTBOX"
+run_doveadm "mailbox create -u $TESTUSER $TESTBOX"
+echo "Subject: foo" | run_doveadm "save -u $TESTUSER -m $TESTBOX"
 sleep 2
 for i in /dovecot/sdbox/user/sdbox/mailboxes/$TESTBOX/dbox-Mails/fts-flatcurve/current.*
 do
 	runuser -u vmail -- cp -r $i ${i}1
 done
-echo "Subject: foo" | doveadm -D save -u $TESTUSER -m $TESTBOX &>> $DOVECOT_LOG
-echo "Subject: foo" | doveadm -D save -u $TESTUSER -m $TESTBOX &>> $DOVECOT_LOG
+echo "Subject: foo" | run_doveadm "save -u $TESTUSER -m $TESTBOX"
+echo "Subject: foo" | run_doveadm "save -u $TESTUSER -m $TESTBOX"
 sleep 5
 run_test "Testing DB Rotation/Deletion (multiple current DBs)" \
 	/dovecot/configs/dovecot.conf.issue-11 \
@@ -85,7 +89,7 @@ run_test "Testing optimize_limit" \
 run_test "Testing Concurrent Indexing" \
         /dovecot/configs/dovecot.conf \
         /dovecot/imaptest/concurrent-index
-doveadm -D index -u $TESTUSER $TESTBOX &>> $DOVECOT_LOG
+run_doveadm "index -u $TESTUSER $TESTBOX"
 # Need to let indexing complete before we run next test, or else
 # indexer-worker won't be killed when we restart Dovecot
 sleep 3
