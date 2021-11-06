@@ -657,6 +657,7 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 {
 	struct hash_iterate_context *iter;
 	void *key, *val;
+	struct fts_flatcurve_xapian_db_stats stats;
 	struct flatcurve_xapian *x = backend->xapian;
 	struct flatcurve_xapian_db *xdb;
 
@@ -692,12 +693,33 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 	}
 	hash_table_iterate_deinit(&iter);
 
+	fts_flatcurve_xapian_mailbox_stats(backend, &stats);
+
 	e_debug(backend->event, "Opened DB (RO) mailbox=%s messages=%u "
 		"version=%u shards=%u", str_c(backend->boxname),
-		x->db_read->get_doccount(), FLATCURVE_XAPIAN_DB_VERSION,
-		x->shards);
+		stats.messages, stats.version, stats.shards);
 
 	return x->db_read;
+}
+
+void
+fts_flatcurve_xapian_mailbox_stats(struct flatcurve_fts_backend *backend,
+				   struct fts_flatcurve_xapian_db_stats *stats)
+{
+	enum flatcurve_xapian_db_opts opts =
+		(enum flatcurve_xapian_db_opts)
+		 (FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT |
+		  FLATCURVE_XAPIAN_DB_IGNORE_EMPTY);
+	struct flatcurve_xapian *x = backend->xapian;
+
+	if ((x->db_read == NULL) &&
+	    (fts_flatcurve_xapian_read_db(backend, opts) == NULL)) {
+		i_zero(&stats);
+	} else {
+		stats->messages = x->db_read->get_doccount();
+		stats->shards = x->shards;
+		stats->version = FLATCURVE_XAPIAN_DB_VERSION;
+	}
 }
 
 static void

@@ -128,6 +128,12 @@ echo "Testing optimize"
 run_doveadm "fts optimize -u $TESTUSER"
 echo "Success!"
 
+echo
+echo "Testing 'doveadm fts-flatcurve stats'"
+run_doveadm "fts-flatcurve stats -u $TESTUSER rotatetest"
+# TODO: Scan for expected input
+echo "Success!"
+
 TESTBOX=INBOX
 echo
 echo "Testing 'doveadm fts-flatcurve remove'"

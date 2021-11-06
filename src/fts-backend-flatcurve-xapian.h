@@ -9,6 +9,12 @@ struct fts_flatcurve_xapian_query_result {
 	uint32_t uid;
 };
 
+struct fts_flatcurve_xapian_db_stats {
+	int messages;
+	unsigned int shards;
+	unsigned int version;
+};
+
 struct fts_flatcurve_xapian_query_iter;
 
 void fts_flatcurve_xapian_init(struct flatcurve_fts_backend *backend);
@@ -44,6 +50,10 @@ struct fts_flatcurve_xapian_query_result *
 fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iter *iter);
 void
 fts_flatcurve_xapian_query_iter_deinit(struct fts_flatcurve_xapian_query_iter **_iter);
+
+void
+fts_flatcurve_xapian_mailbox_stats(struct flatcurve_fts_backend *backend,
+                                   struct fts_flatcurve_xapian_db_stats *stats);
 
 const char *fts_flatcurve_xapian_library_version();
 #endif
