@@ -47,6 +47,6 @@ RUN useradd vmail && \
 ADD configs/ /dovecot/configs
 ADD imaptest/ /dovecot/imaptest
 
-ADD entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
+ADD fts-flatcurve-test.sh /fts-flatcurve-test.sh
+RUN chmod +x /fts-flatcurve-test.sh
+ENTRYPOINT ["/fts-flatcurve-test.sh"]
