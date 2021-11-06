@@ -81,6 +81,7 @@ extern "C" {
 #define FLATCURVE_XAPIAN_DB_VERSION 1
 
 #define FLATCURVE_DBW_LOCK_RETRY_SECS 1
+#define FLATCURVE_MANUAL_OPTIMIZE_COMMIT_LIMIT 500
 
 /* Dotlock: needed to ensure we don't run into race conditions when
  * manipulating current directory. */
@@ -1154,6 +1155,52 @@ void fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend)
 }
 
 #ifdef XAPIAN_HAS_COMPACT
+static bool
+fts_flatcurve_xapian_optimize_rebuild(struct flatcurve_fts_backend *backend,
+				      Xapian::Database *db,
+				      struct flatcurve_xapian_db_path *path)
+{
+	Xapian::Document doc;
+	Xapian::Enquire enquire(*db);
+	Xapian::MSetIterator i;
+	Xapian::MSet m;
+	unsigned int updates = 0;
+	struct flatcurve_xapian *x = backend->xapian;
+	struct flatcurve_xapian_db *xdb;
+
+	/* Create the optimize shard. */
+	xdb = p_new(x->pool, struct flatcurve_xapian_db, 1);
+	xdb->dbpath = path;
+	xdb->type = FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE;
+
+	if (fts_flatcurve_xapian_write_db_get(backend, xdb, FLATCURVE_XAPIAN_WDB_CREATE) == NULL)
+		return FALSE;
+
+	enquire.set_docid_order(Xapian::Enquire::ASCENDING);
+	enquire.set_query(Xapian::Query::MatchAll);
+	m = enquire.get_mset(0, db->get_doccount());
+	i = m.begin();
+
+	while (i != m.end()) {
+		doc = i.get_document();
+	        try {
+	                xdb->dbw->replace_document(doc.get_docid(), doc);
+	        } catch (Xapian::Error &e) {
+			return FALSE;
+		}
+		if (++updates > FLATCURVE_MANUAL_OPTIMIZE_COMMIT_LIMIT) {
+			xdb->dbw->commit();
+			updates = 0;
+		}
+		++i;
+	}
+
+	fts_flatcurve_xapian_close_db(backend, xdb,
+				      FLATCURVE_XAPIAN_DB_CLOSE_WDB);
+
+	return TRUE;
+}
+
 // Return value = whether to output debug error message; not success
 static bool
 fts_flatcurve_xapian_optimize_box_do(struct flatcurve_fts_backend *backend,
@@ -1185,10 +1232,32 @@ fts_flatcurve_xapian_optimize_box_do(struct flatcurve_fts_backend *backend,
 	i_gettimeofday(&start);
 
 	try {
-		(void)db->reopen();
-		db->compact(o->path, Xapian::DBCOMPACT_NO_RENUMBER |
-				     Xapian::DBCOMPACT_MULTIPASS |
-				     Xapian::Compactor::FULLER);
+		try {
+			(void)db->reopen();
+			db->compact(o->path, Xapian::DBCOMPACT_NO_RENUMBER |
+					     Xapian::DBCOMPACT_MULTIPASS |
+					     Xapian::Compactor::FULLER);
+		} catch (Xapian::InvalidOperationError &e) {
+			/* This exception is not as specific as it could be...
+			 * but the likely reason it happens is due to
+			 * Xapian::DBCOMPACT_NO_RENUMBER and shards having
+			 * disjoint ranges of UIDs (e.g. shard 1 = 1..2, shard
+			 * 2 = 2..3). Xapian, as of 1.4.18, cannot handle this
+			 * situation. Since we will never be able to compact
+			 * this data unless we do something about it, the
+			 * options are either 1) delete the index totally and
+			 * start fresh (not great for large mailboxes), or to
+			 * incrementally build the optimized DB by walking
+			 * through all DBs and copying, ignoring duplicate
+			 * documents. Let's try to be awesome and do the
+			 * latter. */
+			e_debug(backend->event, "Native optimize failed, "
+				"fallback to manual optimization mailbox=%s; "
+				"%s", str_c(backend->boxname),
+				e.get_description().c_str());
+			if (!fts_flatcurve_xapian_optimize_rebuild(backend, db, o))
+				throw;
+		}
 	} catch (Xapian::Error &e) {
 		e_error(backend->event, "Optimize failed mailbox=%s; %s",
 			str_c(backend->boxname), e.get_description().c_str());
