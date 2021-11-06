@@ -119,3 +119,7 @@ echo
 echo "Testing optimize"
 run_doveadm "fts optimize -u $TESTUSER"
 echo "Success!"
+
+echo
+echo "Testing 'doveadm fts-flatcurve remove'"
+run_doveadm "fts-dovecot remove -u $TESTUSER '$TESTBOX'"

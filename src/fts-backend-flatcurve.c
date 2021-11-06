@@ -9,6 +9,7 @@
 #include "mailbox-list-iter.h"
 #include "str.h"
 #include "time-util.h"
+#include "unlink-directory.h"
 #include "fts-backend-flatcurve.h"
 #include "fts-backend-flatcurve-xapian.h"
 
@@ -64,6 +65,8 @@ fts_backend_flatcurve_init(struct fts_backend *_backend, const char **error_r)
 	backend->db_path = str_new(backend->pool, 256);
 	backend->fuser = fuser;
 
+	fuser->backend = backend;
+
 	fts_flatcurve_xapian_init(backend);
 
 	backend->event = event_create(_backend->ns->user->event);
@@ -73,8 +76,8 @@ fts_backend_flatcurve_init(struct fts_backend *_backend, const char **error_r)
 	return 0;
 }
 
-static void
-fts_backend_flatcurve_close_box(struct flatcurve_fts_backend *backend)
+void
+fts_backend_flatcurve_close_mailbox(struct flatcurve_fts_backend *backend)
 {
 	if (str_len(backend->boxname)) {
 		fts_flatcurve_xapian_close(backend);
@@ -99,7 +102,7 @@ static void fts_backend_flatcurve_deinit(struct fts_backend *_backend)
 	struct flatcurve_fts_backend *backend =
 		(struct flatcurve_fts_backend *)_backend;
 
-	fts_backend_flatcurve_close_box(backend);
+	fts_backend_flatcurve_close_mailbox(backend);
 	fts_flatcurve_xapian_deinit(backend);
 
 	event_unref(&backend->event);
@@ -108,9 +111,8 @@ static void fts_backend_flatcurve_deinit(struct fts_backend *_backend)
 	i_free(backend);
 }
 
-static void
-fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
-				  struct mailbox *box)
+void fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
+				       struct mailbox *box)
 {
 	const char *path;
 	struct mail_storage *storage;
@@ -119,7 +121,7 @@ fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
 	    (strcasecmp(box->vname, str_c(backend->boxname)) == 0))
 		return;
 
-	fts_backend_flatcurve_close_box(backend);
+	fts_backend_flatcurve_close_mailbox(backend);
 
 	if (mailbox_get_path_to(box, MAILBOX_LIST_PATH_TYPE_INDEX, &path) <= 0)
 		i_unreached(); /* fts already checked this */
@@ -206,11 +208,10 @@ fts_backend_flatcurve_update_set_mailbox(struct fts_backend_update_context *_ctx
 	struct flatcurve_fts_backend_update_context *ctx =
 		(struct flatcurve_fts_backend_update_context *)_ctx;
 
-	if (box == NULL) {
-		fts_backend_flatcurve_close_box(ctx->backend);
-	} else {
+	if (box == NULL)
+		fts_backend_flatcurve_close_mailbox(ctx->backend);
+	else
 		fts_backend_flatcurve_set_mailbox(ctx->backend, box);
-	}
 }
 
 static void
@@ -647,6 +648,32 @@ fts_backend_flatcurve_lookup(struct fts_backend *_backend, struct mailbox *box,
 	pool_unref(&multi_result.pool);
 
 	return ret;
+}
+
+int fts_backend_flatcurve_delete_dir(struct flatcurve_fts_backend *backend,
+				     const char *path)
+{
+	const char *error;
+	struct stat st;
+	enum unlink_directory_flags unlink_flags = UNLINK_DIRECTORY_FLAG_RMDIR;
+
+	if (stat(path, &st) < 0)
+		return 0;
+
+	if (S_ISDIR(st.st_mode)) {
+		if (unlink_directory(path, unlink_flags, &error) < 0) {
+			e_debug(backend->event, "Deleting fts data failed "
+				"mailbox=%s dir=%s; %s",
+				str_c(backend->boxname), path, error);
+			return -1;
+		}
+	} else if (unlink(path) < 0) {
+		e_debug(backend->event, "Deleting fts data failed mailbox=%s "
+			"file=%s", str_c(backend->boxname), path);
+		return -1;
+	}
+
+	return 1;
 }
 
 

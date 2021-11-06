@@ -35,6 +35,7 @@ struct fts_flatcurve_settings {
 
 struct fts_flatcurve_user {
 	union mail_user_module_context module_ctx;
+	struct flatcurve_fts_backend *backend;
 	struct fts_flatcurve_settings set;
 };
 

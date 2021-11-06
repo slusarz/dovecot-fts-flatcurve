@@ -16,7 +16,6 @@ extern "C" {
 #include "sleep.h"
 #include "str.h"
 #include "time-util.h"
-#include "unlink-directory.h"
 #include "fts-backend-flatcurve.h"
 #include "fts-backend-flatcurve-xapian.h"
 #include <dirent.h>
@@ -256,25 +255,9 @@ static void
 fts_flatcurve_xapian_delete(struct flatcurve_fts_backend *backend,
 			    struct flatcurve_xapian_db_path *dbpath)
 {
-	const char *error, *path;
-	struct stat st;
-	enum unlink_directory_flags unlink_flags = UNLINK_DIRECTORY_FLAG_RMDIR;
-
-	path = (dbpath == NULL)
-		? str_c(backend->db_path)
-		: dbpath->path;
-
-	if (stat(path, &st) < 0)
-		return;
-
-	if (S_ISDIR(st.st_mode)) {
-		if (unlink_directory(path, unlink_flags, &error) < 0)
-			e_debug(backend->event, "Deleting fts data failed "
-				"mailbox=%s dir=%s; %s",
-				str_c(backend->boxname), path, error);
-	} else if (unlink(path) < 0)
-		e_debug(backend->event, "Deleting fts data failed mailbox=%s "
-			"file=%s", str_c(backend->boxname), path);
+	(void)fts_backend_flatcurve_delete_dir(
+		backend,
+		(dbpath == NULL) ? str_c(backend->db_path) : dbpath->path);
 }
 
 static struct flatcurve_xapian_db_iter *
