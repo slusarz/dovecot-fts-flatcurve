@@ -3,5 +3,5 @@ messages: 0
 
 ok login user pass
 ok select rotatetest
-ok search subject foo
-* search 1 2 3
+ok search body body
+* search 1 2 3 4
