@@ -29,7 +29,11 @@ function run_test() {
 }
 
 function run_doveadm() {
-	/usr/bin/valgrind --vgdb=no --num-callers=50 --keep-debuginfo=yes --leak-check=full --trace-children=yes doveadm -D $1 &>> $DOVECOT_LOG
+	if ! /usr/bin/valgrind --vgdb=no --num-callers=50 --keep-debuginfo=yes --leak-check=full --trace-children=yes doveadm -D $1 &>> $DOVECOT_LOG
+		echo "ERROR: Failed test!"
+		cat $DOVECOT_LOG
+		exit 1
+	fi
 }
 
 run_test "Testing RFC Compliant (substring) configuration" \
@@ -101,3 +105,13 @@ run_test "Testing large mailbox" \
 run_test "Testing small mailbox (and large expunge from previous test)" \
         /dovecot/configs/dovecot.conf \
         /dovecot/imaptest/small_mailbox
+
+echo
+echo "Testing rescan"
+run_doveadm "fts rescan -u $TESTUSER"
+echo "Success!"
+
+echo
+echo "Testing optimize"
+run_doveadm "fts optimize -u $TESTUSER"
+echo "Success!"
