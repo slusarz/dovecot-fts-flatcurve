@@ -363,7 +363,7 @@ fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
 	struct event_passthrough *e;
 	struct fts_flatcurve_xapian_query_iter *iter;
 	struct seq_range_iter iter2;
-	uint32_t low_uid;
+	uint32_t low_uid = 0;
 	struct mail *mail;
 	ARRAY_TYPE(seq_range) expunged, missing, uids;
 	struct flatcurve_fts_query *query;
