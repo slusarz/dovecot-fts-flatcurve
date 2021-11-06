@@ -29,7 +29,7 @@ function run_test() {
 }
 
 function run_doveadm() {
-	if ! /usr/bin/valgrind --vgdb=no --num-callers=50 --keep-debuginfo=yes --leak-check=full --trace-children=yes doveadm -D $1 &>> $DOVECOT_LOG
+	if ! /usr/bin/valgrind --vgdb=no --num-callers=50 --keep-debuginfo=yes --leak-check=full --trace-children=yes doveadm -D $1 &>> $DOVECOT_LOG ; then
 		echo "ERROR: Failed test!"
 		cat $DOVECOT_LOG
 		exit 1
