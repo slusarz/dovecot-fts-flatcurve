@@ -60,9 +60,10 @@ cmd_fts_flatcurve_mailbox_run_do(struct flatcurve_fts_backend *backend,
 			result = (fts_backend_flatcurve_delete_dir(backend, str_c(backend->db_path)) > 0) ;
 			break;
 		case FTS_FLATCURVE_CMD_STATS:
-			result = TRUE;
 			fts_flatcurve_xapian_mailbox_stats(backend, &stats);
-			fts_flatcurve_xapian_get_last_uid(backend, &last_uid);
+			if ((result = (stats.version > 0)))
+				fts_flatcurve_xapian_get_last_uid(backend,
+								  &last_uid);
 			break;
 		default:
 			i_unreached();

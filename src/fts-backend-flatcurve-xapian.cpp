@@ -714,7 +714,7 @@ fts_flatcurve_xapian_mailbox_stats(struct flatcurve_fts_backend *backend,
 
 	if ((x->db_read == NULL) &&
 	    (fts_flatcurve_xapian_read_db(backend, opts) == NULL)) {
-		i_zero(&stats);
+		i_zero(stats);
 	} else {
 		stats->messages = x->db_read->get_doccount();
 		stats->shards = x->shards;
