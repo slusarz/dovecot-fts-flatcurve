@@ -703,6 +703,40 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 }
 
 void
+fts_flatcurve_xapian_mailbox_check(struct flatcurve_fts_backend *backend,
+				   struct fts_flatcurve_xapian_db_check *check)
+{
+	struct hash_iterate_context *iter;
+	void *key, *val;
+	enum flatcurve_xapian_db_opts opts =
+		(enum flatcurve_xapian_db_opts)
+		 (FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT |
+		  FLATCURVE_XAPIAN_DB_IGNORE_EMPTY);
+	struct flatcurve_xapian *x = backend->xapian;
+	struct flatcurve_xapian_db *xdb;
+
+	i_zero(check);
+
+	if (fts_flatcurve_xapian_read_db(backend, opts) == NULL)
+		return;
+
+	iter = hash_table_iterate_init(x->dbs);
+	while (hash_table_iterate(iter, x->dbs, &key, &val)) {
+		xdb = (struct flatcurve_xapian_db *)val;
+		try {
+			check->errors += Xapian::Database::check(
+						std::string(xdb->dbpath->path),
+						Xapian::DBCHECK_FIX, NULL);
+		} catch (const Xapian::Error &e) {
+			e_debug(backend->event, "Check failed; %s",
+				e.get_description().c_str());
+		}
+		++check->shards;
+	}
+	hash_table_iterate_deinit(&iter);
+}
+
+void
 fts_flatcurve_xapian_mailbox_stats(struct flatcurve_fts_backend *backend,
 				   struct fts_flatcurve_xapian_db_stats *stats)
 {

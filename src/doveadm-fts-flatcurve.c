@@ -12,6 +12,7 @@
 #include "fts-flatcurve-config.h"
 #include "fts-flatcurve-plugin.h"
 
+#define DOVEADM_FLATCURVE_CMD_NAME_CHECK FTS_FLATCURVE_LABEL " check"
 #define DOVEADM_FLATCURVE_CMD_NAME_REMOVE FTS_FLATCURVE_LABEL " remove"
 #define DOVEADM_FLATCURVE_CMD_NAME_STATS FTS_FLATCURVE_LABEL " stats"
 
@@ -21,6 +22,7 @@ void doveadm_fts_flatcurve_plugin_init(struct module *module);
 void doveadm_fts_flatcurve_plugin_deinit(void);
 
 enum fts_flatcurve_cmd_type {
+	FTS_FLATCURVE_CMD_CHECK,
 	FTS_FLATCURVE_CMD_REMOVE,
 	FTS_FLATCURVE_CMD_STATS
 };
@@ -37,6 +39,7 @@ cmd_fts_flatcurve_mailbox_run_do(struct flatcurve_fts_backend *backend,
 				 struct fts_flatcurve_mailbox_cmd_context *ctx)
 {
 	struct mailbox *box;
+	struct fts_flatcurve_xapian_db_check check;
 	const char *guid;
 	const struct mailbox_info *info;
 	struct doveadm_mailbox_list_iter *iter;
@@ -56,6 +59,10 @@ cmd_fts_flatcurve_mailbox_run_do(struct flatcurve_fts_backend *backend,
 		fts_backend_flatcurve_set_mailbox(backend, box);
 
 		switch (ctx->cmd_type) {
+		case FTS_FLATCURVE_CMD_CHECK:
+			fts_flatcurve_xapian_mailbox_check(backend, &check);
+			result = (check.shards > 0);
+			break;
 		case FTS_FLATCURVE_CMD_REMOVE:
 			result = (fts_backend_flatcurve_delete_dir(backend, str_c(backend->db_path)) > 0) ;
 			break;
@@ -77,6 +84,10 @@ cmd_fts_flatcurve_mailbox_run_do(struct flatcurve_fts_backend *backend,
 			doveadm_print(guid);
 
 			switch (ctx->cmd_type) {
+			case FTS_FLATCURVE_CMD_CHECK:
+				doveadm_print_num(check.errors);
+				doveadm_print_num(check.shards);
+				break;
 			case FTS_FLATCURVE_CMD_STATS:
 				doveadm_print_num(last_uid);
 				doveadm_print_num(stats.messages);
@@ -117,6 +128,10 @@ cmd_fts_flatcurve_mailbox_run(struct doveadm_mail_cmd_context *_ctx,
 	doveadm_print_header_simple("guid");
 
 	switch (ctx->cmd_type) {
+	case FTS_FLATCURVE_CMD_CHECK:
+		doveadm_print_header_simple("errors");
+		doveadm_print_header_simple("shards");
+		break;
 	case FTS_FLATCURVE_CMD_STATS:
 		doveadm_print_header_simple("last_uid");
 		doveadm_print_header_simple("messages");
@@ -139,6 +154,9 @@ cmd_fts_flatcurve_mailbox_init(struct doveadm_mail_cmd_context *_ctx,
 
 	if (args[0] == NULL) {
 		switch (ctx->cmd_type) {
+		case FTS_FLATCURVE_CMD_CHECK:
+			doveadm_mail_help_name(DOVEADM_FLATCURVE_CMD_NAME_STATS);
+			break;
 		case FTS_FLATCURVE_CMD_REMOVE:
 			doveadm_mail_help_name(DOVEADM_FLATCURVE_CMD_NAME_REMOVE);
 			break;
@@ -177,6 +195,11 @@ cmd_fts_flatcurve_mailbox_alloc(enum fts_flatcurve_cmd_type type)
 	return &ctx->ctx;
 }
 
+static struct doveadm_mail_cmd_context *cmd_fts_flatcurve_check_alloc(void)
+{
+	return cmd_fts_flatcurve_mailbox_alloc(FTS_FLATCURVE_CMD_CHECK);
+}
+
 static struct doveadm_mail_cmd_context *cmd_fts_flatcurve_remove_alloc(void)
 {
 	return cmd_fts_flatcurve_mailbox_alloc(FTS_FLATCURVE_CMD_REMOVE);
@@ -188,6 +211,15 @@ static struct doveadm_mail_cmd_context *cmd_fts_flatcurve_stats_alloc(void)
 }
 
 static struct doveadm_cmd_ver2 fts_flatcurve_commands[] = {
+	{
+		.name = DOVEADM_FLATCURVE_CMD_NAME_CHECK,
+		.usage = DOVEADM_CMD_MAIL_USAGE_PREFIX "<mailbox query>",
+		.mail_cmd = cmd_fts_flatcurve_check_alloc,
+DOVEADM_CMD_PARAMS_START
+DOVEADM_CMD_MAIL_COMMON
+DOVEADM_CMD_PARAM('\0', "mailbox-mask", CMD_PARAM_ARRAY, CMD_PARAM_FLAG_POSITIONAL)
+DOVEADM_CMD_PARAMS_END
+	},
 	{
 		.name = DOVEADM_FLATCURVE_CMD_NAME_REMOVE,
 		.usage = DOVEADM_CMD_MAIL_USAGE_PREFIX "<mailbox query>",
