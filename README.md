@@ -335,6 +335,62 @@ Apr 26 18:30:46 imap(20873 foo)<kn+4V+TAJuN/AAAB>: Debug: fts_flatcurve: Query (
 ```
 
 
+doveadm Commands
+----------------
+
+This plugin implements several `fts-flatcurve` specific doveadm commands.
+
+### doveadm fts-flatcurve check \<mailbox mask\>
+
+Run a simple check on Dovecot Xapian databases, and attempt to fix basic
+errors (it is the same checking done by the `xapian-check` command with the `F`
+option).
+
+`<mailbox mask>` is the list of mailboxes to process. It is possible to use
+wildcards (`*` and `?`) in this value.
+
+For each mailbox that has FTS data, it outputs the following key/value fields:
+
+| Key       | Value                                                |
+| --------- | ---------------------------------------------------- |
+| `mailbox` | The human-readable mailbox name. (key is hidden)     |
+| `guid`    | The GUID of the mailbox.                             |
+| `errors`  | The number of errors reported by the Xapian library. |
+| `shards`  | The number of index shards processed.                |
+
+### doveadm fts-flatcurve remove \<mailbox mask\>
+
+Removes all FTS data for a mailbox.
+
+`<mailbox mask>` is the list of mailboxes to process. It is possible to use
+wildcards (`*` and `?`) in this value.
+
+For each mailbox that has FTS data, it outputs the following key/value fields:
+
+| Key       | Value                                            |
+| --------- | ------------------------------------------------ |
+| `mailbox` | The human-readable mailbox name. (key is hidden) |
+| `guid`    | The GUID of the mailbox.                         |
+
+### doveadm fts-flatcurve stats \<mailbox mask\>
+
+Returns FTS data for a mailbox.
+
+`<mailbox mask>` is the list of mailboxes to process. It is possible to use
+wildcards (`*` and `?`) in this value.
+
+For each mailbox that has FTS data, it outputs the following key/value fields:
+
+| Key        | Value                                            |
+| ---------- | ------------------------------------------------ |
+| `mailbox`  | The human-readable mailbox name. (key is hidden) |
+| `guid`     | The GUID of the mailbox.                         |
+| `last_uid` | The last UID indexed in the mailbox.             |
+| `messages` | The number of messages indexed in the mailbox.   |
+| `shards`   | The number of index shards.                      |
+| `version`  | The (Dovecot internal) version of the FTS data.  |
+
+
 Acknowledgements
 ----------------
 
