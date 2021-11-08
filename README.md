@@ -365,7 +365,21 @@ Removes all FTS data for a mailbox.
 `<mailbox mask>` is the list of mailboxes to process. It is possible to use
 wildcards (`*` and `?`) in this value.
 
-For each mailbox that has FTS data, it outputs the following key/value fields:
+For each mailbox removed, it outputs the following key/value fields:
+
+| Key       | Value                                            |
+| --------- | ------------------------------------------------ |
+| `mailbox` | The human-readable mailbox name. (key is hidden) |
+| `guid`    | The GUID of the mailbox.                         |
+
+### doveadm fts-flatcurve rotate \<mailbox mask\>
+
+Triggers an index rotation for a mailbox.
+
+`<mailbox mask>` is the list of mailboxes to process. It is possible to use
+wildcards (`*` and `?`) in this value.
+
+For each mailbox rotated, it outputs the following key/value fields:
 
 | Key       | Value                                            |
 | --------- | ------------------------------------------------ |

@@ -736,6 +736,24 @@ fts_flatcurve_xapian_mailbox_check(struct flatcurve_fts_backend *backend,
 	hash_table_iterate_deinit(&iter);
 }
 
+bool fts_flatcurve_xapian_mailbox_rotate(struct flatcurve_fts_backend *backend)
+{
+	enum flatcurve_xapian_db_opts opts =
+		(enum flatcurve_xapian_db_opts)
+		 (FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT |
+		  FLATCURVE_XAPIAN_DB_IGNORE_EMPTY);
+	struct flatcurve_xapian *x = backend->xapian;
+	struct flatcurve_xapian_db *xdb;
+
+	if ((xdb = fts_flatcurve_xapian_write_db_current(backend, opts)) == NULL)
+		return FALSE;
+
+	fts_flatcurve_xapian_close_db(backend, xdb,
+				      FLATCURVE_XAPIAN_DB_CLOSE_ROTATE);
+
+	return TRUE;
+}
+
 void
 fts_flatcurve_xapian_mailbox_stats(struct flatcurve_fts_backend *backend,
 				   struct fts_flatcurve_xapian_db_stats *stats)

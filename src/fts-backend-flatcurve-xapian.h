@@ -59,6 +59,8 @@ fts_flatcurve_xapian_query_iter_deinit(struct fts_flatcurve_xapian_query_iter **
 void
 fts_flatcurve_xapian_mailbox_check(struct flatcurve_fts_backend *backend,
 				   struct fts_flatcurve_xapian_db_check *check);
+bool
+fts_flatcurve_xapian_mailbox_rotate(struct flatcurve_fts_backend *backend);
 void
 fts_flatcurve_xapian_mailbox_stats(struct flatcurve_fts_backend *backend,
                                    struct fts_flatcurve_xapian_db_stats *stats);

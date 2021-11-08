@@ -14,6 +14,7 @@
 
 #define DOVEADM_FLATCURVE_CMD_NAME_CHECK FTS_FLATCURVE_LABEL " check"
 #define DOVEADM_FLATCURVE_CMD_NAME_REMOVE FTS_FLATCURVE_LABEL " remove"
+#define DOVEADM_FLATCURVE_CMD_NAME_ROTATE FTS_FLATCURVE_LABEL " rotate"
 #define DOVEADM_FLATCURVE_CMD_NAME_STATS FTS_FLATCURVE_LABEL " stats"
 
 const char *doveadm_fts_flatcurve_plugin_version = DOVECOT_ABI_VERSION;
@@ -24,6 +25,7 @@ void doveadm_fts_flatcurve_plugin_deinit(void);
 enum fts_flatcurve_cmd_type {
 	FTS_FLATCURVE_CMD_CHECK,
 	FTS_FLATCURVE_CMD_REMOVE,
+	FTS_FLATCURVE_CMD_ROTATE,
 	FTS_FLATCURVE_CMD_STATS
 };
 
@@ -65,6 +67,9 @@ cmd_fts_flatcurve_mailbox_run_do(struct flatcurve_fts_backend *backend,
 			break;
 		case FTS_FLATCURVE_CMD_REMOVE:
 			result = (fts_backend_flatcurve_delete_dir(backend, str_c(backend->db_path)) > 0) ;
+			break;
+		case FTS_FLATCURVE_CMD_ROTATE:
+			result = fts_flatcurve_xapian_mailbox_rotate(backend);
 			break;
 		case FTS_FLATCURVE_CMD_STATS:
 			fts_flatcurve_xapian_mailbox_stats(backend, &stats);
@@ -160,6 +165,9 @@ cmd_fts_flatcurve_mailbox_init(struct doveadm_mail_cmd_context *_ctx,
 		case FTS_FLATCURVE_CMD_REMOVE:
 			doveadm_mail_help_name(DOVEADM_FLATCURVE_CMD_NAME_REMOVE);
 			break;
+		case FTS_FLATCURVE_CMD_ROTATE:
+			doveadm_mail_help_name(DOVEADM_FLATCURVE_CMD_NAME_ROTATE);
+			break;
 		case FTS_FLATCURVE_CMD_STATS:
 			doveadm_mail_help_name(DOVEADM_FLATCURVE_CMD_NAME_STATS);
 			break;
@@ -205,6 +213,11 @@ static struct doveadm_mail_cmd_context *cmd_fts_flatcurve_remove_alloc(void)
 	return cmd_fts_flatcurve_mailbox_alloc(FTS_FLATCURVE_CMD_REMOVE);
 }
 
+static struct doveadm_mail_cmd_context *cmd_fts_flatcurve_rotate_alloc(void)
+{
+	return cmd_fts_flatcurve_mailbox_alloc(FTS_FLATCURVE_CMD_ROTATE);
+}
+
 static struct doveadm_mail_cmd_context *cmd_fts_flatcurve_stats_alloc(void)
 {
 	return cmd_fts_flatcurve_mailbox_alloc(FTS_FLATCURVE_CMD_STATS);
@@ -224,6 +237,15 @@ DOVEADM_CMD_PARAMS_END
 		.name = DOVEADM_FLATCURVE_CMD_NAME_REMOVE,
 		.usage = DOVEADM_CMD_MAIL_USAGE_PREFIX "<mailbox query>",
 		.mail_cmd = cmd_fts_flatcurve_remove_alloc,
+DOVEADM_CMD_PARAMS_START
+DOVEADM_CMD_MAIL_COMMON
+DOVEADM_CMD_PARAM('\0', "mailbox-mask", CMD_PARAM_ARRAY, CMD_PARAM_FLAG_POSITIONAL)
+DOVEADM_CMD_PARAMS_END
+	},
+	{
+		.name = DOVEADM_FLATCURVE_CMD_NAME_ROTATE,
+		.usage = DOVEADM_CMD_MAIL_USAGE_PREFIX "<mailbox query>",
+		.mail_cmd = cmd_fts_flatcurve_rotate_alloc,
 DOVEADM_CMD_PARAMS_START
 DOVEADM_CMD_MAIL_COMMON
 DOVEADM_CMD_PARAM('\0', "mailbox-mask", CMD_PARAM_ARRAY, CMD_PARAM_FLAG_POSITIONAL)
