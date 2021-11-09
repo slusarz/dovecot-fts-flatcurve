@@ -65,5 +65,7 @@ void
 fts_flatcurve_xapian_mailbox_stats(struct flatcurve_fts_backend *backend,
                                    struct fts_flatcurve_xapian_db_stats *stats);
 
+void fts_flatcurve_xapian_set_mailbox(struct flatcurve_fts_backend *backend);
+
 const char *fts_flatcurve_xapian_library_version();
 #endif

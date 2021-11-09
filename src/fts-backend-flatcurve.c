@@ -71,7 +71,8 @@ fts_backend_flatcurve_init(struct fts_backend *_backend, const char **error_r)
 
 	backend->event = event_create(_backend->ns->user->event);
 	event_add_category(backend->event, &event_category_fts_flatcurve);
-	event_set_append_log_prefix(backend->event, FTS_FLATCURVE_DEBUG_PREFIX);
+
+	fts_backend_flatcurve_close_mailbox(backend);
 
 	return 0;
 }
@@ -85,6 +86,8 @@ fts_backend_flatcurve_close_mailbox(struct flatcurve_fts_backend *backend)
 		str_truncate(backend->boxname, 0);
 		str_truncate(backend->db_path, 0);
 	}
+
+	event_set_append_log_prefix(backend->event, FTS_FLATCURVE_DEBUG_PREFIX);
 }
 
 static int fts_backend_flatcurve_refresh(struct fts_backend * _backend)
@@ -139,6 +142,8 @@ void fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
 			fts_flatcurve_xapian_library_version());
 		backend->debug_init = TRUE;
 	}
+
+	fts_flatcurve_xapian_set_mailbox(backend);
 }
 
 static int
@@ -156,8 +161,7 @@ fts_backend_flatcurve_get_last_uid(struct fts_backend *_backend,
 		set_name("fts_flatcurve_last_uid")->
 		add_str("mailbox", str_c(backend->boxname))->
 		add_int("uid", *last_uid_r)->event(),
-		"Last UID mailbox=%s uid=%d", str_c(backend->boxname),
-		*last_uid_r);
+		"Last UID uid=%d", *last_uid_r);
 
 	return 0;
 }
@@ -225,8 +229,7 @@ fts_backend_flatcurve_update_expunge(struct fts_backend_update_context *_ctx,
 		set_name("fts_flatcurve_expunge")->
 		add_str("mailbox", str_c(ctx->backend->boxname))->
 		add_int("uid", uid)->event(),
-		"Expunge mailbox=%s uid=%d", str_c(ctx->backend->boxname),
-		uid);
+		"Expunge uid=%d", uid);
 
 	fts_flatcurve_xapian_expunge(ctx->backend, uid);
 }
@@ -266,8 +269,7 @@ fts_backend_flatcurve_update_set_build_key(struct fts_backend_update_context *_c
 			set_name("fts_flatcurve_index")->
 			add_str("mailbox", str_c(ctx->backend->boxname))->
 			add_int("uid", key->uid)->event(),
-			"Indexing mailbox=%s uid=%d",
-			str_c(ctx->backend->boxname), key->uid);
+			"Indexing uid=%d", key->uid);
 	}
 
 	switch (key->type) {
@@ -450,8 +452,7 @@ end:
 
 	if (array_is_empty(&expunged)) {
 		e_debug(e->add_str("status", "ok")->event(),
-			"Rescan: no issues found mailbox=%s",
-			box->name);
+			"Rescan: no issues found");
 	} else {
 		u = str_c(fts_backend_flatcurve_seq_range_string(&expunged,
 								 pool));
@@ -462,12 +463,12 @@ end:
 					&missing, pool));
 			e_debug(e->add_str("status", "missing_msgs")->
 				add_str("uids", u2)->event(),
-				"Rescan: missing messages mailbox=%s uids=%s "
-				"expunged=%s", box->name, u2, u);
+				"Rescan: missing messages uids=%s expunged=%s",
+				u2, u);
 		} else {
 			e_debug(e->add_str("status", "expunge_msgs")->event(),
 				"Rescan: expunge non-existent messages "
-				"mailbox=%s expunged=%s", box->name, u);
+				"expunged=%s", u);
 		}
 	}
 }
@@ -596,8 +597,8 @@ fts_backend_flatcurve_lookup_multi(struct fts_backend *_backend,
 			add_str("maybe", query->maybe ? "yes" : "no")->
 			add_str("query", str_c(query->qtext))->
 			add_str("uids", u)->event(), "Query (%s) "
-			"mailbox=%s %smatches=%d uids=%s", str_c(query->qtext),
-			r->box->vname, query->maybe ? "maybe_" : "",
+			"%smatches=%d uids=%s", str_c(query->qtext),
+			query->maybe ? "maybe_" : "",
 			array_count(&fresult->uids), u);
 	}
 
@@ -663,13 +664,12 @@ int fts_backend_flatcurve_delete_dir(struct flatcurve_fts_backend *backend,
 	if (S_ISDIR(st.st_mode)) {
 		if (unlink_directory(path, unlink_flags, &error) < 0) {
 			e_debug(backend->event, "Deleting fts data failed "
-				"mailbox=%s dir=%s; %s",
-				str_c(backend->boxname), path, error);
+				"dir=%s; %s", path, error);
 			return -1;
 		}
 	} else if (unlink(path) < 0) {
-		e_debug(backend->event, "Deleting fts data failed mailbox=%s "
-			"file=%s", str_c(backend->boxname), path);
+		e_debug(backend->event, "Deleting fts data failed file=%s",
+			path);
 		return -1;
 	}
 
