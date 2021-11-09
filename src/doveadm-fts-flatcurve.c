@@ -104,7 +104,7 @@ cmd_fts_flatcurve_mailbox_run_do(struct flatcurve_fts_backend *backend,
 			}
 		}
 
-		fts_backend_flatcurve_set_mailbox(backend, NULL);
+		fts_backend_flatcurve_close_mailbox(backend);
 		mailbox_free(&box);
 	}
 

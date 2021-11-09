@@ -62,6 +62,8 @@ struct flatcurve_fts_result {
 
 void fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
                                        struct mailbox *box);
+void
+fts_backend_flatcurve_close_mailbox(struct flatcurve_fts_backend *backend);
 
 // Returns -1 on error, 0 if FTS directory doesn't exist, 1 on success
 int fts_backend_flatcurve_delete_dir(struct flatcurve_fts_backend *backend,

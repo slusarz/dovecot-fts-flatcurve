@@ -47,19 +47,6 @@ static struct fts_backend *fts_backend_flatcurve_alloc(void)
 	return &backend->backend;
 }
 
-static void
-fts_backend_flatcurve_close_mailbox(struct flatcurve_fts_backend *backend)
-{
-	if (str_len(backend->boxname)) {
-		fts_flatcurve_xapian_close(backend);
-
-		str_truncate(backend->boxname, 0);
-		str_truncate(backend->db_path, 0);
-	}
-
-	event_set_append_log_prefix(backend->event, FTS_FLATCURVE_DEBUG_PREFIX);
-}
-
 static int
 fts_backend_flatcurve_init(struct fts_backend *_backend, const char **error_r)
 {
@@ -88,6 +75,19 @@ fts_backend_flatcurve_init(struct fts_backend *_backend, const char **error_r)
 	fts_backend_flatcurve_close_mailbox(backend);
 
 	return 0;
+}
+
+void
+fts_backend_flatcurve_close_mailbox(struct flatcurve_fts_backend *backend)
+{
+	if (str_len(backend->boxname)) {
+		fts_flatcurve_xapian_close(backend);
+
+		str_truncate(backend->boxname, 0);
+		str_truncate(backend->db_path, 0);
+	}
+
+	event_set_append_log_prefix(backend->event, FTS_FLATCURVE_DEBUG_PREFIX);
 }
 
 static int fts_backend_flatcurve_refresh(struct fts_backend * _backend)
