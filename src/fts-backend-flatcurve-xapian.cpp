@@ -80,6 +80,7 @@ extern "C" {
 #define FLATCURVE_XAPIAN_DB_VERSION 1
 
 #define FLATCURVE_DBW_LOCK_RETRY_SECS 1
+#define FLATCURVE_DBW_LOCK_RETRY_MAX 60
 #define FLATCURVE_MANUAL_OPTIMIZE_COMMIT_LIMIT 500
 
 /* Dotlock: needed to ensure we don't run into race conditions when
@@ -334,6 +335,7 @@ fts_flatcurve_xapian_write_db_get_do(struct flatcurve_fts_backend *backend,
 {
 	enum flatcurve_xapian_db_opts opts =
 		FLATCURVE_XAPIAN_DB_NOCLOSE_CURRENT;
+	unsigned int wait = 0;
 
 	while (xdb->dbw == NULL) {
 		try {
@@ -342,6 +344,11 @@ fts_flatcurve_xapian_write_db_get_do(struct flatcurve_fts_backend *backend,
 		} catch (Xapian::DatabaseLockError &e) {
 			e_debug(backend->event, "Waiting for DB (RW; %s) lock",
 				xdb->dbpath->fname);
+			wait += FLATCURVE_DBW_LOCK_RETRY_SECS;
+			if (wait > FLATCURVE_DBW_LOCK_RETRY_MAX)
+				i_fatal(FTS_FLATCURVE_DEBUG_PREFIX "Could not "
+					"obtain DB lock (RW; %s)",
+					xdb->dbpath->fname);
 			i_sleep_intr_secs(FLATCURVE_DBW_LOCK_RETRY_SECS);
 		}
 	}
