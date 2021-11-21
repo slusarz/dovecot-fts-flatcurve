@@ -22,7 +22,8 @@ tests.
 Why Flatcurve?
 --------------
 
-This plugin was originally written during the 2020 Coronavirus pandemic.
+This plugin was originally written during the initial stages of the 2020
+Coronavirus pandemic.
 
 Get it?
 
@@ -104,7 +105,9 @@ feature.
 
 Flatcurve provies a single plugin option for configuration: `fts_flatcurve`.
 
-Optional parameters for the `fts_flatcurve` plugin setting:
+**The default parameters should be fine for most people.**
+
+*Optional* parameters for the `fts_flatcurve` plugin setting:
 
  - `commit_limit` - Commit database changes after this many documents are
                     updated. Higher commit limits will result in faster
@@ -337,195 +340,122 @@ Benchmarking
 ### Indexing benchmark with substring matching ENABLED (default configuration)
 
 ```
-Linux ... 5.4.72-microsoft-standard-WSL2 #1 SMP ... x86_64 GNU/Linux
-VM Running on Docker Desktop (Windows 10)
-Debian Buster; Dovecot 2.3.14; Xapian 1.4.11
+Linux 5.14.18-300.fc35.x86_64 (Fedora 35)
+Dovecot 2.3.17; Xapian 1.4.18
 Host CPU: AMD RYZEN 7 1700 8-Core 3.0 GHz (3.7 GHz Turbo)
-Using fts_flatcurve as of 18 May 2021
+Using fts_flatcurve as of 20 November 2021
 
-
--- Indexing Trash Mailbox w/25863 messages
+-- Indexing Trash Mailbox w/25867 messages
 -- (e.g. this is "legitimate" mail; it does not include Spam)
 -- FTS index deleted before run (Dovecot caches NOT deleted)
 -- Dovecot plugin configuration: "fts_flatcurve ="
--- Limit process to 256 MB 
+-- Limit process to 256 MB
 $ ulimit -v 256000 && /usr/bin/time -v doveadm index -u foo Trash
-        User time (seconds): 212.78
-        System time (seconds): 14.62
-        Percent of CPU this job got: 93%
-        Elapsed (wall clock) time (h:mm:ss or m:ss): 4:02.48
-        Maximum resident set size (kbytes): 120684
-        Minor (reclaiming a frame) page faults: 29421
-        Voluntary context switches: 1366
-        Involuntary context switches: 165
-        File system outputs: 5559904
+	User time (seconds): 200.83
+	System time (seconds): 2.79
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:24.66
+	Maximum resident set size (kbytes): 104972
+	Minor (reclaiming a frame) page faults: 26176
+	Voluntary context switches: 39
+	Involuntary context switches: 1569
+	File system outputs: 2410928
 
-Median throughput: ~107 msgs/second
+Median throughput: ~125 msgs/second
 
-
--- Listing Xapian files for the mailbox
-$ ls -laR fts-flatcurve/
-fts-flatcurve:
-total 2164
-drwx------ 8 vmail vmail    4096 May 19 04:43 .
-drwx------ 3 vmail vmail 2183168 May 19 04:46 ..
-drwx------ 2 vmail vmail    4096 May 19 04:41 index.1640
-drwx------ 2 vmail vmail    4096 May 19 04:40 index.4081
-drwx------ 2 vmail vmail    4096 May 19 04:41 index.5954
-drwx------ 2 vmail vmail    4096 May 19 04:42 index.7108
-drwx------ 2 vmail vmail    4096 May 19 04:43 index.7628
-drwx------ 2 vmail vmail    4096 May 19 04:43 index.current
-
-fts-flatcurve/index.1640:
-total 164740
-drwx------ 2 vmail vmail      4096 May 19 04:41 .
-drwx------ 8 vmail vmail      4096 May 19 04:43 ..
--rw------- 1 vmail vmail         0 May 19 04:41 flintlock
--rw------- 1 vmail vmail       113 May 19 04:41 iamglass
--rw------- 1 vmail vmail 139853824 May 19 04:41 postlist.glass
--rw------- 1 vmail vmail  28827648 May 19 04:41 termlist.glass
-
-fts-flatcurve/index.4081:
-total 203188
-drwx------ 2 vmail vmail      4096 May 19 04:40 .
-drwx------ 8 vmail vmail      4096 May 19 04:43 ..
--rw------- 1 vmail vmail         0 May 19 04:39 flintlock
--rw------- 1 vmail vmail       113 May 19 04:40 iamglass
--rw------- 1 vmail vmail 176029696 May 19 04:40 postlist.glass
--rw------- 1 vmail vmail  32014336 May 19 04:40 termlist.glass
-
-fts-flatcurve/index.5954:
-total 168712
-drwx------ 2 vmail vmail      4096 May 19 04:41 .
-drwx------ 8 vmail vmail      4096 May 19 04:43 ..
--rw------- 1 vmail vmail         0 May 19 04:40 flintlock
--rw------- 1 vmail vmail       114 May 19 04:41 iamglass
--rw------- 1 vmail vmail 143818752 May 19 04:41 postlist.glass
--rw------- 1 vmail vmail  28925952 May 19 04:41 termlist.glass
-
-fts-flatcurve/index.7108:
-total 249116
-drwx------ 2 vmail vmail      4096 May 19 04:42 .
-drwx------ 8 vmail vmail      4096 May 19 04:43 ..
--rw------- 1 vmail vmail         0 May 19 04:41 flintlock
--rw------- 1 vmail vmail       115 May 19 04:42 iamglass
--rw------- 1 vmail vmail 218718208 May 19 04:42 postlist.glass
--rw------- 1 vmail vmail  36356096 May 19 04:42 termlist.glass
-
-fts-flatcurve/index.7628:
-total 249828
-drwx------ 2 vmail vmail      4096 May 19 04:43 .
-drwx------ 8 vmail vmail      4096 May 19 04:43 ..
--rw------- 1 vmail vmail         0 May 19 04:42 flintlock
--rw------- 1 vmail vmail       117 May 19 04:43 iamglass
--rw------- 1 vmail vmail 220364800 May 19 04:43 postlist.glass
--rw------- 1 vmail vmail  35438592 May 19 04:43 termlist.glass
-
-fts-flatcurve/index.current:
-total 22324
-drwx------ 2 vmail vmail     4096 May 19 04:43 .
-drwx------ 8 vmail vmail     4096 May 19 04:43 ..
--rw------- 1 vmail vmail        0 May 19 04:43 flintlock
--rw------- 1 vmail vmail      111 May 19 04:43 iamglass
--rw------- 1 vmail vmail 18685952 May 19 04:43 postlist.glass
--rw------- 1 vmail vmail  4161536 May 19 04:43 termlist.glass
-
+$ doveadm fts-flatcurve stats -u foo Trash 
+Trash guid=72dfe40cb7f4996156000000da7fd742 last_uid=25867 messages=25867 shards=6 version=1
 
 -- Compacting mailbox
 $ du -s fts-flatcurve/
-1057888 fts-flatcurve/
+753448 fts-flatcurve/
 $ /usr/bin/time -v doveadm fts optimize -u foo
-        User time (seconds): 10.13
-        System time (seconds): 1.13
-        Percent of CPU this job got: 88%
-        Elapsed (wall clock) time (h:mm:ss or m:ss): 0:12.66
-        Maximum resident set size (kbytes): 14372
-        Minor (reclaiming a frame) page faults: 1162
-        Voluntary context switches: 1154
-        Involuntary context switches: 1
-        File system outputs: 1670056
+	User time (seconds): 5.87
+	System time (seconds): 0.48
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:06.39
+        Maximum resident set size (kbytes): 13024
+        Minor (reclaiming a frame) page faults: 1202
+        Voluntary context switches: 7
+        Involuntary context switches: 109
+        File system outputs: 1240504
 $ du -s fts-flatcurve/
-512348 fts-flatcurve/
-$ ls -laR fts-flatcurve/
-fts-flatcurve/:
-total 2144
-drwx------ 3 vmail vmail    4096 May 19 04:52 .
-drwx------ 3 vmail vmail 2183168 May 19 04:46 ..
-drwx------ 2 vmail vmail    4096 May 19 04:52 index.4595
-
-fts-flatcurve/index.4595:
-total 512348
-drwx------ 2 vmail vmail      4096 May 19 04:52 .
-drwx------ 3 vmail vmail      4096 May 19 04:52 ..
--rw------- 1 vmail vmail         0 May 19 04:52 flintlock
--rw------- 1 vmail vmail       110 May 19 04:52 iamglass
--rw------- 1 vmail vmail 334757888 May 19 04:52 postlist.glass
--rw------- 1 vmail vmail 189874176 May 19 04:52 termlist.glass
-
+399476 fts-flatcurve/
 
 -- Comparing to size of Trash mailbox
 $ doveadm mailbox status -u foo vsize Trash
-Trash vsize=1162426786
+Trash vsize=1162552360
 $ echo "scale=3; (512348 * 1024) / 1162426786" | bc
-.451  [Index = ~45% the size of the total mailbox data size]
+.351  [Index = ~35% the size of the total mailbox data size]
 ```
 
 ### Indexing benchmark with substring matching DISABLED (non-default configuration)
 
 ```
-Linux ... 5.4.72-microsoft-standard-WSL2 #1 SMP ... x86_64 GNU/Linux
-VM Running on Docker Desktop (Windows 10)
-Debian Buster; Dovecot 2.3.14; Xapian 1.4.11
+Linux 5.14.18-300.fc35.x86_64 (Fedora 35)
+Dovecot 2.3.17; Xapian 1.4.18
 Host CPU: AMD RYZEN 7 1700 8-Core 3.0 GHz (3.7 GHz Turbo)
-Using fts_flatcurve as of 18 May 2021
+Using fts_flatcurve as of 20 November 2021
 
-
--- Indexing Trash Mailbox w/25863 messages
+-- Indexing Trash Mailbox w/25867 messages
 -- (e.g. this is "legitimate" mail; it does not include Spam)
 -- FTS index deleted before run (Dovecot caches NOT deleted)
 -- Dovecot plugin configuration: "fts_flatcurve = substring_search=no"
 -- Limit process to 256 MB 
 $ ulimit -v 256000 && /usr/bin/time -v doveadm index -u foo Trash
-        User time (seconds): 79.13
-        System time (seconds): 0.94
-        Percent of CPU this job got: 96%
-        Elapsed (wall clock) time (h:mm:ss or m:ss): 1:23.07
-        Maximum resident set size (kbytes): 48088
-        Minor (reclaiming a frame) page faults: 11366
-        Voluntary context switches: 3455
-        Involuntary context switches: 104
-        File system outputs: 790328
+	User time (seconds): 93.90
+	System time (seconds): 1.18
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:35.52
+        Maximum resident set size (kbytes): 46316
+        Minor (reclaiming a frame) page faults: 10224
+        Voluntary context switches: 40
+        Involuntary context switches: 460
+        File system outputs: 3479522
 
+Median throughput: ~270 msgs/second
 
-Median throughput: ~311 msgs/second
-
+$ doveadm fts-flatcurve stats -u foo Trash 
+Trash guid=126e7a0269fc99615c0000006d6fda7a last_uid=25867 messages=25867 shards=6 version=1
 
 -- Compacting mailbox
 $ du -s fts-flatcurve/
-169364 fts-flatcurve/
+147400 fts-flatcurve/
 $ /usr/bin/time -v doveadm fts optimize -u foo
-        User time (seconds): 1.06
-        System time (seconds): 0.13
-        Percent of CPU this job got: 77%
-        Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.54
-        Maximum resident set size (kbytes): 14532
-        Minor (reclaiming a frame) page faults: 1154
-        Voluntary context switches: 832
-        Involuntary context switches: 1
-        File system outputs: 278728
+	User time (seconds): 0.82
+	System time (seconds): 0.09
+	Percent of CPU this job got: 98%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.93
+        Maximum resident set size (kbytes): 13104
+        Minor (reclaiming a frame) page faults: 1162
+        Voluntary context switches: 7
+        Involuntary context switches: 7
+        File system outputs: 242472
 $ du -s fts-flatcurve/
-96300 fts-flatcurve/
-
+84812 fts-flatcurve/
 
 -- Comparing to size of Trash mailbox
 $ doveadm mailbox status -u foo vsize Trash
-Trash vsize=1162426786
-$ echo "scale=3; (96300 * 1024) / 1162426786" | bc
-.084  [Index = ~8.4% the size of the total mailbox data size]
+Trash vsize=1162552360
+$ echo "scale=3; (84812 * 1024) / 1162552360" | bc
+.074  [Index = ~7.4% the size of the total mailbox data size]
 ```
 
-As can be seen, substring matching in Xapian requires significantly more
-resources (mainly CPU and disk storage).
+#### FTS Plugin configuration for the tests
+
+```
+plugin {
+  fts = flatcurve
+  fts_autoindex = no
+  fts_enforced = yes
+  fts_filters = normalizer-icu snowball stopwords
+  fts_filters_en = lowercase snowball english-possessive stopwords
+  fts_index_timeout = 60s
+  fts_languages = en es de
+  fts_tokenizer_generic = algorithm=simple
+  fts_tokenizers = generic email-address
+}
+```
 
 Testing Status
 --------------
