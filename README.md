@@ -27,6 +27,9 @@ Coronavirus pandemic.
 
 Get it?
 
+For details on design philosophy, see
+https://github.com/slusarz/dovecot-fts-flatcurve/issues/4#issuecomment-902425597.
+
 
 Requirements
 ------------
