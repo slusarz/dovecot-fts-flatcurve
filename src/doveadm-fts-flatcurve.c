@@ -160,7 +160,7 @@ cmd_fts_flatcurve_mailbox_init(struct doveadm_mail_cmd_context *_ctx,
 	if (args[0] == NULL) {
 		switch (ctx->cmd_type) {
 		case FTS_FLATCURVE_CMD_CHECK:
-			doveadm_mail_help_name(DOVEADM_FLATCURVE_CMD_NAME_STATS);
+			doveadm_mail_help_name(DOVEADM_FLATCURVE_CMD_NAME_CHECK);
 			break;
 		case FTS_FLATCURVE_CMD_REMOVE:
 			doveadm_mail_help_name(DOVEADM_FLATCURVE_CMD_NAME_REMOVE);
