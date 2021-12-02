@@ -20,6 +20,8 @@ struct fts_flatcurve_xapian_db_stats {
 	unsigned int version;
 };
 
+HASH_TABLE_DEFINE_TYPE(term_counter, char *, void *);
+
 struct fts_flatcurve_xapian_query_iter;
 
 void fts_flatcurve_xapian_init(struct flatcurve_fts_backend *backend);
@@ -64,6 +66,11 @@ fts_flatcurve_xapian_mailbox_rotate(struct flatcurve_fts_backend *backend);
 void
 fts_flatcurve_xapian_mailbox_stats(struct flatcurve_fts_backend *backend,
                                    struct fts_flatcurve_xapian_db_stats *stats);
+
+void fts_flatcurve_xapian_mailbox_terms(struct flatcurve_fts_backend *backend,
+					HASH_TABLE_TYPE(term_counter) terms);
+void fts_flatcurve_xapian_mailbox_headers(struct flatcurve_fts_backend *backend,
+					  HASH_TABLE_TYPE(term_counter) hdrs);
 
 void fts_flatcurve_xapian_set_mailbox(struct flatcurve_fts_backend *backend);
 

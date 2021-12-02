@@ -773,6 +773,68 @@ fts_flatcurve_xapian_mailbox_stats(struct flatcurve_fts_backend *backend,
 	}
 }
 
+static void
+fts_flatcurve_xapian_mailbox_terms_do(struct flatcurve_fts_backend *backend,
+				      HASH_TABLE_TYPE(term_counter) terms,
+				      const char *prefix)
+{
+	unsigned int counter;
+	Xapian::Database *db;
+	const char *key, *pkey;
+	void *k, *v;
+	enum flatcurve_xapian_db_opts opts =
+		(enum flatcurve_xapian_db_opts)
+		 (FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT |
+		  FLATCURVE_XAPIAN_DB_IGNORE_EMPTY);
+	Xapian::TermIterator t, tend;
+
+	if ((db = fts_flatcurve_xapian_read_db(backend, opts)) == NULL)
+		return;
+
+	for (t = db->allterms_begin(prefix), tend = db->allterms_end(prefix); t != tend; ++t) {
+		const std::string &term = *t;
+		key = term.data();
+
+		if (strlen(prefix) > 0) {
+			if (strncmp(key, FLATCURVE_XAPIAN_BOOLEAN_FIELD_PREFIX, 1) != 0)
+				continue;
+			++key;
+		} else if (strncmp(key, FLATCURVE_XAPIAN_ALL_HEADERS_PREFIX, 1) == 0) {
+			++key;
+		} else if ((strncmp(key, FLATCURVE_XAPIAN_BOOLEAN_FIELD_PREFIX, 1) == 0) ||
+			   (strncmp(key, FLATCURVE_XAPIAN_HEADER_PREFIX, 1) == 0)) {
+			continue;
+		}
+		
+		if (hash_table_lookup_full(terms, key, &k, &v)) {
+			counter = POINTER_CAST_TO(v, unsigned int);
+			pkey = (const char *)k;
+		} else {
+			counter = 0;
+			/* Using backend memory pool, since expectation is
+			 * that this will only be called from doveadm. */
+			pkey = p_strdup(backend->pool, key);
+		}
+		counter += t.get_termfreq();
+		hash_table_update(terms, pkey, POINTER_CAST(counter));
+	}	
+}
+
+void
+fts_flatcurve_xapian_mailbox_terms(struct flatcurve_fts_backend *backend,
+				   HASH_TABLE_TYPE(term_counter) terms)
+{
+	fts_flatcurve_xapian_mailbox_terms_do(backend, terms, "");
+}
+
+void
+fts_flatcurve_xapian_mailbox_headers(struct flatcurve_fts_backend *backend,
+				     HASH_TABLE_TYPE(term_counter) hdrs)
+{
+	fts_flatcurve_xapian_mailbox_terms_do(
+		backend, hdrs, FLATCURVE_XAPIAN_BOOLEAN_FIELD_PREFIX);
+}
+
 void fts_flatcurve_xapian_set_mailbox(struct flatcurve_fts_backend *backend)
 {
 	event_set_append_log_prefix(backend->event, p_strdup_printf(
