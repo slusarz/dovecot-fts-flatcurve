@@ -805,7 +805,7 @@ fts_flatcurve_xapian_mailbox_terms_do(struct flatcurve_fts_backend *backend,
 			   (strncmp(key, FLATCURVE_XAPIAN_HEADER_PREFIX, 1) == 0)) {
 			continue;
 		}
-		
+
 		if (hash_table_lookup_full(terms, key, &k, &v)) {
 			counter = POINTER_CAST_TO(v, unsigned int);
 			pkey = (const char *)k;
@@ -817,7 +817,7 @@ fts_flatcurve_xapian_mailbox_terms_do(struct flatcurve_fts_backend *backend,
 		}
 		counter += t.get_termfreq();
 		hash_table_update(terms, pkey, POINTER_CAST(counter));
-	}	
+	}
 }
 
 void

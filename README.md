@@ -388,7 +388,7 @@ $ ulimit -v 256000 && /usr/bin/time -v doveadm index -u foo Trash
 
 Median throughput: ~125 msgs/second
 
-$ doveadm fts-flatcurve stats -u foo Trash 
+$ doveadm fts-flatcurve stats -u foo Trash
 Trash guid=72dfe40cb7f4996156000000da7fd742 last_uid=25867 messages=25867 shards=6 version=1
 
 -- Compacting mailbox
@@ -426,7 +426,7 @@ Using fts_flatcurve as of 20 November 2021
 -- (e.g. this is "legitimate" mail; it does not include Spam)
 -- FTS index deleted before run (Dovecot caches NOT deleted)
 -- Dovecot plugin configuration: "fts_flatcurve = substring_search=no"
--- Limit process to 256 MB 
+-- Limit process to 256 MB
 $ ulimit -v 256000 && /usr/bin/time -v doveadm index -u foo Trash
 	User time (seconds): 93.90
 	System time (seconds): 1.18
@@ -440,7 +440,7 @@ $ ulimit -v 256000 && /usr/bin/time -v doveadm index -u foo Trash
 
 Median throughput: ~270 msgs/second
 
-$ doveadm fts-flatcurve stats -u foo Trash 
+$ doveadm fts-flatcurve stats -u foo Trash
 Trash guid=126e7a0269fc99615c0000006d6fda7a last_uid=25867 messages=25867 shards=6 version=1
 
 -- Compacting mailbox
