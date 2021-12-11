@@ -1,12 +1,15 @@
+---
+name: Testing for dovecot-fts-flatcurve
+
 on:
   push:
     paths:
       - 'src/**'
   pull_request:
   workflow_dispatch:
+
 jobs:
   build:
-    name: Testing for dovecot-fts-flatcurve
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

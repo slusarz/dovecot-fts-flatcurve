@@ -1,3 +1,4 @@
+---
 name: "dovecot-fts-flatcurve Testing"
 description: "IMAP compliancy testing for dovecot-fts-flatcurve"
 author: "slusarz@curecanti.org"
