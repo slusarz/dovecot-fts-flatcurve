@@ -16,13 +16,6 @@
 #define FTS_FLATCURVE_LOCK_TIMEOUT_SECS 5
 #define FTS_FLATCURVE_LOCK_STALE_TIMEOUT_SECS 10
 
-static const struct dotlock_settings fts_backend_flatcurve_dotlock_set = {
-	.lock_suffix = "",
-	.timeout = FTS_FLATCURVE_LOCK_TIMEOUT_SECS,
-	.stale_timeout = FTS_FLATCURVE_LOCK_STALE_TIMEOUT_SECS,
-	.use_io_notify = TRUE
-};
-
 enum fts_backend_flatcurve_action {
 	FTS_BACKEND_FLATCURVE_ACTION_OPTIMIZE,
 	FTS_BACKEND_FLATCURVE_ACTION_RESCAN
@@ -133,9 +126,12 @@ void fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
 	str_printfa(backend->db_path, "%s/%s/", path, FTS_FLATCURVE_LABEL);
 
 	storage = mailbox_get_storage(box);
-	backend->dotlock_set = fts_backend_flatcurve_dotlock_set;
-	backend->dotlock_set.nfs_flush = storage->set->mail_nfs_index;
-	backend->dotlock_set.use_excl_lock = storage->set->dotlock_use_excl;
+
+	backend->lock_flags = 0;
+	if (storage->set->mail_nfs_index)
+		backend->lock_flags |= FLATCURVE_LOCK_NFS_FLUSH;
+	if (storage->set->dotlock_use_excl)
+		backend->lock_flags |= FLATCURVE_LOCK_DOTLOCK_USE_EXCL;
 
 	if (!backend->debug_init) {
 		e_debug(backend->event, "Xapian library version: %s",

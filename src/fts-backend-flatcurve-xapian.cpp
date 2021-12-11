@@ -506,6 +506,7 @@ static int fts_flatcurve_xapian_lock(struct flatcurve_fts_backend *backend)
 {
 	enum dotlock_create_flags flags;
 	int ret;
+	struct dotlock_settings set;
 	struct flatcurve_xapian *x = backend->xapian;
 
 	if (x->dotlock_path == NULL)
@@ -513,8 +514,17 @@ static int fts_flatcurve_xapian_lock(struct flatcurve_fts_backend *backend)
 			x->pool, "%s" FLATCURVE_XAPIAN_LOCK_FNAME,
 			str_c(backend->db_path));
 
-	ret = file_dotlock_create(&backend->dotlock_set, x->dotlock_path,
-				  flags, &x->dotlock);
+	i_zero(&set);
+	set.lock_suffix = "",
+	set.nfs_flush = HAS_ALL_BITS(backend->lock_flags,
+				     FLATCURVE_LOCK_NFS_FLUSH);
+	set.stale_timeout = FLATCURVE_XAPIAN_LOCK_STALE_TIMEOUT_SECS;
+	set.timeout = FLATCURVE_XAPIAN_LOCK_TIMEOUT_SECS;
+	set.use_excl_lock = HAS_ALL_BITS(backend->lock_flags,
+					 FLATCURVE_LOCK_DOTLOCK_USE_EXCL);
+	set.use_io_notify = TRUE;
+
+	ret = file_dotlock_create(&set, x->dotlock_path, flags, &x->dotlock);
 	if (ret < 0)
 		e_error(backend->event, "dotlock create failed: %m");
 
