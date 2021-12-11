@@ -141,6 +141,12 @@ run_doveadm "fts-flatcurve check -u $TESTUSER rotatetest"
 echo "Success!"
 
 echo
+echo "Testing 'doveadm fts-flatcurve dump'"
+run_doveadm "fts-flatcurve dump -u $TESTUSER -h rotatetest"
+# TODO: Scan for expected input
+echo "Success!"
+
+echo
 echo "Testing 'doveadm fts-flatcurve stats'"
 run_doveadm "fts-flatcurve stats -u $TESTUSER rotatetest"
 # TODO: Scan for expected input
