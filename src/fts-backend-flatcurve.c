@@ -13,9 +13,6 @@
 #include "fts-backend-flatcurve.h"
 #include "fts-backend-flatcurve-xapian.h"
 
-#define FTS_FLATCURVE_LOCK_TIMEOUT_SECS 5
-#define FTS_FLATCURVE_LOCK_STALE_TIMEOUT_SECS 10
-
 enum fts_backend_flatcurve_action {
 	FTS_BACKEND_FLATCURVE_ACTION_OPTIMIZE,
 	FTS_BACKEND_FLATCURVE_ACTION_RESCAN
