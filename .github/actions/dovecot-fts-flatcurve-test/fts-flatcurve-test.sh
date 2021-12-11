@@ -4,6 +4,7 @@ TESTUSER=user
 TESTPASS=pass
 TESTBOX=imaptest
 DOVECOT_LOG=/var/log/dovecot.log
+VALGRIND=0
 
 ulimit -c unlimited
 rm -f $DOVECOT_LOG
@@ -29,7 +30,12 @@ function run_test() {
 }
 
 function run_doveadm() {
-	if ! /usr/bin/valgrind --vgdb=no --num-callers=50 --keep-debuginfo=yes --leak-check=full --trace-children=yes doveadm -D $1 &>> $DOVECOT_LOG ; then
+        if [ $VALGRIND -eq 1 ]; then
+                CMD="/usr/bin/valgrind --vgdb=no --num-callers=50 --keep-debuginfo=yes --leak-check=full --trace-children=yes"
+        else
+                CMD=""
+        fi
+        if ! $CMD doveadm -D $1 &>> $DOVECOT_LOG; then
 		echo "ERROR: Failed test!"
 		cat $DOVECOT_LOG
 		exit 1
