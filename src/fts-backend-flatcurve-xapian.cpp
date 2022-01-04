@@ -89,6 +89,8 @@ extern "C" {
 #define FLATCURVE_XAPIAN_LOCK_TIMEOUT_SECS 5
 #define FLATCURVE_XAPIAN_LOCK_STALE_TIMEOUT_SECS 10
 
+#define ENUM_EMPTY(x) ((enum x) 0)
+
 
 struct flatcurve_xapian_db_path {
 	const char *fname;
@@ -504,7 +506,7 @@ fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
 
 static int fts_flatcurve_xapian_lock(struct flatcurve_fts_backend *backend)
 {
-	enum dotlock_create_flags flags;
+	enum dotlock_create_flags flags = ENUM_EMPTY(dotlock_create_flags);
 	int ret;
 	struct dotlock_settings set;
 	struct flatcurve_xapian *x = backend->xapian;
@@ -645,7 +647,7 @@ static struct flatcurve_xapian_db *
 fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend,
 				      enum flatcurve_xapian_db_opts opts)
 {
-	enum flatcurve_xapian_wdb wopts;
+	enum flatcurve_xapian_wdb wopts = ENUM_EMPTY(flatcurve_xapian_wdb);
 	struct flatcurve_xapian *x = backend->xapian;
 	struct flatcurve_xapian_db *xdb;
 
@@ -860,7 +862,7 @@ fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 	std::ostringstream ss;
 	int v;
 	std::string ver;
-	enum flatcurve_xapian_wdb wopts;
+	enum flatcurve_xapian_wdb wopts = ENUM_EMPTY(flatcurve_xapian_wdb);
 
 	ver = db->get_metadata(FLATCURVE_XAPIAN_DB_VERSION_KEY);
 	v = ver.empty() ? 0 : std::atoi(ver.c_str());
@@ -917,8 +919,9 @@ static struct flatcurve_xapian_db *
 fts_flatcurve_xapian_write_db_by_uid(struct flatcurve_fts_backend *backend,
 				     uint32_t uid)
 {
-	enum flatcurve_xapian_db_opts opts;
-	enum flatcurve_xapian_wdb wopts;
+	enum flatcurve_xapian_db_opts opts =
+		ENUM_EMPTY(flatcurve_xapian_db_opts);
+	enum flatcurve_xapian_wdb wopts = ENUM_EMPTY(flatcurve_xapian_wdb);
 	struct flatcurve_xapian_db *xdb;
 
 	(void)fts_flatcurve_xapian_read_db(backend, opts);
@@ -957,7 +960,8 @@ static void
 fts_flatcurve_xapian_clear_document(struct flatcurve_fts_backend *backend)
 {
 	struct flatcurve_xapian *x = backend->xapian;
-	enum flatcurve_xapian_db_opts opts;
+	enum flatcurve_xapian_db_opts opts =
+		ENUM_EMPTY(flatcurve_xapian_db_opts);
 	struct flatcurve_xapian_db *xdb;
 
 	if ((x->doc == NULL) ||
@@ -1184,7 +1188,8 @@ void fts_flatcurve_xapian_expunge(struct flatcurve_fts_backend *backend,
 bool
 fts_flatcurve_xapian_init_msg(struct flatcurve_fts_backend_update_context *ctx)
 {
-	enum flatcurve_xapian_db_opts opts;
+	enum flatcurve_xapian_db_opts opts =
+		ENUM_EMPTY(flatcurve_xapian_db_opts);
 	struct flatcurve_xapian *x = ctx->backend->xapian;
 	struct flatcurve_xapian_db *xdb;
 
@@ -1342,9 +1347,10 @@ fts_flatcurve_xapian_optimize_box_do(struct flatcurve_fts_backend *backend,
 	void *key, *val;
 	struct flatcurve_xapian_db_path *n, *o;
 	struct timeval now, start;
-	enum flatcurve_xapian_db_opts opts;
+	enum flatcurve_xapian_db_opts opts =
+		ENUM_EMPTY(flatcurve_xapian_db_opts);
 	struct flatcurve_xapian *x = backend->xapian;
-	enum flatcurve_xapian_wdb wopts;
+	enum flatcurve_xapian_wdb wopts = ENUM_EMPTY(flatcurve_xapian_wdb);
 
 	/* We need to lock all of the mailboxes so nothing changes while we
 	 * are optimizing. */
@@ -1462,7 +1468,8 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	struct flatcurve_fts_query_arg *a;
 	Xapian::Database *db;
 	string_t *hdr, *hdr2;
-	enum flatcurve_xapian_db_opts opts;
+	enum flatcurve_xapian_db_opts opts =
+		ENUM_EMPTY(flatcurve_xapian_db_opts);
 	std::string t;
 	struct flatcurve_fts_query_xapian *x = query->xapian;
 
@@ -1690,7 +1697,8 @@ struct fts_flatcurve_xapian_query_result *
 fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iter *iter)
 {
 	Xapian::MSet m;
-	enum flatcurve_xapian_db_opts opts;
+	enum flatcurve_xapian_db_opts opts =
+		ENUM_EMPTY(flatcurve_xapian_db_opts);
 
 	if (iter->enquire == NULL) {
 		if ((iter->query->xapian->query == NULL) ||
