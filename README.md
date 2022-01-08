@@ -42,7 +42,7 @@ Requirements
     - REQUIRES icu support (--with-icu)
     - REQUIRES stemmer support (--with-stemmer)
     - Optional libtextcat support (--with-textcat)
-* Xapian 1.2.x+ (tested on Xapian 1.2.22, 1.4.11)
+* Xapian 1.2.x+ (tested on Xapian 1.2.22, 1.4.11, 1.4.18)
   - 1.4+ is required for automatic optimization support
     - older versions require manual optimization (this is a limitation of the
       Xapian library)
@@ -482,13 +482,9 @@ plugin {
 }
 ```
 
-Testing Status
---------------
-[![.github/workflows/main.yml](https://github.com/slusarz/dovecot-fts-flatcurve/actions/workflows/main.yml/badge.svg)](https://github.com/slusarz/dovecot-fts-flatcurve/actions/workflows/main.yml)
-
 Licensing
 ---------
 
 LGPL v2.1 (see COPYING)
 
-(c) 2020-2021 Michael Slusarz
+(c) Michael Slusarz
