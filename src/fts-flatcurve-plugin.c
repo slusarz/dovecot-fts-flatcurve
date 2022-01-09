@@ -29,7 +29,6 @@
 #define FTS_FLATCURVE_ROTATE_TIME_DEFAULT 5000
 
 #define FTS_FLATCURVE_PLUGIN_SUBSTRING_SEARCH "fts_flatcurve_substring_search"
-#define FTS_FLATCURVE_SUBSTRING_SEARCH_DEFAULT TRUE
 
 const char *fts_flatcurve_plugin_version = DOVECOT_ABI_VERSION;
 
@@ -138,10 +137,8 @@ fts_flatcurve_plugin_init_settings(struct mail_user *user,
 		set->rotate_time = FTS_FLATCURVE_ROTATE_TIME_DEFAULT;
 	}
 
-	if (mail_user_plugin_getenv(user, FTS_FLATCURVE_PLUGIN_SUBSTRING_SEARCH) != NULL)
-		set->substring_search = mail_user_plugin_getenv_bool(user, FTS_FLATCURVE_PLUGIN_SUBSTRING_SEARCH);
-	else
-		set->substring_search = FTS_FLATCURVE_SUBSTRING_SEARCH_DEFAULT;
+	set->substring_search = mail_user_plugin_getenv_bool(user,
+					FTS_FLATCURVE_PLUGIN_SUBSTRING_SEARCH);
 
 	return 0;
 }

@@ -162,12 +162,15 @@ write DB. Most people should not change this setting.
 
 #### fts_flatcurve_substring_search
 
-* Default: `yes`
+* Default: `no`
 * Value: boolean (`yes` or `no`)
 
 If enabled, allows substring searches (RFC 3501 compliant). However, this
-requires significant additional storage space, so substring searches can be
-disabled, if necessary.
+requires significant additional storage space. Most users today expect
+"Google-like" behavior, which is prefix searching, so substring searching is
+arguably not the modern expected behavior anyway. Therefore, even though it
+is not strictly RFC compliant, prefix (non-substring) searching is enabled
+by default.
 
 
 ### FTS-Flatcurve Plugin Settings Example
