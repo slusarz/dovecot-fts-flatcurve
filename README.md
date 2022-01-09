@@ -106,52 +106,84 @@ Note: flatcurve REQUIRES the core
 [Dovecot FTS stemming](https://doc.dovecot.org/configuration_manual/fts/tokenization/)
 feature.
 
-Flatcurve provies a single plugin option for configuration: `fts_flatcurve`.
+### FTS-Flatcurve Plugin Settings
 
 **The default parameters should be fine for most people.**
 
-*Optional* parameters for the `fts_flatcurve` plugin setting:
+#### fts_flatcurve_commit_limit
 
- - `commit_limit` - Commit database changes after this many documents are
-                    updated. Higher commit limits will result in faster
-                    indexing for large transactions (i.e. indexing a large
-                    mailbox) at the expense of high memory usage. The default
-                    value should be sufficient to allow indexing in a 256 MB
-                    maximum size process. (integer, set to 0 to use the
-                    Xapian default; DEFAULT: 500)
- - `max_term_size` - The maximum number of characters in a term to index.
-		     (integer, maximum 200; DEFAULT: 30) 
- - `min_term_size` - The minimum number of characters in a term to index.
-		     (integer; DEFAULT: 2)
- - `optimize_limit` - Once the database reaches this number of shards,
-                      automatically optimize the DB at shutdown. (integer,
-                      set to 0 to disable; DEFAULT: 10)
- - `rotate_size` - When the mail ("current") database reaches this number
-                   of messages, it is rotated to a read-only database and
-                   replaced by a new write DB. Most people should not
-                   change this setting. (integer, set to 0 to disable
-                   rotation; DEFAULT: 5000)
- - `rotate_time` - When the mail ("current") database exceeds this length
-                   of time (in msecs) to commit changes, it is rotated to a
-                   read-only database and replaced by a new write DB. Most
-                   people should not change this setting. (integer, set to 0
-                   to disable rotation; DEFAULT: 5000)
- - `substring_search` - If enabled, allows substring searches (RFC 3501
-                        compliant). However, this requires significant
-                        additional storage space, so substring searches can
-                        be disabled, if necessary. ("yes" or "no"; DEFAULT:
-                        "yes")
+* Default: `500`
+* Value: integer, set to `0` to use the Xapian default
 
-Example:
+Commit database changes after this many documents are updated. Higher commit
+limits will result in faster indexing for large transactions (i.e. indexing a
+large mailbox) at the expense of high memory usage. The default value should
+be sufficient to allow indexing in a 256 MB maximum size process.
+
+#### fts_flatcurve_max_term_size
+
+* Default: `30`
+* Value: integer, maximum `200`
+
+The maximum number of characters in a term to index.
+
+#### fts_flatcurve_min_term_size
+
+* Default: `2`
+* Value: integer
+
+The minimum number of characters in a term to index.
+
+#### fts_flatcurve_optimize_limit
+
+* Default: `10`
+* Value: integer, set to 0 to disable
+
+Once the database reaches this number of shards, automatically optimize the DB
+at shutdown.
+
+#### fts_flatcurve_rotate_size
+
+* Default: `5000`
+* Value: integer, set to `0` to disable rotation
+
+When the "current" fts database reaches this number of messages, it is rotated
+to a read-only database and replaced by a new write DB. Most people should not
+change this setting.
+
+#### fts_flatcurve_rotate_time
+
+* Default: `5000`
+* Value: integer, set to `0` to disable rotation
+
+When the "current" fts database exceeds this length of time (in msecs) to
+commit changes, it is rotated to a read-only database and replaced by a new
+write DB. Most people should not change this setting.
+
+#### fts_flatcurve_substring_search
+
+* Default: `yes`
+* Value: boolean (`yes` or `no`)
+
+If enabled, allows substring searches (RFC 3501 compliant). However, this
+requires significant additional storage space, so substring searches can be
+disabled, if necessary.
+
+
+### FTS-Flatcurve Plugin Settings Example
 
 ```
 mail_plugins = $mail_plugins fts fts_flatcurve
 
 plugin {
   fts = flatcurve
-  fts_flatcurve = commit_limit=500 max_term_size=30 min_term_size=2 \
-                  optimize_limit=10 rotate_size=5000 rotate_time=5000 \
-                  substring_search=yes
+  fts_flatcurve_commit_limit = 500
+  fts_flatcurve_max_term_size = 30
+  fts_flatcurve_min_term_size = 2
+  fts_flatcurve_optimize_limit = 10
+  fts_flatcurve_rotate_size = 5000
+  fts_flatcurve_rotate_time = 5000
+  fts_flatcurve_substring_search = yes
 }
 ```
 

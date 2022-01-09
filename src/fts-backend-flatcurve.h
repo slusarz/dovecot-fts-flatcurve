@@ -6,7 +6,6 @@
 
 #include "fts-flatcurve-plugin.h"
 
-#define FTS_FLATCURVE_PLUGIN_LABEL "fts_flatcurve"
 #define FTS_FLATCURVE_LABEL "fts-flatcurve"
 #define FTS_FLATCURVE_DEBUG_PREFIX FTS_FLATCURVE_LABEL ": "
 

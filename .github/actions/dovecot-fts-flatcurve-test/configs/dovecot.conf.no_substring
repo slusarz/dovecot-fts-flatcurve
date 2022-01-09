@@ -1,5 +1,5 @@
 !include /dovecot/configs/dovecot.conf
 
 plugin {
-  fts_flatcurve = substring_search=no
+  fts_flatcurve_substring_search = no
 }

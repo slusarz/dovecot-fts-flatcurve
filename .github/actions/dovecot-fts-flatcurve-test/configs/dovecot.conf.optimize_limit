@@ -1,5 +1,6 @@
 !include /dovecot/configs/dovecot.conf
 
 plugin {
-  fts_flatcurve = optimize_limit=2 rotate_size=2
+  fts_flatcurve_optimize_limit = 2
+  fts_flatcurve_rotate_size = 2
 }

@@ -9,6 +9,28 @@
 #include "fts-flatcurve-plugin.h"
 #include "fts-flatcurve-config.h"
 
+#define FTS_FLATCURVE_PLUGIN_COMMIT_LIMIT "fts_flatcurve_commit_limit"
+#define FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT 500
+
+#define FTS_FLATCURVE_PLUGIN_MAX_TERM_SIZE "fts_flatcurve_max_term_size"
+#define FTS_FLATCURVE_MAX_TERM_SIZE_DEFAULT 30
+#define FTS_FLATCURVE_MAX_TERM_SIZE_MAX 200
+
+#define FTS_FLATCURVE_PLUGIN_MIN_TERM_SIZE "fts_flatcurve_min_term_size"
+#define FTS_FLATCURVE_MIN_TERM_SIZE_DEFAULT 2
+
+#define FTS_FLATCURVE_PLUGIN_OPTIMIZE_LIMIT "fts_flatcurve_optimize_limit"
+#define FTS_FLATCURVE_OPTIMIZE_LIMIT_DEFAULT 10
+
+#define FTS_FLATCURVE_PLUGIN_ROTATE_SIZE "fts_flatcurve_rotate_size"
+#define FTS_FLATCURVE_ROTATE_SIZE_DEFAULT 5000
+
+#define FTS_FLATCURVE_PLUGIN_ROTATE_TIME "fts_flatcurve_rotate_time"
+#define FTS_FLATCURVE_ROTATE_TIME_DEFAULT 5000
+
+#define FTS_FLATCURVE_PLUGIN_SUBSTRING_SEARCH "fts_flatcurve_substring_search"
+#define FTS_FLATCURVE_SUBSTRING_SEARCH_DEFAULT TRUE
+
 const char *fts_flatcurve_plugin_version = DOVECOT_ABI_VERSION;
 
 struct fts_flatcurve_user_module fts_flatcurve_user_module =
@@ -24,83 +46,102 @@ static void fts_flatcurve_mail_user_deinit(struct mail_user *user)
 }
 
 static int
-fts_flatcurve_plugin_init_settings(struct fts_flatcurve_settings *set,
-				   struct event *event, const char *str)
+fts_flatcurve_plugin_init_settings(struct mail_user *user,
+				   struct fts_flatcurve_settings *set)
 {
-	const char *const *tmp;
+	const char *pset;
 	unsigned int val;
 
-	set->commit_limit = FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT;
-	set->max_term_size = FTS_FLATCURVE_MAX_TERM_SIZE_DEFAULT;
-	set->min_term_size = FTS_FLATCURVE_MIN_TERM_SIZE_DEFAULT;
-	set->optimize_limit = FTS_FLATCURVE_OPTIMIZE_LIMIT_DEFAULT;
-	set->rotate_size = FTS_FLATCURVE_ROTATE_SIZE_DEFAULT;
-	set->rotate_time = FTS_FLATCURVE_ROTATE_TIME_DEFAULT;
-	set->substring_search = FTS_FLATCURVE_SUBSTRING_SEARCH_DEFAULT;
+	if (mail_user_plugin_getenv(user, "fts_flatcurve") != NULL)
+		e_warning(user->event, FTS_FLATCURVE_DEBUG_PREFIX
+			  "fts_flatcurve plugin setting has been deprecated");
 
-	for (tmp = t_strsplit_spaces(str, " "); *tmp != NULL; tmp++) {
-		if (str_begins(*tmp, "commit_limit=")) {
-			if (str_to_uint(*tmp + 13, &val) < 0) {
-				e_warning(event, FTS_FLATCURVE_DEBUG_PREFIX
-					  "Invalid commit_limit: %s",
-					  *tmp + 13);
-				return -1;
-			}
-			set->commit_limit = val;
-		} else if (str_begins(*tmp, "max_term_size=")) {
-			if (str_to_uint(*tmp + 14, &val) < 0) {
-				e_warning(event, FTS_FLATCURVE_DEBUG_PREFIX
-					  "Invalid max_term_size: %s",
-					  *tmp + 14);
-				return -1;
-			}
-			set->max_term_size = I_MIN(val,
-						   FTS_FLATCURVE_MAX_TERM_SIZE_MAX);
-		} else if (str_begins(*tmp, "min_term_size=")) {
-			if (str_to_uint(*tmp + 14, &val) < 0) {
-				e_warning(event, FTS_FLATCURVE_DEBUG_PREFIX
-					  "Invalid min_term_size: %s",
-					  *tmp + 14);
-				return -1;
-			}
-			set->min_term_size = val;
-		} else if (str_begins(*tmp, "optimize_limit=")) {
-			if (str_to_uint(*tmp + 15, &val) < 0) {
-				e_warning(event, FTS_FLATCURVE_DEBUG_PREFIX
-					  "Invalid optimize_limit: %s",
-					  *tmp + 13);
-				return -1;
-			}
-			set->optimize_limit = val;
-		} else if (str_begins(*tmp, "rotate_size=")) {
-			if (str_to_uint(*tmp + 12, &val) < 0) {
-				e_warning(event, FTS_FLATCURVE_DEBUG_PREFIX
-					  "Invalid rotate_size: %s",
-					  *tmp + 12);
-				return -1;
-			}
-			set->rotate_size = val;
-		} else if (str_begins(*tmp, "rotate_time=")) {
-			if (str_to_uint(*tmp + 12, &val) < 0) {
-				e_warning(event, FTS_FLATCURVE_DEBUG_PREFIX
-					  "Invalid rotate_time: %s",
-					  *tmp + 12);
-				return -1;
-			}
-			set->rotate_time = val;
-		} else if (str_begins(*tmp, "substring_search=")) {
-			if (strcasecmp(*tmp + 17, "yes") == 0) {
-				set->substring_search = TRUE;
-			} else if (strcasecmp(*tmp + 17, "no") == 0) {
-				set->substring_search = FALSE;
-			} else {
-				e_warning(event, FTS_FLATCURVE_DEBUG_PREFIX
-					  "Invalid substring_search: %s",
-					  *tmp + 17);
-				return -1;
-			}
+	pset = mail_user_plugin_getenv(user, FTS_FLATCURVE_PLUGIN_COMMIT_LIMIT);
+	if (pset != NULL) {
+		if (str_to_uint(pset, &val) < 0) {
+			e_warning(user->event, FTS_FLATCURVE_DEBUG_PREFIX
+				  "Invalid %s: %s",
+				  FTS_FLATCURVE_PLUGIN_COMMIT_LIMIT, pset);
+			return -1;
 		}
+		set->commit_limit = val;
+	} else {
+		set->commit_limit = FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT;
 	}
+
+	pset = mail_user_plugin_getenv(user,
+				       FTS_FLATCURVE_PLUGIN_MAX_TERM_SIZE);
+	if (pset != NULL) {
+		if (str_to_uint(pset, &val) < 0) {
+			e_warning(user->event, FTS_FLATCURVE_DEBUG_PREFIX
+				  "Invalid %s: %s",
+				  FTS_FLATCURVE_PLUGIN_MAX_TERM_SIZE, pset);
+			return -1;
+		}
+		set->max_term_size = I_MIN(val,
+					   FTS_FLATCURVE_MAX_TERM_SIZE_MAX);
+	} else {
+		set->max_term_size = FTS_FLATCURVE_MAX_TERM_SIZE_DEFAULT;
+	}
+
+	pset = mail_user_plugin_getenv(user,
+				       FTS_FLATCURVE_PLUGIN_MIN_TERM_SIZE);
+	if (pset != NULL) {
+		if (str_to_uint(pset, &val) < 0) {
+			e_warning(user->event, FTS_FLATCURVE_DEBUG_PREFIX
+				  "Invalid %s: %s",
+				  FTS_FLATCURVE_PLUGIN_MIN_TERM_SIZE, pset);
+			return -1;
+		}
+		set->min_term_size = val;
+	} else {
+		set->min_term_size = FTS_FLATCURVE_MIN_TERM_SIZE_DEFAULT;
+	}
+
+	pset = mail_user_plugin_getenv(user,
+				       FTS_FLATCURVE_PLUGIN_OPTIMIZE_LIMIT);
+	if (pset != NULL) {
+		if (str_to_uint(pset, &val) < 0) {
+			e_warning(user->event, FTS_FLATCURVE_DEBUG_PREFIX
+				  "Invalid %s: %s",
+				  FTS_FLATCURVE_PLUGIN_OPTIMIZE_LIMIT, pset);
+			return -1;
+		}
+		set->optimize_limit = val;
+	} else {
+		set->optimize_limit = FTS_FLATCURVE_OPTIMIZE_LIMIT_DEFAULT;
+	}
+
+	pset = mail_user_plugin_getenv(user, FTS_FLATCURVE_PLUGIN_ROTATE_SIZE);
+	if (pset != NULL) {
+		if (str_to_uint(pset, &val) < 0) {
+			e_warning(user->event, FTS_FLATCURVE_DEBUG_PREFIX
+				  "Invalid %s: %s",
+				  FTS_FLATCURVE_PLUGIN_ROTATE_SIZE, pset);
+			return -1;
+		}
+		set->rotate_size = val;
+	} else {
+		set->rotate_size = FTS_FLATCURVE_ROTATE_SIZE_DEFAULT;
+	}
+
+	pset = mail_user_plugin_getenv(user, FTS_FLATCURVE_PLUGIN_ROTATE_TIME);
+	if (pset != NULL) {
+		if (str_to_uint(pset, &val) < 0) {
+			e_warning(user->event, FTS_FLATCURVE_DEBUG_PREFIX
+				  "Invalid %s: %s",
+				  FTS_FLATCURVE_PLUGIN_ROTATE_TIME, pset);
+			return -1;
+		}
+		set->rotate_time = val;
+	} else {
+		set->rotate_time = FTS_FLATCURVE_ROTATE_TIME_DEFAULT;
+	}
+
+	if (mail_user_plugin_getenv(user, FTS_FLATCURVE_PLUGIN_SUBSTRING_SEARCH) != NULL)
+		set->substring_search = mail_user_plugin_getenv_bool(user, FTS_FLATCURVE_PLUGIN_SUBSTRING_SEARCH);
+	else
+		set->substring_search = FTS_FLATCURVE_SUBSTRING_SEARCH_DEFAULT;
 
 	return 0;
 }
@@ -109,14 +150,11 @@ static void fts_flatcurve_mail_user_created(struct mail_user *user)
 {
 	struct mail_user_vfuncs *v = user->vlast;
 	struct fts_flatcurve_user *fuser;
-	const char *env, *error;
+	const char *error;
 
 	fuser = p_new(user->pool, struct fts_flatcurve_user, 1);
-	env = mail_user_plugin_getenv(user, FTS_FLATCURVE_PLUGIN_LABEL);
-	if (env == NULL)
-		env = "";
 
-	if (fts_flatcurve_plugin_init_settings(&fuser->set, user->event, env) < 0)
+	if (fts_flatcurve_plugin_init_settings(user, &fuser->set) < 0)
 		/* Invalid settings, disabling */
 		return;
 
