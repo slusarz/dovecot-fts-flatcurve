@@ -16,7 +16,7 @@ function restart_dovecot() {
 
 function run_imaptest() {
 	if ! imaptest user=$TESTUSER pass=$TESTPASS box=$TESTBOX test=$1 ; then
-		echo "ERROR: Failed test!"
+		echo "ERROR: Failed test ($1)!"
 		cat $DOVECOT_LOG
 		exit 1
 	fi
@@ -36,7 +36,7 @@ function run_doveadm() {
                 CMD=""
         fi
         if ! $CMD doveadm -D $1 &>> $DOVECOT_LOG; then
-		echo "ERROR: Failed test!"
+		echo "ERROR: Failed test ($1)!"
 		cat $DOVECOT_LOG
 		exit 1
 	fi
@@ -44,7 +44,7 @@ function run_doveadm() {
 
 function run_not_exists_dir() {
 	if [ -d "$1" ]; then
-		echo "ERROR: Failed test!"
+		echo "ERROR: Failed test ($1)!"
 		cat $DOVECOT_LOG
 		exit 1
 	fi
