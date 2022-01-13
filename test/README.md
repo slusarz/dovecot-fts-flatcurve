@@ -1,32 +1,24 @@
 # Dockerfile for fts-flatcurve development
 
-Dockerfile lives in .github/ directory.
+Dockerfile lives in .github/actions/dovecot-fts-flatcurve-test directory.
+
+"podman" is used for development; "docker" should also work.
 
 To build image run:
 ```
-docker build -t dovecot-fts-flatcurve .
+podman build -t dovecot-fts-flatcurve .
 ```
-
-To run gdb/get core dumps with docker:
-```
-docker run -it --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
-	--rm --privileged -v /proc:/writable_proc \
-	dovecot-fts-flatcurve
-
-# Run these commands in the container
-ulimit -c unlimited
-echo 2 >> /writable_proc/sys/fs/suid_dumpable
-echo /tmp/core >> /writable_proc/sys/kernel/core_pattern
-```
-
-To run gdb/get core dumps with podman, run the ``podman_cores.sh`` script.
 
 To access shell:
 ```
-docker exec -it [container_name] /bin/bash
+podman exec -it [container_name] /bin/bash
 ```
 
-imaptest example command:
+-or- to run gdb/get core dumps with podman, run the ``podman_cores.sh``
+script. in this directory
+
+
+imaptest example command (run in container):
 ```
 imaptest user=foo pass=pass rawlog test=/dovecot/imaptest/src/tests/
 ```
