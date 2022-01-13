@@ -26,5 +26,6 @@ podman exec $1 /bin/bash -c " \
 	./configure ; \
 	make install "
 podman exec $1 cp -a /dovecot/fts-flatcurve/.github/actions/dovecot-fts-flatcurve-test/configs/ /dovecot/configs
+podman exec $1 chown -R vmail:vmail /dovecot/configs/virtual
 podman exec $1 cp -a /dovecot/fts-flatcurve/.github/actions/dovecot-fts-flatcurve-test/imaptest/ /dovecot/imaptest
 podman exec $1 cp /dovecot/fts-flatcurve/.github/actions/dovecot-fts-flatcurve-test/fts-flatcurve-test.sh /

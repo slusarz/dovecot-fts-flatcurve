@@ -1,0 +1,22 @@
+!include /dovecot/configs/dovecot.conf
+
+mail_plugins = $mail_plugins virtual
+
+namespace Virtual {
+  hidden = yes
+  list = no
+  location = virtual:/dovecot/configs/virtual
+  prefix = Virtual/
+  separator = /
+  subscriptions = no
+}
+
+namespace inbox {
+  inbox = yes
+  separator = /
+
+  mailbox virtual/All {
+    comment = All messages
+    special_use = \All
+  }
+}

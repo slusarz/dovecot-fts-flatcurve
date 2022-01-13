@@ -45,6 +45,7 @@ RUN useradd vmail && \
     chown -R vmail:vmail /dovecot/sdbox
 
 ADD configs/ /dovecot/configs
+chown -R vmail:vmail /dovecot/configs/virtual
 ADD imaptest/ /dovecot/imaptest
 
 ADD fts-flatcurve-test.sh /fts-flatcurve-test.sh

@@ -1,0 +1,16 @@
+state: nonauth
+messages: 0
+
+ok login user pass
+ok examine Virtual/All
+ok search body body1
+* search 1 2 3
+ok examine inbox
+ok search body body1
+* search 1
+ok examine imaptest
+ok search body body1
+* search 1
+ok examine rotatetest
+ok search body body1
+* search 1
