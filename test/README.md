@@ -22,3 +22,8 @@ imaptest example command (run in container):
 ```
 imaptest user=foo pass=pass rawlog test=/dovecot/imaptest/src/tests/
 ```
+
+## Local Testing
+
+The ``podman_deploy.sh`` can be used to update a local container with the
+newest version of the software in the local git repository.
