@@ -110,7 +110,7 @@ feature.
 
 **The default parameters should be fine for most people.**
 
-#### fts_flatcurve_commit_limit
+#### ***fts_flatcurve_commit_limit***
 
 * Default: `500`
 * Value: integer, set to `0` to use the Xapian default
@@ -120,21 +120,21 @@ limits will result in faster indexing for large transactions (i.e. indexing a
 large mailbox) at the expense of high memory usage. The default value should
 be sufficient to allow indexing in a 256 MB maximum size process.
 
-#### fts_flatcurve_max_term_size
+#### ***fts_flatcurve_max_term_size***
 
 * Default: `30`
 * Value: integer, maximum `200`
 
 The maximum number of characters in a term to index.
 
-#### fts_flatcurve_min_term_size
+#### ***fts_flatcurve_min_term_size***
 
 * Default: `2`
 * Value: integer
 
 The minimum number of characters in a term to index.
 
-#### fts_flatcurve_optimize_limit
+#### ***fts_flatcurve_optimize_limit***
 
 * Default: `10`
 * Value: integer, set to 0 to disable
@@ -142,7 +142,7 @@ The minimum number of characters in a term to index.
 Once the database reaches this number of shards, automatically optimize the DB
 at shutdown.
 
-#### fts_flatcurve_rotate_size
+#### ***fts_flatcurve_rotate_size***
 
 * Default: `5000`
 * Value: integer, set to `0` to disable rotation
@@ -151,7 +151,7 @@ When the "current" fts database reaches this number of messages, it is rotated
 to a read-only database and replaced by a new write DB. Most people should not
 change this setting.
 
-#### fts_flatcurve_rotate_time
+#### ***fts_flatcurve_rotate_time***
 
 * Default: `5000`
 * Value: integer, set to `0` to disable rotation
@@ -160,7 +160,7 @@ When the "current" fts database exceeds this length of time (in msecs) to
 commit changes, it is rotated to a read-only database and replaced by a new
 write DB. Most people should not change this setting.
 
-#### fts_flatcurve_substring_search
+#### ***fts_flatcurve_substring_search***
 
 * Default: `no`
 * Value: boolean (`yes` or `no`)
@@ -180,13 +180,17 @@ mail_plugins = $mail_plugins fts fts_flatcurve
 
 plugin {
   fts = flatcurve
+  
+  # All of these are optional, and indicate the default values.
+  # They are listed here for documentation purposes; most people should
+  # not need to define/override in their config.
   fts_flatcurve_commit_limit = 500
   fts_flatcurve_max_term_size = 30
   fts_flatcurve_min_term_size = 2
   fts_flatcurve_optimize_limit = 10
   fts_flatcurve_rotate_size = 5000
   fts_flatcurve_rotate_time = 5000
-  fts_flatcurve_substring_search = yes
+  fts_flatcurve_substring_search = no
 }
 ```
 
@@ -211,7 +215,7 @@ with the category `fts-flatcurve` (a child of the category `fts`).
 
 The following named events are emitted:
 
-#### fts_flatcurve_expunge
+#### ***fts_flatcurve_expunge***
 
 Emitted when a message is expunged from a mailbox.
 
@@ -220,7 +224,7 @@ Emitted when a message is expunged from a mailbox.
 | `mailbox` | The mailbox name                         |
 | `uid`     | The UID that was expunged from FTS index |
 
-#### fts_flatcurve_index
+#### ***fts_flatcurve_index***
 
 Emitted when a message is indexed.
 
@@ -229,7 +233,7 @@ Emitted when a message is indexed.
 | `mailbox` | The mailbox name                        |
 | `uid`     | The UID that was added to the FTS index |
 
-#### fts_flatcurve_last_uid
+#### ***fts_flatcurve_last_uid***
 
 Emitted when the system queries for the last UID indexed.
 
@@ -238,7 +242,7 @@ Emitted when the system queries for the last UID indexed.
 | `mailbox` | The mailbox name                        |
 | `uid`     | The last UID contained in the FTS index |
 
-#### fts_flatcurve_optimize
+#### ***fts_flatcurve_optimize***
 
 Emitted when a mailbox is optimized.
 
@@ -246,7 +250,7 @@ Emitted when a mailbox is optimized.
 | --------- | ---------------- |
 | `mailbox` | The mailbox name |
 
-#### fts_flatcurve_query
+#### ***fts_flatcurve_query***
 
 Emitted when a query is completed.
 
@@ -258,7 +262,7 @@ Emitted when a query is completed.
 | `query`   | The query text sent to Xapian          |
 | `uids`    | The list of UIDs returned by the query |
 
-#### fts_flatcurve_rescan
+#### ***fts_flatcurve_rescan***
 
 Emitted when a rescan is completed.
 
@@ -269,7 +273,7 @@ Emitted when a rescan is completed.
 | `status`   | Status of rescan \[expunge_msgs\|missing_msgs\|ok\]      |
 | `uids`     | The list of UIDs that triggered a non-ok status response |
 
-#### fts_flatcurve_rotate
+#### ***fts_flatcurve_rotate***
 
 Emitted when a mailbox has it's underlying Xapian DB rotated.
 
@@ -293,7 +297,7 @@ doveadm Commands
 
 This plugin implements several `fts-flatcurve` specific doveadm commands.
 
-### doveadm fts-flatcurve check \<mailbox mask\>
+### `doveadm fts-flatcurve check <mailbox mask>`
 
 Run a simple check on Dovecot Xapian databases, and attempt to fix basic
 errors (it is the same checking done by the `xapian-check` command with the `F`
@@ -311,7 +315,7 @@ For each mailbox that has FTS data, it outputs the following key/value fields:
 | `errors`  | The number of errors reported by the Xapian library. |
 | `shards`  | The number of index shards processed.                |
 
-### doveadm fts-flatcurve dump [-h] \<mailbox mask\>
+### `doveadm fts-flatcurve dump [-h] <mailbox mask>`
 
 Dump the headers or terms of the Xapian databases.
 
@@ -333,7 +337,7 @@ The following key/value fields are output:
 | `header`  | The header (if `-h` is given)                         |
 | `term`    | Term (if `-h` is NOT given)                           |
 
-### doveadm fts-flatcurve remove \<mailbox mask\>
+### `doveadm fts-flatcurve remove <mailbox mask>`
 
 Removes all FTS data for a mailbox.
 
@@ -347,7 +351,7 @@ For each mailbox removed, it outputs the following key/value fields:
 | `mailbox` | The human-readable mailbox name. (key is hidden) |
 | `guid`    | The GUID of the mailbox.                         |
 
-### doveadm fts-flatcurve rotate \<mailbox mask\>
+### `doveadm fts-flatcurve rotate <mailbox mask>`
 
 Triggers an index rotation for a mailbox.
 
@@ -361,7 +365,7 @@ For each mailbox rotated, it outputs the following key/value fields:
 | `mailbox` | The human-readable mailbox name. (key is hidden) |
 | `guid`    | The GUID of the mailbox.                         |
 
-### doveadm fts-flatcurve stats \<mailbox mask\>
+### `doveadm fts-flatcurve stats <mailbox mask>`
 
 Returns FTS data for a mailbox.
 
@@ -510,12 +514,22 @@ plugin {
   fts_enforced = yes
   fts_filters = normalizer-icu snowball stopwords
   fts_filters_en = lowercase snowball english-possessive stopwords
+  fts_flatcurve_substring_search = <yes|no; depending on the test>
   fts_index_timeout = 60s
   fts_languages = en es de
   fts_tokenizer_generic = algorithm=simple
   fts_tokenizers = generic email-address
 }
 ```
+
+
+Technical Information
+---------------------
+
+### Database Design
+
+See https://github.com/slusarz/dovecot-fts-flatcurve/blob/master/src/fts-backend-flatcurve-xapian.cpp#L25
+
 
 Licensing
 ---------
