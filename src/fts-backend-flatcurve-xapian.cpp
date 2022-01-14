@@ -885,7 +885,7 @@ fts_flatcurve_xapian_check_db_version(struct flatcurve_fts_backend *backend,
 	if (v == 0)
 		++v;
 
-	ss << FLATCURVE_XAPIAN_DB_VERSION;
+	ss << v;
 	xdb->dbw->set_metadata(FLATCURVE_XAPIAN_DB_VERSION_KEY, ss.str());
 
 	/* Commit the changes now. */
