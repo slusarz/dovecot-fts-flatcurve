@@ -5,10 +5,12 @@ AM_CPPFLAGS = \
 	$(LIBDOVECOT_STORAGE_INCLUDE) \
 	$(LIBDOVECOT_DOVEADM_INCLUDE) \
 	$(LIBDOVECOT_FTS_INCLUDE) \
-	$(XAPIAN_INCLUDE)
+	$(XAPIAN_INCLUDE) \
+	$(XAPIAN_CXXFLAGS)
 
 AM_CXXFLAGS = \
-	$(XAPIAN_LIBS)
+	$(XAPIAN_LIBS) \
+	$(XAPIAN_CXXFLAGS)
 
 lib21_doveadm_fts_flatcurve_plugin_la_LDFLAGS = -module -avoid-version
 lib21_fts_flatcurve_plugin_la_LDFLAGS = -module -avoid-version
