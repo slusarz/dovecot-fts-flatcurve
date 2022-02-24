@@ -116,8 +116,12 @@ void fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
 
 	fts_backend_flatcurve_close_mailbox(backend);
 
-	if (mailbox_get_path_to(box, MAILBOX_LIST_PATH_TYPE_INDEX, &path) <= 0)
-		i_unreached(); /* fts already checked this */
+	if ((mailbox_open(box) < 0) ||
+	    mailbox_get_path_to(box, MAILBOX_LIST_PATH_TYPE_INDEX, &path) <= 0) {
+		e_warning(backend->event, "Could not open mailbox: %s",
+			  box->vname);
+		return;
+	}
 
 	str_append(backend->boxname, box->vname);
 	str_printfa(backend->db_path, "%s/%s/", path, FTS_FLATCURVE_LABEL);
