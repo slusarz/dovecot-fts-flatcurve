@@ -116,7 +116,9 @@ void fts_backend_flatcurve_set_mailbox(struct flatcurve_fts_backend *backend,
 
 	fts_backend_flatcurve_close_mailbox(backend);
 
-	path = mailbox_get_index_path(box);
+	if (mailbox_get_path_to(box, MAILBOX_LIST_PATH_TYPE_INDEX, &path) <= 0)
+		i_unreached(); /* fts already checked this */
+
 	str_append(backend->boxname, box->vname);
 	str_printfa(backend->db_path, "%s/%s/", path, FTS_FLATCURVE_LABEL);
 
