@@ -18,6 +18,11 @@ support fuzzy searches.
 The driver passes all of the [ImapTest](https://imapwiki.org/ImapTest) search
 tests.
 
+***fts-flatcurve will become the default Dovecot Community Edition (CE) FTS driver
+in v2.4. For now, fts-flatcurve will continue to be maintained in this repository
+for backwards support with Dovecot CE v2.3. However, it is possible that configuration
+and features may differ between this v2.3 code and core v2.4 code, as two different
+teams will now be maintaining each codebase.***
 
 Why Flatcurve?
 --------------
