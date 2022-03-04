@@ -192,8 +192,6 @@ cmd_fts_flatcurve_mailbox_run(struct doveadm_mail_cmd_context *_ctx,
 		return -1;
 	}
 
-	doveadm_print_init(DOVEADM_PRINT_TYPE_FLOW);
-
 	switch (ctx->cmd_type) {
 	case FTS_FLATCURVE_CMD_DUMP:
 		if (ctx->dump_header)
@@ -292,6 +290,8 @@ cmd_fts_flatcurve_mailbox_alloc(enum fts_flatcurve_cmd_type type)
 	ctx->ctx.v.deinit = cmd_fts_flatcurve_mailbox_deinit;
 	ctx->ctx.v.run = cmd_fts_flatcurve_mailbox_run;
 	ctx->cmd_type = type;
+
+	doveadm_print_init(DOVEADM_PRINT_TYPE_FLOW);
 
 	return &ctx->ctx;
 }
