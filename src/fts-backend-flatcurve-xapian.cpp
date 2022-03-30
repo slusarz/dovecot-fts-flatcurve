@@ -9,7 +9,7 @@
 #include "fts-flatcurve-config.h"
 extern "C" {
 #include "lib.h"
-#include "file-dotlock.h"
+#include "file-create-locked.h"
 #include "hash.h"
 #include "mail-storage-private.h"
 #include "mail-search.h"
@@ -85,9 +85,8 @@ extern "C" {
 
 /* Dotlock: needed to ensure we don't run into race conditions when
  * manipulating current directory. */
-#define FLATCURVE_XAPIAN_LOCK_FNAME "flatcurve-dotlock"
+#define FLATCURVE_XAPIAN_LOCK_FNAME "flatcurve-lock"
 #define FLATCURVE_XAPIAN_LOCK_TIMEOUT_SECS 5
-#define FLATCURVE_XAPIAN_LOCK_STALE_TIMEOUT_SECS 10
 
 #define ENUM_EMPTY(x) ((enum x) 0)
 
@@ -101,7 +100,7 @@ enum flatcurve_xapian_db_type {
 	FLATCURVE_XAPIAN_DB_TYPE_INDEX,
 	FLATCURVE_XAPIAN_DB_TYPE_CURRENT,
 	FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE,
-	FLATCURVE_XAPIAN_DB_TYPE_DOTLOCK,
+	FLATCURVE_XAPIAN_DB_TYPE_LOCK,
 	FLATCURVE_XAPIAN_DB_TYPE_UNKNOWN
 };
 
@@ -121,9 +120,9 @@ struct flatcurve_xapian {
 	HASH_TABLE_TYPE(xapian_db) dbs;
 	unsigned int shards;
 
-	/* Dotlocking for current shard manipulation. */
-	struct dotlock *dotlock;
-	const char *dotlock_path;
+	/* Locking for current shard manipulation. */
+	struct file_lock *lock;
+	const char *lock_path;
 
 	/* Xapian pool: used for per mailbox DB info, so it can be easily
 	 * cleared when switching mailboxes. Not for use with long
@@ -308,7 +307,7 @@ fts_flatcurve_xapian_db_iter_next(struct flatcurve_xapian_db_iter *iter)
 		if ((stat(iter->path->path, &st) >= 0) && S_ISDIR(st.st_mode))
 			iter->type = FLATCURVE_XAPIAN_DB_TYPE_CURRENT;
 	} else if (str_begins(d->d_name, FLATCURVE_XAPIAN_LOCK_FNAME)) {
-		iter->type = FLATCURVE_XAPIAN_DB_TYPE_DOTLOCK;
+		iter->type = FLATCURVE_XAPIAN_DB_TYPE_LOCK;
 	} else if (strcmp(d->d_name, FLATCURVE_XAPIAN_DB_OPTIMIZE) == 0) {
 		if ((stat(iter->path->path, &st) >= 0) && S_ISDIR(st.st_mode))
 			iter->type = FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE;
@@ -506,39 +505,33 @@ fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
 
 static int fts_flatcurve_xapian_lock(struct flatcurve_fts_backend *backend)
 {
-	enum dotlock_create_flags flags = ENUM_EMPTY(dotlock_create_flags);
-	int ret;
-	struct dotlock_settings set;
 	struct flatcurve_xapian *x = backend->xapian;
 
-	if (x->dotlock_path == NULL)
-		x->dotlock_path = p_strdup_printf(
+	if (x->lock_path == NULL)
+		x->lock_path = p_strdup_printf(
 			x->pool, "%s" FLATCURVE_XAPIAN_LOCK_FNAME,
 			str_c(backend->db_path));
 
+	struct file_create_settings set;
 	i_zero(&set);
-	set.lock_suffix = "",
-	set.nfs_flush = HAS_ALL_BITS(backend->lock_flags,
-				     FLATCURVE_LOCK_NFS_FLUSH);
-	set.stale_timeout = FLATCURVE_XAPIAN_LOCK_STALE_TIMEOUT_SECS;
-	set.timeout = FLATCURVE_XAPIAN_LOCK_TIMEOUT_SECS;
-	set.use_excl_lock = HAS_ALL_BITS(backend->lock_flags,
-					 FLATCURVE_LOCK_DOTLOCK_USE_EXCL);
-	set.use_io_notify = TRUE;
+	set.lock_timeout_secs = FLATCURVE_XAPIAN_LOCK_TIMEOUT_SECS;
+	set.lock_settings.close_on_free = TRUE;
+	set.lock_settings.unlink_on_free = TRUE;
+	set.lock_settings.lock_method = backend->parsed_lock_method;
 
-	ret = file_dotlock_create(&set, x->dotlock_path, flags, &x->dotlock);
+	bool created;
+	const char *error;
+	int ret = file_create_locked(x->lock_path, &set, &x->lock, &created, &error);
 	if (ret < 0)
-		e_error(backend->event, "dotlock create failed: %m");
+		e_error(backend->event, "file_create_locked(%s) failed: %m",
+			x->lock_path);
 
 	return ret;
 }
 
 static void fts_flatcurve_xapian_unlock(struct flatcurve_fts_backend *backend)
 {
-	struct flatcurve_xapian *x = backend->xapian;
-
-	if (x->dotlock != NULL)
-		file_dotlock_delete(&x->dotlock);
+	file_lock_free(&backend->xapian->lock);
 }
 
 static bool
@@ -598,7 +591,6 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 {
 	bool dbs_exist, lock, no_create, ret;
 	struct flatcurve_xapian_db_iter *iter;
-	struct stat st;
 	struct flatcurve_xapian *x = backend->xapian;
 
 	dbs_exist = (hash_table_count(backend->xapian->dbs) > 0);
@@ -608,11 +600,18 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 		return TRUE;
 
 	if (no_create) {
-		lock = ((stat(str_c(backend->db_path), &st) >= 0) &&
-			S_ISDIR(st.st_mode));
+		struct stat st;
+		if (stat(str_c(backend->db_path), &st) == 0)
+			lock = S_ISDIR(st.st_mode);
+		else if (errno = ENOENT)
+			lock = FALSE;
+		else {
+			e_error(backend->event, "stat(%s) failed: %m",
+				str_c(backend->db_path));
+		}
 	} else {
 		if (mailbox_list_mkdir_root(backend->backend.ns->list, str_c(backend->db_path), MAILBOX_LIST_PATH_TYPE_INDEX) < 0) {
-			e_debug(backend->event, "Cannot create DB (RW); %s",
+			e_error(backend->event, "Cannot create DB (RW); %s",
 				str_c(backend->db_path));
 			return FALSE;
 		}
@@ -1096,7 +1095,7 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 
 	hash_table_clear(x->dbs, TRUE);
 
-	x->dotlock_path = NULL;
+	x->lock_path = NULL;
 	x->dbw_current = NULL;
 	x->shards = 0;
 
@@ -1411,7 +1410,7 @@ fts_flatcurve_xapian_optimize_box_do(struct flatcurve_fts_backend *backend,
 		return FALSE;
 	while (fts_flatcurve_xapian_db_iter_next(iter)) {
 		if ((iter->type != FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE) &&
-		    (iter->type != FLATCURVE_XAPIAN_DB_TYPE_DOTLOCK))
+		    (iter->type != FLATCURVE_XAPIAN_DB_TYPE_LOCK))
 			fts_flatcurve_xapian_delete(backend, iter->path);
 	}
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
