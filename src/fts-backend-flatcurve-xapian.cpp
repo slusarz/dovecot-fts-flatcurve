@@ -72,6 +72,7 @@ extern "C" {
 #define FLATCURVE_XAPIAN_ALL_HEADERS_QP "allhdrs"
 #define FLATCURVE_XAPIAN_HEADER_BOOL_QP "hdr_bool"
 #define FLATCURVE_XAPIAN_HEADER_QP      "hdr_"
+#define FLATCURVE_XAPIAN_BODY_QP        "body"
 
 /* Version database, so that any schema changes can be caught. */
 #define FLATCURVE_XAPIAN_DB_KEY_PREFIX "dovecot."
@@ -1544,13 +1545,13 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	case SEARCH_TEXT:
 		x->qp->add_prefix(FLATCURVE_XAPIAN_ALL_HEADERS_QP,
 				  FLATCURVE_XAPIAN_ALL_HEADERS_PREFIX);
-		str_printfa(a->value, "(%s:%s* OR %s*)",
+		str_printfa(a->value, "(%s:%s* OR %s:%s*)",
 			    FLATCURVE_XAPIAN_ALL_HEADERS_QP, t.c_str(),
-			    t.c_str());
+			    FLATCURVE_XAPIAN_BODY_QP, t.c_str());
 		break;
 	case SEARCH_BODY:
-		str_append(a->value, t.c_str());
-		str_append(a->value, "*");
+		str_printfa(a->value, "%s:%s*",
+			    FLATCURVE_XAPIAN_BODY_QP, t.c_str());
 		break;
 	case SEARCH_HEADER:
 	case SEARCH_HEADER_ADDRESS:
@@ -1620,6 +1621,7 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query)
 	p_array_init(&x->args, query->pool, 4);
 
 	x->qp = new Xapian::QueryParser();
+	x->qp->add_prefix(FLATCURVE_XAPIAN_BODY_QP, "");
 	x->qp->set_stemming_strategy(Xapian::QueryParser::STEM_NONE);
 
 	for (; args != NULL ; args = args->next) {

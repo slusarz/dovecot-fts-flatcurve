@@ -82,6 +82,10 @@ run_test "Testing GitHub Issue #11 (DB Rotation/Deletion)" \
         /dovecot/configs/dovecot.conf.issue-11 \
         /dovecot/imaptest/issue-11
 
+run_test "Testing Xapian query keyword parsing" \
+	/dovecot/configs/dovecot.conf.xapian-query-keywords \
+	/dovecot/imaptest/xapian-query-keywords
+
 TESTBOX=rotatetest
 run_test "Testing DB Rotation/Deletion (populating mailbox)" \
 	/dovecot/configs/dovecot.conf.issue-11 \

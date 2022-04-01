@@ -1,0 +1,8 @@
+messages: all
+
+ok search body and
+* search 13
+ok search body or
+* search 13
+ok search or body and body or
+* search 13
