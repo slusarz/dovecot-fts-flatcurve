@@ -11,9 +11,10 @@ The plugin relies on Dovecot to do the necessary stemming. It is intended
 to act as a simple interface to the Xapian storage/search query
 functionality.
 
-This driver supports match scoring and substring matches (on by default),
-which means it is RFC 3501 (IMAP4rev1) compliant. This driver does not
-support fuzzy searches.
+This driver supports match scoring and substring matches, which means it is RFC
+3501 (IMAP4rev1) compliant (although substring searches are off by default). This
+driver does not support fuzzy searches, as there is no built-in support in Xapian
+for it.
 
 The driver passes all of the [ImapTest](https://imapwiki.org/ImapTest) search
 tests.
@@ -47,9 +48,9 @@ Requirements
     - REQUIRES icu support (--with-icu)
     - REQUIRES stemmer support (--with-stemmer)
     - Optional libtextcat support (--with-textcat)
-* Xapian 1.2.x+ (tested on Xapian 1.2.22, 1.4.11, 1.4.18)
+* Xapian 1.2.x+ (tested on Xapian 1.2.22, 1.4.11, 1.4.18, 1.4.19)
   - 1.4+ is required for automatic optimization support
-    - older versions require manual optimization (this is a limitation of the
+    - 1.2.x versions require manual optimization (this is a limitation of the
       Xapian library)
 
 
@@ -173,7 +174,7 @@ write DB. Most people should not change this setting.
 If enabled, allows substring searches (RFC 3501 compliant). However, this
 requires significant additional storage space. Most users today expect
 "Google-like" behavior, which is prefix searching, so substring searching is
-arguably not the modern expected behavior anyway. Therefore, even though it
+arguably not the "modern, expected" behavior. Therefore, even though it
 is not strictly RFC compliant, prefix (non-substring) searching is enabled
 by default.
 
@@ -406,7 +407,7 @@ Thanks to:
 Benchmarking
 ------------
 
-### Indexing benchmark with substring matching ENABLED (default configuration)
+### Indexing benchmark with substring matching ENABLED
 
 ```
 Linux 5.14.18-300.fc35.x86_64 (Fedora 35)
@@ -458,7 +459,7 @@ $ echo "scale=3; (512348 * 1024) / 1162426786" | bc
 .351  [Index = ~35% the size of the total mailbox data size]
 ```
 
-### Indexing benchmark with substring matching DISABLED (non-default configuration)
+### Indexing benchmark with substring matching DISABLED (*DEFAULT* configuration)
 
 ```
 Linux 5.14.18-300.fc35.x86_64 (Fedora 35)
@@ -519,7 +520,7 @@ plugin {
   fts_enforced = yes
   fts_filters = normalizer-icu snowball stopwords
   fts_filters_en = lowercase snowball english-possessive stopwords
-  fts_flatcurve_substring_search = <yes|no; depending on the test>
+  fts_flatcurve_substring_search = [yes|no]
   fts_index_timeout = 60s
   fts_languages = en es de
   fts_tokenizer_generic = algorithm=simple
