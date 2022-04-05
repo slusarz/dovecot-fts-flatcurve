@@ -1469,10 +1469,7 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 			      struct mail_search_arg *arg)
 {
 	struct flatcurve_fts_query_arg *a;
-	Xapian::Database *db;
 	string_t *hdr, *hdr2;
-	enum flatcurve_xapian_db_opts opts =
-		ENUM_EMPTY(flatcurve_xapian_db_opts);
 	std::string t;
 	struct flatcurve_fts_query_xapian *x = query->xapian;
 
@@ -1523,22 +1520,19 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 	 * regular search code. */
 	arg->match_always = TRUE;
 
-	/* Prepare search value. Phrases should be surrounding by double
-	 * quotes. Single words should not be quoted. Quotes should be
-	 * removed from original input. */
+	/* Prepare search value. Phrase searching is not supported natively
+	 * (FTS core passes terms to be indexed without positional context)
+	 * so we can only do single term searching. Therefore, remove quotes
+	 * from input string as that is used by Xapian QueryParser to indicate
+	 * phrases. */
 	t = arg->value.str;
 	t.erase(std::remove(t.begin(), t.end(), '"'), t.end());
 
 	if (t.find_first_of(' ') != std::string::npos) {
-		if (((db = fts_flatcurve_xapian_read_db(query->backend, opts)) == NULL) ||
-		    !db->has_positions()) {
-			/* Phrase searching not available. */
-			array_pop_back(&x->args);
-			return TRUE;
-		}
-
-		if (t.size() > 0)
-			t = "\"" + t + "\"";
+		/* Phrase searching not available. Fallback to internal
+		 * FTS searching. */
+		array_pop_back(&x->args);
+		return TRUE;
 	}
 
 	switch (arg->type) {
