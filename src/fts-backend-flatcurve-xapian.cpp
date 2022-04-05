@@ -1464,93 +1464,42 @@ void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend)
 #endif
 }
 
-static bool
-fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
-			      struct mail_search_arg *arg)
+static void
+fts_flatcurve_build_query_arg_term(struct flatcurve_fts_query *query,
+				   struct mail_search_arg *arg,
+				   const char *term)
 {
 	struct flatcurve_fts_query_arg *a;
 	string_t *hdr, *hdr2;
-	std::string t;
 	struct flatcurve_fts_query_xapian *x = query->xapian;
-
-	if (arg->no_fts)
-		return TRUE;
 
 	a = array_append_space(&x->args);
 	a->value = str_new(query->pool, 64);
 
-	switch (arg->type) {
-	case SEARCH_TEXT:
-	case SEARCH_BODY:
-	case SEARCH_HEADER:
-	case SEARCH_HEADER_ADDRESS:
-	case SEARCH_HEADER_COMPRESS_LWSP:
-		if (arg->match_not)
-			a->is_not = TRUE;
-		if ((query->flags & FTS_LOOKUP_FLAG_AND_ARGS) != 0)
-			a->is_and = TRUE;
-		/* Otherwise, absence of these means an OR search. */
-		break;
-	case SEARCH_MAILBOX:
-		/* doveadm will pass this through in 'doveadm search'
-		 * commands with a 'mailbox' search argument. The code has
-		 * already handled setting the proper mailbox by this point
-		 * so just ignore this. */
-		array_pop_back(&x->args);
-		return TRUE;
-
-	case SEARCH_OR:
-	case SEARCH_SUB:
-		/* FTS API says to ignore these. */
-		array_pop_back(&x->args);
-		return TRUE;
-
-	default:
-		/* We should never get here - this is a search argument that
-		 * we don't understand how to handle that has leaked to this
-		 * point. For performance reasons, we will ignore this
-		 * argument and err on the side of returning too many
-		 * results (rather than falling back to slow, manual
-		 * search). */
-		array_pop_back(&x->args);
-		return TRUE;
-	}
-
-	/* Required by FTS API to avoid this argument being looked up via
-	 * regular search code. */
-	arg->match_always = TRUE;
-
-	/* Prepare search value. Phrase searching is not supported natively
-	 * (FTS core passes terms to be indexed without positional context)
-	 * so we can only do single term searching. Therefore, remove quotes
-	 * from input string as that is used by Xapian QueryParser to indicate
-	 * phrases. */
-	t = arg->value.str;
-	t.erase(std::remove(t.begin(), t.end(), '"'), t.end());
-
-	if (t.find_first_of(' ') != std::string::npos) {
-		/* Phrase searching not available. Fallback to internal
-		 * FTS searching. */
-		array_pop_back(&x->args);
-		return TRUE;
-	}
+	/* Absence of NOT or AND flags means an OR search. */
+	if (arg->match_not)
+		a->is_not = TRUE;
+	if ((query->flags & FTS_LOOKUP_FLAG_AND_ARGS) != 0)
+		a->is_and = TRUE;
 
 	switch (arg->type) {
 	case SEARCH_TEXT:
 		x->qp->add_prefix(FLATCURVE_XAPIAN_ALL_HEADERS_QP,
 				  FLATCURVE_XAPIAN_ALL_HEADERS_PREFIX);
-		str_printfa(a->value, "(%s:%s* OR %s:%s*)",
-			    FLATCURVE_XAPIAN_ALL_HEADERS_QP, t.c_str(),
-			    FLATCURVE_XAPIAN_BODY_QP, t.c_str());
+		str_printfa(a->value, "(%s:%s OR %s:%s)",
+			    FLATCURVE_XAPIAN_ALL_HEADERS_QP, term,
+			    FLATCURVE_XAPIAN_BODY_QP, term);
 		break;
+
 	case SEARCH_BODY:
-		str_printfa(a->value, "%s:%s*",
-			    FLATCURVE_XAPIAN_BODY_QP, t.c_str());
+		str_printfa(a->value, "%s:%s",
+			    FLATCURVE_XAPIAN_BODY_QP, term);
 		break;
+
 	case SEARCH_HEADER:
 	case SEARCH_HEADER_ADDRESS:
 	case SEARCH_HEADER_COMPRESS_LWSP:
-		if (t.size() > 0) {
+		if (strlen(term)) {
 			if (fts_header_want_indexed(arg->hdr_field_name)) {
 				hdr = str_new(query->pool, 32);
 				str_printfa(hdr, "%s%s",
@@ -1561,14 +1510,15 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 					    FLATCURVE_XAPIAN_HEADER_PREFIX,
 					    t_str_ucase(arg->hdr_field_name));
 				x->qp->add_prefix(str_c(hdr), str_c(hdr2));
-				str_printfa(a->value, "%s:%s*", str_c(hdr), t.c_str());
+				str_printfa(a->value, "%s:%s", str_c(hdr),
+					    term);
 			} else {
 				x->qp->add_prefix(
 					FLATCURVE_XAPIAN_ALL_HEADERS_QP,
 					FLATCURVE_XAPIAN_ALL_HEADERS_PREFIX);
-				str_printfa(a->value, "%s:%s*",
+				str_printfa(a->value, "%s:%s",
 					    FLATCURVE_XAPIAN_ALL_HEADERS_QP,
-					    t.c_str());
+					    term);
 				/* Non-indexed headers only match if it
 				 * appears in the general pool of header
 				 * terms for the message, not to a specific
@@ -1585,8 +1535,85 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		}
 		break;
 	}
+}
 
-	return TRUE;
+static void
+fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
+			      struct mail_search_arg *arg)
+{
+	struct flatcurve_fts_query_arg *a;
+	unsigned int i, tmp_len;
+	const char *const *tmp;
+	const char *term;
+	struct flatcurve_fts_query_xapian *x = query->xapian;
+
+	if (arg->no_fts)
+		return;
+
+	switch (arg->type) {
+	case SEARCH_TEXT:
+	case SEARCH_BODY:
+	case SEARCH_HEADER:
+	case SEARCH_HEADER_ADDRESS:
+	case SEARCH_HEADER_COMPRESS_LWSP:
+		/* Valid search term. Set match_always, as required by FTS
+		 * API, to avoid this argument being looked up later via
+		 * regular search code. */
+		arg->match_always = TRUE;
+		break;
+
+	case SEARCH_MAILBOX:
+		/* doveadm will pass this through in 'doveadm search'
+		 * commands with a 'mailbox' search argument. The code has
+		 * already handled setting the proper mailbox by this point
+		 * so just ignore this. */
+		return;
+
+	case SEARCH_OR:
+	case SEARCH_SUB:
+		/* FTS API says to ignore these. */
+		return;
+
+	default:
+		/* We should never get here - this is a search argument that
+		 * we don't understand how to handle that has leaked to this
+		 * point. For performance reasons, we will ignore this
+		 * argument and err on the side of returning too many
+		 * results (rather than falling back to slow, manual
+		 * search). */
+		return;
+	}
+
+	if (strlen(arg->value.str)) {
+		/* Prepare search term. Phrase searching is not supported
+		 * natively (FTS core provides index terms without positional
+		 * context) so we can only do single term searching with
+		 * Xapian. Therefore, if we do see a multi-term search, break
+		 * it apart and do a maybe query. */
+		tmp = t_strsplit_spaces(arg->value.str, " ");
+		tmp_len = str_array_length(tmp);
+		if (tmp_len > 1)
+			query->maybe = TRUE;
+
+		for (i = 0; i < tmp_len; i++, tmp++) {
+			/* For phrase searches, we only add wildcard to the
+			 * last term. */
+			term = ((i + 1) == tmp_len)
+				? t_strconcat(*tmp, "*", NULL)
+				: *tmp;
+
+			fts_flatcurve_build_query_arg_term(query, arg, term);
+
+			/* We need to AND search all phrase terms. */
+			if (tmp_len > 1) {
+				a = array_back_modifiable(&x->args);
+				a->is_and = TRUE;
+			}
+		}
+	} else {
+		/* This is an existence search. */
+		fts_flatcurve_build_query_arg_term(query, arg, "");
+	}
 }
 
 static void
@@ -1619,16 +1646,7 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query)
 	x->qp->set_stemming_strategy(Xapian::QueryParser::STEM_NONE);
 
 	for (; args != NULL ; args = args->next) {
-		if (!fts_flatcurve_build_query_arg(query, args)) {
-			/* At the moment, build_query_arg() will never
-			 * return FALSE - we will ignore unknown arguments.
-			 * Keep the return value though, in case we want to
-			 * change this in the future (at which point we
-			 * need to uncomment the following two lines. */
-			//fts_flatcurve_xapian_build_query_deinit(query);
-			//return FALSE;
-			i_unreached();
-		}
+		fts_flatcurve_build_query_arg(query, args);
 	}
 
 	/* Empty Query. Optimize by not creating a query and returning no
