@@ -1659,8 +1659,11 @@ bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query)
 	/* Generate the query. */
 	prev = NULL;
 	array_foreach(&x->args, a) {
-		if (a->is_not)
-			str += " NOT ";
+		if (a->is_not) {
+			if (prev != NULL)
+				str += " ";
+			str += "NOT ";
+		}
 		if (a->is_not || (prev == NULL)) {
 			str += str_c(a->value);
 		} else if (!str_equals(a->value, prev->value)) {
