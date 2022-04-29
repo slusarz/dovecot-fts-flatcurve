@@ -1,6 +1,13 @@
 FTS Flatcurve plugin for Dovecot
 ================================
 
+***fts-flatcurve will become the default Dovecot Community Edition (CE) FTS driver
+in v2.4 (merged into Dovecot core in April 2022:
+https://github.com/dovecot/core/commit/137572e77fdf79b2e8d607021667741ed3f19da1).
+fts-flatcurve will continue to be maintained in this repository
+for backwards support with Dovecot CE v2.3.x. However, it is possible that configuration
+and features may differ between this v2.3 code and core v2.4 code.***
+
 What?
 -----
 
@@ -18,12 +25,6 @@ for it.
 
 The driver passes all of the [ImapTest](https://imapwiki.org/ImapTest) search
 tests.
-
-***fts-flatcurve will become the default Dovecot Community Edition (CE) FTS driver
-in v2.4. For now, fts-flatcurve will continue to be maintained in this repository
-for backwards support with Dovecot CE v2.3. However, it is possible that configuration
-and features may differ between this v2.3 code and core v2.4 code, as two different
-teams will now be maintaining each codebase.***
 
 Why Flatcurve?
 --------------
@@ -402,6 +403,10 @@ Thanks to:
 - Aki Tuomi <aki.tuomi@open-xchange.com> and Jeff
   Sipek <jeff.sipek@open-xchange.com>; conversations with them directly
   convinced me to pursue this project
+- Marco Bettini, who did the heavy lifting necessary to merge this code into
+  Dovecot core; most backported fixes from 2.4 is due to his work.
+- Timo Siriainen for helping Marco with code review and cleaning up rough
+  edges in the design.
 
 
 Benchmarking
