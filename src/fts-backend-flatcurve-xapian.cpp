@@ -602,7 +602,7 @@ fts_flatcurve_xapian_db_populate(struct flatcurve_fts_backend *backend,
 		struct stat st;
 		if (stat(str_c(backend->db_path), &st) == 0)
 			lock = S_ISDIR(st.st_mode);
-		else if (errno = ENOENT)
+		else if (errno == ENOENT)
 			lock = FALSE;
 		else {
 			e_error(backend->event, "stat(%s) failed: %m",
