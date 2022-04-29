@@ -395,14 +395,12 @@ fts_flatcurve_xapian_rename_db(struct flatcurve_fts_backend *backend,
 			       struct flatcurve_xapian_db_path *path)
 {
 	unsigned int i;
-	std::string new_fname;
 	struct flatcurve_xapian_db_path *newpath;
 	bool retry = FALSE;
-	std::ostringstream ss;
 
-	for (i = 0; i < 5; ++i) {
-		new_fname.clear();
-		new_fname = FLATCURVE_XAPIAN_DB_PREFIX;
+	for (i = 0; i < 3; ++i) {
+		std::ostringstream ss;
+		std::string new_fname(FLATCURVE_XAPIAN_DB_PREFIX);
 		ss << i_rand_limit(8192);
 		new_fname += ss.str();
 
@@ -649,7 +647,6 @@ fts_flatcurve_xapian_write_db_current(struct flatcurve_fts_backend *backend,
 {
 	enum flatcurve_xapian_wdb wopts = ENUM_EMPTY(flatcurve_xapian_wdb);
 	struct flatcurve_xapian *x = backend->xapian;
-	struct flatcurve_xapian_db *xdb;
 
 	if ((x->dbw_current != NULL) && (x->dbw_current->dbw != NULL))
 		return x->dbw_current;
@@ -756,7 +753,6 @@ bool fts_flatcurve_xapian_mailbox_rotate(struct flatcurve_fts_backend *backend)
 		(enum flatcurve_xapian_db_opts)
 		 (FLATCURVE_XAPIAN_DB_NOCREATE_CURRENT |
 		  FLATCURVE_XAPIAN_DB_IGNORE_EMPTY);
-	struct flatcurve_xapian *x = backend->xapian;
 	struct flatcurve_xapian_db *xdb;
 
 	if ((xdb = fts_flatcurve_xapian_write_db_current(backend, opts)) == NULL)
@@ -1000,7 +996,7 @@ fts_flatcurve_xapian_close_db(struct flatcurve_fts_backend *backend,
 			      enum flatcurve_xapian_db_close opts)
 {
 	bool commit = FALSE, rotate = FALSE;
-	int diff;
+	unsigned int diff;
 	const char *fname;
 	struct timeval now, start;
 	struct flatcurve_xapian *x = backend->xapian;
@@ -1025,7 +1021,7 @@ fts_flatcurve_xapian_close_db(struct flatcurve_fts_backend *backend,
 		x->doc_updates = 0;
 
 		i_gettimeofday(&now);
-		diff = timeval_diff_msecs(&now, &start);
+		diff = (unsigned int) timeval_diff_msecs(&now, &start);
 
 		if (xdb->changes > 0)
 			e_debug(backend->event, "Committed %u changes to DB "
@@ -1344,7 +1340,7 @@ static bool
 fts_flatcurve_xapian_optimize_box_do(struct flatcurve_fts_backend *backend,
 				     Xapian::Database *db)
 {
-	int diff;
+	unsigned int diff;
 	struct hash_iterate_context *hiter;
 	struct flatcurve_xapian_db_iter *iter;
 	void *key, *val;
@@ -1423,7 +1419,7 @@ fts_flatcurve_xapian_optimize_box_do(struct flatcurve_fts_backend *backend,
 	}
 
 	i_gettimeofday(&now);
-	diff = timeval_diff_msecs(&now, &start);
+	diff = (unsigned int) timeval_diff_msecs(&now, &start);
 
 	e_debug(backend->event, "Optimized DB in %u.%03u secs", diff/1000,
 		diff%1000);
