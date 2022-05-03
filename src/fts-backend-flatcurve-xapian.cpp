@@ -1106,7 +1106,7 @@ void fts_flatcurve_xapian_close(struct flatcurve_fts_backend *backend)
 }
 
 static uint32_t
-fts_flatcurve_xapian_get_last_uid_query(struct flatcurve_fts_backend *backend,
+fts_flatcurve_xapian_get_last_uid_query(struct flatcurve_fts_backend *backend ATTR_UNUSED,
 					Xapian::Database *db)
 {
 	Xapian::Enquire enquire(*db);
