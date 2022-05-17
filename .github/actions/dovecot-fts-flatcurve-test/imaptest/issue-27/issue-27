@@ -1,0 +1,4 @@
+messages: all
+
+ok search body "Hello Jim"
+* search 2
