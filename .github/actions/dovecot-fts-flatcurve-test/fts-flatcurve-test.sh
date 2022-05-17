@@ -76,7 +76,7 @@ export IMAPTEST_ISSUE_10_GERMAN=1
 run_test "Testing GitHub Issue #10 (German; fails)" \
 	/dovecot/configs/dovecot.conf.issue-10 \
 	/dovecot/imaptest/issue-10/issue-10
-unset IMAPTEST_NO_SUBSTRING
+unset IMAPTEST_ISSUE_10_GERMAN
 
 run_test "Testing GitHub Issue #11 (DB Rotation/Deletion)" \
         /dovecot/configs/dovecot.conf.issue-11 \
