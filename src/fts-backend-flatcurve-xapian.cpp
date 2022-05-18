@@ -1246,6 +1246,12 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 
 		temp = s.tempSubString(i++);
 		temp.toUTF8String(t);
+		/* Capital ASCII letters at the beginning of a Xapian term are
+		 * treated as a "term prefix". Check for a leading ASCII
+		 * capital, and lowercase if necessary, to ensure the term
+		 * is not confused with a "term prefix". */
+		if (i_isupper(t[0]))
+			t[0] = i_tolower(t[0]);
 
 		if (ctx->indexed_hdr) {
 			x->doc->add_term(
@@ -1276,6 +1282,12 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 
 		temp = s.tempSubString(i++);
 		temp.toUTF8String(t);
+		/* Capital ASCII letters at the beginning of a Xapian term are
+		 * treated as a "term prefix". Check for a leading ASCII
+		 * capital, and lowercase if necessary, to ensure the term
+		 * is not confused with a "term prefix". */
+		if (i_isupper(t[0]))
+			t[0] = i_tolower(t[0]);
 
 		x->doc->add_term(t);
 	} while (fuser->set.substring_search &&

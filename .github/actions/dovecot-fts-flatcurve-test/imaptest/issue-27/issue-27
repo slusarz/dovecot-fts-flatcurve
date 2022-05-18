@@ -2,3 +2,5 @@ messages: all
 
 ok search body "Hello Jim"
 * search 2
+ok search subject "Foo"
+* search 1
