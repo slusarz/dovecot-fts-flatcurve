@@ -41,7 +41,10 @@ https://github.com/slusarz/dovecot-fts-flatcurve/issues/4#issuecomment-902425597
 Requirements
 ------------
 
-* Dovecot 2.3.10+
+* Dovecot CE v2.3.17+
+  - Older versions of dovecot-fts-flatcurve supported Dovecot CE < v2.3.17.
+    Use https://github.com/slusarz/dovecot-fts-flatcurve/releases/tag/v0.2.0
+    if you need support for these older Dovecot CE versions.
   - It is recommended that you use the most up-to-date version of Dovecot
     (see https://repo.dovecot.org/). New code is developed and tested
     against the Dovecot git master branch (https://github.com/dovecot/core/).
