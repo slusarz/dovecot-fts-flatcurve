@@ -1,12 +1,17 @@
 messages: all
 
-ok search body "phrase search"
+# Searches that should match
+ok search body "search phrase"
 * search 1
-ok search body "phrase search one"
+ok search body "search phrase one"
 * search 1
-ok search body "phrose search"
+ok search body "search phras"
+* search 1
+
+# Searches that won't match
+ok search body "search phrose"
 * search
-ok search body "phrase search four"
+ok search body "search phrase four"
 * search
 
 # These are examples of "broken" (or limited) phrase searching capability
