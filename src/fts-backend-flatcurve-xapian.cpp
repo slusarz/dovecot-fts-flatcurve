@@ -1549,11 +1549,7 @@ static void
 fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 			      struct mail_search_arg *arg)
 {
-	struct flatcurve_fts_query_arg *a;
-	unsigned int i, tmp_len;
-	const char *const *tmp;
 	const char *term;
-	struct flatcurve_fts_query_xapian *x = query->xapian;
 
 	if (arg->no_fts)
 		return;
@@ -1596,32 +1592,20 @@ fts_flatcurve_build_query_arg(struct flatcurve_fts_query *query,
 		/* Prepare search term. Phrase searching is not supported
 		 * natively (FTS core provides index terms without positional
 		 * context) so we can only do single term searching with
-		 * Xapian. Therefore, if we do see a multi-term search, break
-		 * it apart and do a maybe query. */
-		tmp = t_strsplit_spaces(arg->value.str, " ");
-		tmp_len = str_array_length(tmp);
-		if (tmp_len > 1)
-			query->maybe = TRUE;
+		 * Xapian. Therefore, if we do see a multi-term search, ignore
+		 * (since, as of v2.3.19, FTS core will send both the
+		 * phrase search and individual search terms separately as
+		 * part of the same query. */
+		if (strchr(arg->value.str, ' ') != NULL)
+			return;
 
-		for (i = 0; i < tmp_len; i++, tmp++) {
-			/* For phrase searches, we only add wildcard to the
-			 * last term. */
-			term = ((i + 1) == tmp_len)
-				? t_strconcat(*tmp, "*", NULL)
-				: *tmp;
-
-			fts_flatcurve_build_query_arg_term(query, arg, term);
-
-			/* We need to AND search all phrase terms. */
-			if (tmp_len > 1) {
-				a = array_back_modifiable(&x->args);
-				a->is_and = TRUE;
-			}
-		}
+		term = t_strdup_printf("%s*", arg->value.str);
 	} else {
 		/* This is an existence search. */
-		fts_flatcurve_build_query_arg_term(query, arg, "");
+		term = "";
 	}
+
+	fts_flatcurve_build_query_arg_term(query, arg, term);
 }
 
 static void

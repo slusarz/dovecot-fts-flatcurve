@@ -1,0 +1,19 @@
+messages: all
+
+ok search body "phrase search"
+* search 1
+ok search body "phrase search one"
+* search 1
+ok search body "phrose search"
+* search
+ok search body "phrase search four"
+* search
+
+# These are examples of "broken" (or limited) phrase searching capability
+# in Dovecot FTS core, as of v2.3.19
+ok search body "phrase search three"
+* search 1
+ok search body "phrase one"
+* search 1
+ok search body "two search"
+* search 1
