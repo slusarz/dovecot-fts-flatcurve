@@ -190,6 +190,10 @@ mail_plugins = $mail_plugins fts fts_flatcurve
 
 plugin {
   fts = flatcurve
+ 
+  # Recommended default FTS core configuration
+  fts_filters = normalizer-icu snowball stopwords
+  fts_filters_en = lowercase snowball english-possessive stopwords
   
   # All of these are optional, and indicate the default values.
   # They are listed here for documentation purposes; most people should
