@@ -45,7 +45,7 @@ void
 fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx,
 				const unsigned char *data, size_t size);
 void fts_flatcurve_xapian_optimize_box(struct flatcurve_fts_backend *backend);
-bool fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query);
+void fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query);
 bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_query *query,
 				    struct flatcurve_fts_result *r);
 void fts_flatcurve_xapian_destroy_query(struct flatcurve_fts_query *query);

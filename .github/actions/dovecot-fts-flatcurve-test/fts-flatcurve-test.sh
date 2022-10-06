@@ -94,6 +94,10 @@ run_test "Testing phrase searching" \
 	/dovecot/configs/dovecot.conf \
 	/dovecot/imaptest/phrase_search/phrase_search
 
+run_test "Testing GitHub Issue #35 (Email searching)" \
+	/dovecot/configs/dovecot.conf \
+	/dovecot/imaptest/issue-35/issue-35
+
 TESTBOX=rotatetest
 run_test "Testing DB Rotation/Deletion (populating mailbox)" \
 	/dovecot/configs/dovecot.conf.issue-11 \

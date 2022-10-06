@@ -348,6 +348,20 @@ static string_t
 	return ret;
 }
 
+static struct flatcurve_fts_query *
+fts_backend_flatcurve_create_query(struct flatcurve_fts_backend *backend,
+				   pool_t pool)
+{
+	struct flatcurve_fts_query *query;
+
+	query = p_new(pool, struct flatcurve_fts_query, 1);
+	query->backend = backend;
+	query->pool = pool;
+	query->qtext = str_new(pool, 128);
+
+	return query;
+}
+
 static void
 fts_backend_flatcurve_rescan_box(struct flatcurve_fts_backend *backend,
 				 struct mailbox *box,
@@ -419,10 +433,8 @@ end:
 		i_assert(ret);
 	}
 
-	query = p_new(pool, struct flatcurve_fts_query, 1);
-	query->backend = backend;
+	query = fts_backend_flatcurve_create_query(backend, pool);
 	query->match_all = TRUE;
-	query->pool = pool;
 	fts_flatcurve_xapian_build_query(query);
 
 	p_array_init(&expunged, pool, 256);
@@ -542,15 +554,10 @@ fts_backend_flatcurve_lookup_multi(struct fts_backend *_backend,
 	const char *u;
 
 	/* Create query */
-	query = p_new(result->pool, struct flatcurve_fts_query, 1);
+	query = fts_backend_flatcurve_create_query(backend, result->pool);
 	query->args = args;
-	query->backend = backend;
 	query->flags = flags;
-	query->pool = result->pool;
-	if (!fts_flatcurve_xapian_build_query(query)) {
-		fts_flatcurve_xapian_destroy_query(query);
-		return -1;
-	}
+	fts_flatcurve_xapian_build_query(query);
 
 	p_array_init(&box_results, result->pool, 8);
 	for (i = 0; boxes[i] != NULL; i++) {
@@ -576,7 +583,7 @@ fts_backend_flatcurve_lookup_multi(struct fts_backend *_backend,
 		r->scores = fresult->scores;
 
 		/* This was an empty query - skip output of debug info. */
-		if (query->qtext == NULL)
+		if (!str_len(query->qtext))
 			continue;
 
 		u = str_c(fts_backend_flatcurve_seq_range_string(&fresult->uids,
