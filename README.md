@@ -84,7 +84,7 @@ with the following parameters:
    source tree or point to the location where the dovecot-config file is
    installed on your system (typically in the `$prefix/lib/dovecot` directory).
 
-When these parameters are omitted, the configure script will try to find thex
+When these parameters are omitted, the configure script will try to find the
 local Dovecot installation implicitly.
 
 For example, when compiling against compiled Dovecot sources:
@@ -190,11 +190,11 @@ mail_plugins = $mail_plugins fts fts_flatcurve
 
 plugin {
   fts = flatcurve
- 
+
   # Recommended default FTS core configuration
   fts_filters = normalizer-icu snowball stopwords
   fts_filters_en = lowercase snowball english-possessive stopwords
-  
+
   # All of these are optional, and indicate the default values.
   # They are listed here for documentation purposes; most people should
   # not need to define/override in their config.
@@ -217,7 +217,7 @@ Xapian search data is stored separately for each mailbox.
 The data is stored under a 'fts-flatcurve' directory in the [Dovecot index
 file location for the
 mailbox](https://doc.dovecot.org/configuration_manual/mail_location/#index-files).
-The Xapian library is responsible for alldata stored in that directory - no
+The Xapian library is responsible for all data stored in that directory - no
 Dovecot code directly writes to any file.
 
 
@@ -270,13 +270,13 @@ Emitted when a mailbox is optimized.
 
 Emitted when a query is completed.
 
-| Field     | Description                            |
-| --------- | -------------------------------------- |
-| `count`   | The number of messages matched         |
-| `mailbox` | The mailbox name                       |
-| `maybe`   | Are the results uncertain? \[yes\|no\] |
-| `query`   | The query text sent to Xapian          |
-| `uids`    | The list of UIDs returned by the query |
+| Field     | Description                              |
+| --------- | ---------------------------------------- |
+| `count`   | The number of messages matched           |
+| `mailbox` | The mailbox name                         |
+| `maybe`   | Are the results uncertain? \[yes \| no\] |
+| `query`   | The query text sent to Xapian            |
+| `uids`    | The list of UIDs returned by the query   |
 
 #### ***fts_flatcurve_rescan***
 
@@ -286,12 +286,12 @@ Emitted when a rescan is completed.
 | ---------- | -------------------------------------------------------- |
 | `expunged` | The list of UIDs that were expunged during rescan        |
 | `mailbox`  | The mailbox name                                         |
-| `status`   | Status of rescan \[expunge_msgs\|missing_msgs\|ok\]      |
+| `status`   | Status of rescan \[expunge_msgs \| missing_msgs \| ok\]  |
 | `uids`     | The list of UIDs that triggered a non-ok status response |
 
 #### ***fts_flatcurve_rotate***
 
-Emitted when a mailbox has it's underlying Xapian DB rotated.
+Emitted when a mailbox has its underlying Xapian DB rotated.
 
 | Field     | Description      |
 | --------- | ---------------- |
