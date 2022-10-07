@@ -49,8 +49,7 @@ extern "C" {
  * Data storage: Xapian does not support substring searches by default, so
  * (if substring searching is enabled) we instead need to explicitly store all
  * substrings of the string, up to the point where the substring becomes
- * smaller than min_term_size. Requires libicu in order to correctly handle
- * multi-byte characters. */
+ * smaller than min_term_size. */
 #define FLATCURVE_XAPIAN_DB_PREFIX "index."
 #define FLATCURVE_XAPIAN_DB_CURRENT_PREFIX "current."
 
@@ -1213,8 +1212,7 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 {
 	struct fts_flatcurve_user *fuser = ctx->backend->fuser;
 	std::string h;
-	int32_t i = 0;
-	icu::UnicodeString s, temp;
+	Xapian::Utf8Iterator ustr;
 	struct flatcurve_xapian *x = ctx->backend->xapian;
 
 	if (!fts_flatcurve_xapian_init_msg(ctx))
@@ -1226,16 +1224,13 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 			FLATCURVE_XAPIAN_BOOLEAN_FIELD_PREFIX + h);
 	}
 
-	s = icu::UnicodeString::fromUTF8(
-		icu::StringPiece((const char *)data, size));
+	ustr = Xapian::Utf8Iterator((const char *)data, size);
 	if (ctx->indexed_hdr)
 		h = str_ucase(str_c_modifiable(ctx->hdr_name));
 
 	do {
-		std::string t;
+		std::string t (ustr.raw());
 
-		temp = s.tempSubString(i++);
-		temp.toUTF8String(t);
 		/* Capital ASCII letters at the beginning of a Xapian term are
 		 * treated as a "term prefix". Check for a leading ASCII
 		 * capital, and lowercase if necessary, to ensure the term
@@ -1249,7 +1244,7 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 		}
 		x->doc->add_term(FLATCURVE_XAPIAN_ALL_HEADERS_PREFIX + t);
 	} while (fuser->set.substring_search &&
-		 ((unsigned)temp.length() >= fuser->set.min_term_size));
+		 ((++ustr).left() >= fuser->set.min_term_size));
 }
 
 void
@@ -1257,21 +1252,17 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 				const unsigned char *data, size_t size)
 {
 	struct fts_flatcurve_user *fuser = ctx->backend->fuser;
-	int32_t i = 0;
-	icu::UnicodeString s, temp;
+	Xapian::Utf8Iterator ustr;
 	struct flatcurve_xapian *x = ctx->backend->xapian;
 
 	if (!fts_flatcurve_xapian_init_msg(ctx))
 		return;
 
-	s = icu::UnicodeString::fromUTF8(
-		icu::StringPiece((const char *)data, size));
+	ustr = Xapian::Utf8Iterator((const char *)data, size);
 
 	do {
-		std::string t;
+		std::string t (ustr.raw());
 
-		temp = s.tempSubString(i++);
-		temp.toUTF8String(t);
 		/* Capital ASCII letters at the beginning of a Xapian term are
 		 * treated as a "term prefix". Check for a leading ASCII
 		 * capital, and lowercase if necessary, to ensure the term
@@ -1281,7 +1272,7 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 
 		x->doc->add_term(t);
 	} while (fuser->set.substring_search &&
-		 ((unsigned)temp.length() >= fuser->set.min_term_size));
+		 ((++ustr).left() >= fuser->set.min_term_size));
 }
 
 void fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend)

@@ -49,8 +49,8 @@ Requirements
     (see https://repo.dovecot.org/). New code is developed and tested
     against the Dovecot git master branch (https://github.com/dovecot/core/).
   - Flatcurve relies on Dovecot's built-in FTS stemming library.
-    - REQUIRES icu support (--with-icu)
     - REQUIRES stemmer support (--with-stemmer)
+    - Optional icu support (--with-icu)
     - Optional libtextcat support (--with-textcat)
 * Xapian 1.2.x+ (tested on Xapian 1.2.22, 1.4.11, 1.4.18, 1.4.19)
   - 1.4+ is required for automatic optimization support
