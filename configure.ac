@@ -1,4 +1,4 @@
-AC_INIT([Dovecot FTS Flatcurve], [0.1.0], [slusarz@curecanti.org], [dovecot-fts-flatcurve])
+AC_INIT([Dovecot FTS Flatcurve], [0.3.2], [slusarz@curecanti.org], [dovecot-fts-flatcurve])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_MACRO_DIR([m4])
