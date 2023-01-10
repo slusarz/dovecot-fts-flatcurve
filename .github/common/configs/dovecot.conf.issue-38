@@ -1,0 +1,12 @@
+!include /dovecot/configs/dovecot.conf
+
+plugin {
+  fts_decoder = decode2text
+}
+
+service decode2text {
+  executable = script /usr/local/libexec/dovecot/decode2text.sh
+  unix_listener decode2text {
+    mode = 0666
+  }
+}

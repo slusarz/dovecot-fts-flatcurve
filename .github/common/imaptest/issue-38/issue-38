@@ -1,0 +1,18 @@
+messages: all
+
+ok search body bodybody
+* search 1
+ok search body attachment
+* search 1
+ok search body test2
+* search
+ok search or body test2 header x-foo test2
+* search 1
+ok search or body attachment header x-foo test2
+* search 1
+ok search or body attachment header x-foo baz
+* search 1
+ok search body bodybody header x-foo test2
+* search 1
+ok search body attachment header x-foo test2
+* search 1
