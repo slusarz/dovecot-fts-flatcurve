@@ -187,10 +187,15 @@ run_doveadm "fts-flatcurve remove -u $TESTUSER $TESTBOX"
 run_not_exists_dir /dovecot/sdbox/user/sdbox/mailboxes/$TESTBOX/dbox-Mails/fts-flatcurve/
 echo "Success!"
 
-for m in inbox rotatetest imaptest
+for m in inbox rotatetest
 do
 	run_doveadm "expunge -u $TESTUSER mailbox ${m} all"
 	printf "Subject: msg1\n\nbody1\n" | run_doveadm "save -u $TESTUSER -m ${m}"
+done
+for m in imaptest
+do
+	run_doveadm "expunge -u $TESTUSER mailbox ${m} all"
+	printf "Subject: msg1\n\nbody2\n" | run_doveadm "save -u $TESTUSER -m ${m}"
 done
 run_test "Testing virtual search" \
         /dovecot/configs/dovecot.conf.virtual \
