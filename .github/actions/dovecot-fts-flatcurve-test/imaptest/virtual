@@ -3,8 +3,8 @@ messages: 0
 
 ok login user pass
 ok examine Virtual/All
-ok search body body1
-* search 2 3
+ok search return (count) body body1
+* esearch (tag $) count 2
 ok examine inbox
 ok search body body1
 * search 1

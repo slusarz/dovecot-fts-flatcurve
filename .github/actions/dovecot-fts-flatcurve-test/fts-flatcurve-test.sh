@@ -189,12 +189,14 @@ echo "Success!"
 
 for m in inbox rotatetest
 do
-	run_doveadm "expunge -u $TESTUSER mailbox ${m} all"
+        run_doveadm "mailbox delete -u $TESTUSER ${m}"
+        run_doveadm "mailbox create -u $TESTUSER ${m}"
 	printf "Subject: msg1\n\nbody1\n" | run_doveadm "save -u $TESTUSER -m ${m}"
 done
 for m in imaptest
 do
-	run_doveadm "expunge -u $TESTUSER mailbox ${m} all"
+        run_doveadm "mailbox delete -u $TESTUSER ${m}"
+        run_doveadm "mailbox create -u $TESTUSER ${m}"
 	printf "Subject: msg1\n\nbody2\n" | run_doveadm "save -u $TESTUSER -m ${m}"
 done
 run_test "Testing virtual search" \
