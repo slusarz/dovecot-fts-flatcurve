@@ -6,6 +6,12 @@ TESTBOX=imaptest
 DOVECOT_LOG=/var/log/dovecot.log
 VALGRIND=0
 
+if [ $VALGRIND -eq 1 ]; then
+	DOVEADM_CMD="/usr/bin/valgrind --vgdb=no --num-callers=50 --keep-debuginfo=yes --leak-check=full --trace-children=yes"
+else
+	DOVEADM_CMD=""
+fi
+
 ulimit -c unlimited
 rm -f $DOVECOT_LOG
 
@@ -30,16 +36,15 @@ function run_test() {
 }
 
 function run_doveadm() {
-        if [ $VALGRIND -eq 1 ]; then
-                CMD="/usr/bin/valgrind --vgdb=no --num-callers=50 --keep-debuginfo=yes --leak-check=full --trace-children=yes"
-        else
-                CMD=""
-        fi
-        if ! $CMD doveadm -D $1 &>> $DOVECOT_LOG; then
+	if ! $DOVEADM_CMD doveadm -D $1 &>> $DOVECOT_LOG && [ -z "$2" ] ; then
 		echo "ERROR: Failed test ($1)!"
 		cat $DOVECOT_LOG
 		exit 1
 	fi
+}
+
+function run_doveadm_ignore_error() {
+	run_doveadm "$1" 1
 }
 
 function run_not_exists_dir() {
@@ -48,6 +53,12 @@ function run_not_exists_dir() {
 		cat $DOVECOT_LOG
 		exit 1
 	fi
+}
+
+function populate_mbox_msg() {
+	run_doveadm_ignore_error "mailbox delete -u $TESTUSER ${1}"
+	run_doveadm "mailbox create -u $TESTUSER ${1}"
+	printf "$2" | run_doveadm "save -u $TESTUSER -m ${1}"
 }
 
 run_test "Testing RFC Compliant (substring) configuration" \
@@ -189,16 +200,27 @@ echo "Success!"
 
 for m in inbox rotatetest
 do
-        run_doveadm "mailbox delete -u $TESTUSER ${m}"
-        run_doveadm "mailbox create -u $TESTUSER ${m}"
-	printf "Subject: msg1\n\nbody1\n" | run_doveadm "save -u $TESTUSER -m ${m}"
+	populate_mbox_msg ${m} "Subject: msg1\n\nbody1\n"
 done
 for m in imaptest
 do
-        run_doveadm "mailbox delete -u $TESTUSER ${m}"
-        run_doveadm "mailbox create -u $TESTUSER ${m}"
-	printf "Subject: msg1\n\nbody2\n" | run_doveadm "save -u $TESTUSER -m ${m}"
+	populate_mbox_msg ${m} "Subject: msg1\n\nbody2\n"
 done
 run_test "Testing virtual search" \
         /dovecot/configs/dovecot.conf.virtual \
         /dovecot/imaptest/virtual
+
+for u in user user2 user3
+do
+	TESTUSER=${u}
+	for m in inbox test1 test2
+	do
+		populate_mbox_msg ${m} "Subject: msg1\n\nbody\n"
+	done
+done
+
+echo
+echo "Testing 'doveadm fts optimize -A'"
+run_doveadm "fts optimize -A"
+# TODO: Scan for expected input
+echo "Success!"

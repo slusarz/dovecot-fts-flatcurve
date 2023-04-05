@@ -1,2 +1,4 @@
 user:{plain}pass:1000:1000
+user2:{plain}pass:1000:1000
+user3:{plain}pass:1000:1000
 notauser:{plain}pass:1000:1000
