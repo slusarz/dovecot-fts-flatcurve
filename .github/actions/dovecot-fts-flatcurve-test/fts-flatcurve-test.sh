@@ -90,8 +90,8 @@ run_test "Testing GitHub Issue #10 (German; fails)" \
 unset IMAPTEST_ISSUE_10_GERMAN
 
 run_test "Testing GitHub Issue #11 (DB Rotation/Deletion)" \
-        /dovecot/configs/dovecot.conf.issue-11 \
-        /dovecot/imaptest/issue-11
+	/dovecot/configs/dovecot.conf.issue-11 \
+	/dovecot/imaptest/issue-11
 
 run_test "Testing Xapian query keyword parsing" \
 	/dovecot/configs/dovecot.conf.xapian-query-keywords \
@@ -132,24 +132,24 @@ run_test "Testing DB Rotation/Deletion (after optimization)" \
 TESTBOX=imaptest
 
 run_test "Testing optimize_limit" \
-        /dovecot/configs/dovecot.conf.optimize_limit \
-        /dovecot/imaptest/optimize_limit
+	/dovecot/configs/dovecot.conf.optimize_limit \
+	/dovecot/imaptest/optimize_limit
 
 run_test "Testing Concurrent Indexing" \
-        /dovecot/configs/dovecot.conf \
-        /dovecot/imaptest/concurrent-index
+	/dovecot/configs/dovecot.conf \
+	/dovecot/imaptest/concurrent-index
 run_doveadm "index -u $TESTUSER $TESTBOX"
 # Need to let indexing complete before we run next test, or else
 # indexer-worker won't be killed when we restart Dovecot
 sleep 3
 
 run_test "Testing large mailbox" \
-        /dovecot/configs/dovecot.conf \
-        /dovecot/imaptest/large_mailbox
+	/dovecot/configs/dovecot.conf \
+	/dovecot/imaptest/large_mailbox
 
 run_test "Testing small mailbox (and large expunge from previous test)" \
-        /dovecot/configs/dovecot.conf \
-        /dovecot/imaptest/small_mailbox
+	/dovecot/configs/dovecot.conf \
+	/dovecot/imaptest/small_mailbox
 
 echo
 echo "Testing rescan"
@@ -207,8 +207,8 @@ do
 	populate_mbox_msg ${m} "Subject: msg1\n\nbody2\n"
 done
 run_test "Testing virtual search" \
-        /dovecot/configs/dovecot.conf.virtual \
-        /dovecot/imaptest/virtual
+	/dovecot/configs/dovecot.conf.virtual \
+	/dovecot/imaptest/virtual
 
 for u in user user2 user3
 do
