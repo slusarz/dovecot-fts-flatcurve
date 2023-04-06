@@ -10,6 +10,7 @@ on:
 
 jobs:
   ubuntu_test:
+    name: Testing on Ubuntu
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -17,6 +18,7 @@ jobs:
         run: cp -av ./.github/common/* ./.github/actions/flatcurve-test-ubuntu/
       - uses: ./.github/actions/flatcurve-test-ubuntu/action.yml
   alpine_test:
+    name: Testing on Alpine
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
