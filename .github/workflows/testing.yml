@@ -14,3 +14,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: ./.github/actions/flatcurve-test/action-ubuntu.yml
+  alpine_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: ./.github/actions/flatcurve-test/action-alpine.yml

@@ -1,0 +1,12 @@
+---
+name: "dovecot-fts-flatcurve Testing (Alpine)"
+description: "IMAP compliancy testing for dovecot-fts-flatcurve (on Alpine Linux)"
+author: "slusarz@curecanti.org"
+
+runs:
+        using: "docker"
+        image: "Dockerfile.alpine"
+
+branding:
+        icon: "watch"
+        color: "blue"
