@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Copy common files to working directory
         run: cp -av ./.github/common/* ./.github/actions/flatcurve-test-ubuntu/
-      - uses: ./.github/actions/flatcurve-test-ubuntu/action.yml
+      - uses: ./.github/actions/flatcurve-test-ubuntu/
   alpine_test:
     name: Testing on Alpine
     runs-on: ubuntu-latest
@@ -24,4 +24,4 @@ jobs:
       - uses: actions/checkout@v3
       - name: Copy common files to working directory
         run: cp -av ./.github/common/* ./.github/actions/flatcurve-test-alpine/
-      - uses: ./.github/actions/flatcurve-test-alpine/action.yml
+      - uses: ./.github/actions/flatcurve-test-alpine/
