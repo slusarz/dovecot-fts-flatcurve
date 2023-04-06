@@ -41,11 +41,11 @@ RUN git clone --depth 1 --branch release-2.3 \
 	/dovecot/imaptest-src
 RUN cd /dovecot/imaptest-src && ./autogen.sh && ./configure && make install
 
-RUN addgroup dovecot &&
-	adduser -DH -G dovecot dovecot &&
-	addgroup dovenull &&
-	adduser -DH -G dovenull dovenull &&
-	addgroup vmail &&
+RUN addgroup dovecot && \
+	adduser -DH -G dovecot dovecot && \
+	addgroup dovenull && \
+	adduser -DH -G dovenull dovenull && \
+	addgroup vmail && \
 	adduser -DH -G vmail vmail && \
 	mkdir -p /dovecot/sdbox && \
 	chown -R vmail:vmail /dovecot/sdbox
