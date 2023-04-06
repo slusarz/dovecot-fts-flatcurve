@@ -1,0 +1,12 @@
+---
+name: "dovecot-fts-flatcurve Testing (Ubuntu)"
+description: "IMAP compliancy testing for dovecot-fts-flatcurve (on Ubuntu)"
+author: "slusarz@curecanti.org"
+
+runs:
+        using: "docker"
+        image: "Dockerfile.ubuntu"
+
+branding:
+        icon: "watch"
+        color: "blue"

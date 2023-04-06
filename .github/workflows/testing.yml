@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  ubuntu_test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: ./.github/actions/dovecot-fts-flatcurve-test
+      - uses: ./.github/actions/flatcurve-test/action-ubuntu.yml
