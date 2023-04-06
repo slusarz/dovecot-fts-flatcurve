@@ -5,7 +5,7 @@ author: "slusarz@curecanti.org"
 
 runs:
         using: "docker"
-        image: "Dockerfile.alpine"
+        image: "Dockerfile"
 
 branding:
         icon: "watch"

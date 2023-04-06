@@ -12,10 +12,14 @@ jobs:
   ubuntu_test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: ./.github/actions/flatcurve-test/action-ubuntu.yml
+      - uses: actions/checkout@v3
+      - name: Copy common files to working directory
+        run: cp -av ./.github/common/* ./github/actions/flatcurve-test-ubuntu/
+      - uses: ./.github/actions/flatcurve-test-ubuntu/action.yml
   alpine_test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: ./.github/actions/flatcurve-test/action-alpine.yml
+      - uses: actions/checkout@v3
+      - name: Copy common files to working directory
+        run: cp -av ./.github/common/* ./github/actions/flatcurve-test-alpine/
+      - uses: ./.github/actions/flatcurve-test-alpine/action.yml
