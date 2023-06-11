@@ -548,7 +548,7 @@ Technical Information
 
 ### Database Design
 
-See https://github.com/slusarz/dovecot-fts-flatcurve/blob/master/src/fts-backend-flatcurve-xapian.cpp#L25
+See https://github.com/slusarz/dovecot-fts-flatcurve/blob/4e342b8fdd6379ffc3affc48e613caaff86695c7/src/fts-backend-flatcurve-xapian.cpp#LL25C1-L52C34
 
 
 Licensing
