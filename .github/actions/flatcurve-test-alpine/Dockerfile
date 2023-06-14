@@ -1,5 +1,8 @@
 FROM alpine:3.17
 
+ARG DOVECOT_VERSION=release-2.3
+ARG IMAPTEST_VERSION=release-2.3
+
 RUN apk add --no-cache \
 	git \
 	autoconf \

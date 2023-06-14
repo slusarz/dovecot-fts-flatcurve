@@ -6,8 +6,6 @@ author: "slusarz@curecanti.org"
 runs:
   using: "docker"
   image: "Dockerfile"
-  env:
-    DOVECOT_VERSION: release-2.3
 
 branding:
   icon: "watch"
