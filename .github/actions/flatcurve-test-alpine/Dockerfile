@@ -24,7 +24,7 @@ RUN apk add --no-cache \
 # We need to build Dovecot ourselves, since "standard" Dovecot does not
 # come with necessary ICU libraries built-in
 RUN mkdir /dovecot
-RUN git clone --depth 1 --branch release-2.3 \
+RUN git clone --depth 1 --branch ${DOVECOT_VERSION} \
 	https://github.com/dovecot/core.git /dovecot/core
 RUN cd /dovecot/core && \
 	./autogen.sh && \
@@ -36,7 +36,7 @@ RUN git clone --depth 1 https://github.com/slusarz/dovecot-fts-flatcurve.git \
 	/dovecot/fts-flatcurve
 RUN cd /dovecot/fts-flatcurve && ./autogen.sh && ./configure && make install
 
-RUN git clone --depth 1 --branch release-2.3 \
+RUN git clone --depth 1 --branch ${IMAPTEST_VERSION} \
 	https://github.com/dovecot/imaptest.git \
 	/dovecot/imaptest-src
 RUN cd /dovecot/imaptest-src && ./autogen.sh && ./configure && make install

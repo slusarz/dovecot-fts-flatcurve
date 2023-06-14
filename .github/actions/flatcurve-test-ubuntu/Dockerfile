@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y \
 # We need to build Dovecot ourselves, since "standard" Dovecot does not
 # come with necessary ICU libraries built-in
 RUN mkdir /dovecot
-RUN git clone --depth 1 --branch release-2.3 \
+RUN git clone --depth 1 --branch ${DOVECOT_VERSION} \
 	https://github.com/dovecot/core.git /dovecot/core
 RUN cd /dovecot/core && \
 	./autogen.sh && \

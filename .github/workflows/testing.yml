@@ -14,14 +14,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Copy common files to working directory
-        run: cp -av ./.github/common/* ./.github/actions/flatcurve-test-ubuntu/
-      - uses: ./.github/actions/flatcurve-test-ubuntu/
+        with:
+          sparse-checkout: .github
+      - name: Copy test files to base directory
+        run: |
+          cp -av ./.github/actions/flatcurve-test-ubuntu/* ./
+          cp -av ./.github/common/* ./
+      - uses: ./
   alpine_test:
     name: Testing on Alpine
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Copy common files to working directory
-        run: cp -av ./.github/common/* ./.github/actions/flatcurve-test-alpine/
-      - uses: ./.github/actions/flatcurve-test-alpine/
+        with:
+          sparse-checkout: .github
+      - name: Copy test files to base directory
+        run: |
+          cp -av ./.github/actions/flatcurve-test-alpine/* ./
+          cp -av ./.github/common/* ./
+      - uses: ./
