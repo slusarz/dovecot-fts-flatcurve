@@ -58,6 +58,7 @@ RUN addgroup -g 1000 vmail && \
 
 ADD docker/dovecot.conf /etc/dovecot/dovecot.conf 
 
+EXPOSE 24
 EXPOSE 143
 
 VOLUME ["/etc/dovecot", "/srv/mail"]
