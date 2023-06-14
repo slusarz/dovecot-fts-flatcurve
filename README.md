@@ -106,6 +106,30 @@ make
 sudo make install
 ```
 
+Docker/Podman Container
+-----------------------
+
+A container image is generated after every commit, to allow for easy use and
+exploration of the code.  The image is a full Dovecot stack (w/Pigeonhole),
+althought it is not compiled with most optional features.  Only IMAP is available,
+and SSL is disabled.
+
+The image comes with a default configuration which accepts any user with password `pass`.
+To customize the image, mount `/etc/dovecot` (for custom configuration) and `/srv/mail`
+(for persistent mail storage) volumes.
+
+Port 143 (IMAP) is the only port that is exposed by default.
+
+To run the latest version from master, use the command:
+
+```
+docker run ghcr.io/slusarz/dovecot-fts-flatcurve:master
+```
+
+Further details at:
+
+https://github.com/users/slusarz/packages/container/package/dovecot-fts-flatcurve
+
 Configuration
 -------------
 
