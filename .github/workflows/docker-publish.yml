@@ -7,6 +7,10 @@ name: Docker Image Publish
 
 on:
   push:
+    paths:
+      - 'Dockerfile'
+      - 'docker/**'
+      - 'src/**'
     branches: [ "master" ]
     # Publish semver tags as releases.
     tags: [ 'v*.*.*' ]
