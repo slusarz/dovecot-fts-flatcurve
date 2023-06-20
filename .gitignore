@@ -9,7 +9,7 @@ Makefile.in
 
 /aclocal.m4
 /autom4te.cache
-/configure
+/configure*
 /config.guess
 /config.log
 /config.status
@@ -31,3 +31,7 @@ Makefile.in
 /stamp-h2
 /m4/libtool.m4
 /m4/lt*.m4
+
+docs/.vitepress/cache
+docs/.vitepress/dist
+node_modules/
