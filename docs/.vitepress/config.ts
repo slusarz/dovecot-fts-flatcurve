@@ -2,6 +2,7 @@ import { defineConfig } from 'vitepress'
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
+  base: '/dovecot-fts-flatcurve/',
   title: "FTS Flatcurve",
   lang: 'en-US',
   description: "Documentation for the fts-flatcurve Dovecot plugin",
