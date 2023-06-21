@@ -6,6 +6,8 @@ export default defineConfig({
   title: "FTS Flatcurve",
   lang: 'en-US',
   description: "Documentation for the fts-flatcurve Dovecot plugin",
+  srcExclude: ['/DOCS.md'],
+
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
