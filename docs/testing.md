@@ -12,6 +12,10 @@ layout: doc
 
 ## Manual Testing
 
+[podman](https://podman.io/) is used for development; [docker](https://docker.com/) should also work.
+
+### Dockerfile Locations
+
 The testing Dockerfile(s) lives in `.github/actions/` directory.
 
 There are two Dockerfiles used for testing:
@@ -21,7 +25,9 @@ There are two Dockerfiles used for testing:
 | `flatcurve-test-alpine` | [Alpine Linux](https://alpinelinux.org/) Container |
 | `flatcurve-test-ubuntu` | [Ubuntu](https://ubuntu.com/) Container            |
 
-[podman](https://podman.io/) is used for development; [docker](https://docker.com/) should also work.
+The containers run a script located at `/fts-flatcurve-test.sh` which performs all the testing.
+
+### Testing Commands
 
 To build image, run (in one of the `actions` directories from above):
 
@@ -40,6 +46,10 @@ To enter interactive shell without running the tests:
 ```sh
 podman run -it --rm dovecot-fts-flatcurve /bin/bash
 ```
+
+#### Imaptest
+
+Imaptest is installed in the container to run automated testing.
 
 imaptest example command (run in container):
 

@@ -10,7 +10,9 @@ This information is dated (from 2021) and does not necessarily reflect the curre
 
 :::
 
-## Indexing benchmark with substring matching **ENABLED**
+## Indexing Benchmarks
+
+### Substring matching **ENABLED**
 
 ```
 Linux 5.14.18-300.fc35.x86_64 (Fedora 35)
@@ -62,7 +64,7 @@ $ echo "scale=3; (512348 * 1024) / 1162426786" | bc
 .351  [Index = ~35% the size of the total mailbox data size]
 ```
 
-## Indexing benchmark with substring matching **DISABLED** (*DEFAULT* configuration)
+### Substring matching **DISABLED** (*DEFAULT* configuration)
 
 ```
 Linux 5.14.18-300.fc35.x86_64 (Fedora 35)
@@ -123,7 +125,7 @@ plugin {
   fts_enforced = yes
   fts_filters = normalizer-icu snowball stopwords
   fts_filters_en = lowercase snowball english-possessive stopwords
-  fts_flatcurve_substring_search = [yes|no]
+  fts_flatcurve_substring_search = [yes|no]  # Dependent on test
   fts_index_timeout = 60s
   fts_languages = en es de
   fts_tokenizer_generic = algorithm=simple
