@@ -3,10 +3,10 @@ Documentation Generation
 
 Documentation is generated using [VitePress](https://vitepress.dev/).
 
-Vitepress can be installed via:
+Vitepress (and helpers) can be installed via:
 
 ```
-npm install -D vitepress
+npm install -D vitepress sitemap
 ```
 
 Vitepress commands (run as `npm run <cmd>`):
