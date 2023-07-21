@@ -1,6 +1,6 @@
 ---
-name: "dovecot-fts-flatcurve Testing (Ubuntu)"
-description: "IMAP compliancy testing for dovecot-fts-flatcurve (on Ubuntu)"
+name: "dovecot-fts-flatcurve Testing (Debian)"
+description: "IMAP compliancy testing for dovecot-fts-flatcurve (on Debian)"
 author: "slusarz@curecanti.org"
 
 runs:

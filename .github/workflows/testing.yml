@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  ubuntu_test:
-    name: Testing on Ubuntu
+  debian_test:
+    name: Testing on Debian
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -18,7 +18,7 @@ jobs:
           sparse-checkout: .github
       - name: Copy test files to base directory
         run: |
-          cp -av ./.github/actions/flatcurve-test-ubuntu/* ./
+          cp -av ./.github/actions/flatcurve-test-debian/* ./
           cp -av ./.github/common/* ./
       - uses: ./
   alpine_test:
