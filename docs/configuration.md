@@ -3,7 +3,7 @@ layout: doc
 ---
 
 <script setup>
-import { data } from './configuration.data.js'
+import { data } from './data/configuration.data.js'
 import ConfigurationComponent from './components/ConfigurationComponent.vue'
 </script>
 

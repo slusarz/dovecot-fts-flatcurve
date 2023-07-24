@@ -3,7 +3,7 @@ layout: doc
 ---
 
 <script setup>
-import { data } from './events.data.js'
+import { data } from './data/events.data.js'
 import EventsComponent from './components/EventsComponent.vue'
 </script>
 

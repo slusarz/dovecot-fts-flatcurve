@@ -3,7 +3,7 @@ layout: doc
 ---
 
 <script setup>
-import { data } from './doveadm.data.js'
+import { data } from './data/doveadm.data.js'
 import DoveadmComponent from './components/DoveadmComponent.vue'
 </script>
 
