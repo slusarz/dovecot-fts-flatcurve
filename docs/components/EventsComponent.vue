@@ -1,10 +1,13 @@
 <script setup>
 defineProps(['event'])
+
+import MarkdownIt from 'markdown-it'
+const md = new MarkdownIt()
 </script>
 
 <template>
 
-<p>{{ event.summary }}</p>
+<span v-html="md.render(event.summary)"></span>
 
 <table>
   <thead>
@@ -18,7 +21,7 @@ defineProps(['event'])
     <template v-for="(v2, k2) in event.fields">
       <tr>
         <td><code>{{ k2 }}</code></td>
-        <td>{{ v2 }}</td>
+        <td><span v-html="md.renderInline(v2)"></span></td>
         <template v-if="event.options"><td><template v-if="k2 in event.options"><code>{{ event.options[k2].join(', ') }}</code></template></td></template>
       </tr>
     </template>

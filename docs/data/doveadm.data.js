@@ -1,10 +1,14 @@
 export default {
   load() {
     return {
+      // Each doveadm entry is a separate object
       doveadm: [
         {
+          // Doveadm command string
           cmd: "doveadm fts-flatcurve check",
+          // Doveadm argument string
           args: "<mailbox mask>",
+          // Summary of command. Processed w/Markdown
           summary: `
 Run a simple check on Dovecot Xapian databases, and attempt to fix basic
 errors (it is the same checking done by the \`xapian-check\` command
@@ -14,6 +18,7 @@ with the \`F\` option).
 possible to use wildcards (\`*\` and \`?\`) in this value.
 
 For each mailbox that has FTS data, it outputs the following key/value fields:`,
+          // Fields/Values returned. Values are processed w/Markdown
           fields: {
             mailbox: "The human-readable mailbox name. (key is hidden)",
             guid: "The GUID of the mailbox.",
@@ -41,8 +46,8 @@ is given.
 The following key/value fields are output:`,
           fields: {
             count: "The number of times the header/term appears in the DB.",
-            header: "The header (if <code>-h</code> is given).",
-            term: "Term (if <code>-h</code> is NOT given)."
+            header: "The header (if `-h` is given).",
+            term: "Term (if `-h` is NOT given)."
           }
         },
         {

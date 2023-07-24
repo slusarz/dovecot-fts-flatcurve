@@ -12,11 +12,13 @@ import EventsComponent from './components/EventsComponent.vue'
 This plugin emits [events](https://doc.dovecot.org/admin_manual/event_design/)
 with the category `fts-flatcurve` (a child of the category `fts`).
 
+## Event List
+
 The following named events are emitted:
 
 <template v-for="(v, k) in data">
 
-## `{{ k }}`
+### `{{ k }}`
 
 <EventsComponent :event="v" />
 

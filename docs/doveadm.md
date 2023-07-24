@@ -7,13 +7,15 @@ import { data } from './data/doveadm.data.js'
 import DoveadmComponent from './components/DoveadmComponent.vue'
 </script>
 
-# doveadm Commands
+# Doveadm
 
 This plugin implements several `fts-flatcurve` specific doveadm commands.
 
+## Doveadm Command List
+
 <template v-for="v in data.doveadm">
 
-## `{{ v.cmd }} {{ v.args }}`
+### `{{ v.cmd }} {{ v.args }}`
 
 <DoveadmComponent :doveadm="v" />
 

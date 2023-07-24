@@ -89,6 +89,7 @@ export default defineConfig({
       provider: 'local'
     },
 
-    outline: 'deep'
+    outline: 'deep',
+    externalLinkIcon: true
   }
 })

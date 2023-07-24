@@ -1,5 +1,6 @@
 <script setup>
 defineProps(['doveadm'])
+
 import MarkdownIt from 'markdown-it'
 const md = new MarkdownIt()
 </script>
@@ -19,7 +20,7 @@ const md = new MarkdownIt()
     <template v-for="(v, k) in doveadm.fields">
       <tr>
         <td><code>{{ k }}</code></td>
-        <td>{{ v }}</td>
+        <td><span v-html="md.renderInline(v)"></span></td>
       </tr>
     </template>
   </tbody>

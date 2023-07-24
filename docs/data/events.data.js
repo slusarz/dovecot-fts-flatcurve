@@ -1,8 +1,12 @@
 export default {
   load() {
+    // Each event is listed with key as event name and value as object
     return {
       fts_flatcurve_expunge: {
+        // Summary of event. Processed w/Markdown
         summary: "Emitted when a message is expunged from a mailbox.",
+        // List of fields emitted. Keys are field names, values are
+        // descriptions. Values are processed w/Markdown.
         fields: {
           mailbox: "The mailbox name",
           uid: "The UID that was expunged from FTS index"
@@ -42,7 +46,7 @@ export default {
         }
       },
       fts_flatcurve_rescan: {
-        summary: "Emitted when a rescan is completed",
+        summary: "Emitted when a rescan is completed.",
         fields: {
           expunged: "The list of UIDs that were expunged during rescan",
           mailbox: "The mailbox name",
