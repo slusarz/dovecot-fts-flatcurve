@@ -2,6 +2,11 @@
 layout: doc
 ---
 
+<script setup>
+import { data } from './configuration.data.js'
+import ConfigurationComponent from './components/ConfigurationComponent.vue'
+</script>
+
 # Configuration
 
 See [Dovecot FTS Configuration](https://doc.dovecot.org/configuration_manual/fts/) for configuration information regarding general FTS plugin options.
@@ -16,68 +21,13 @@ Flatcurve REQUIRES the core [Dovecot FTS stemming](https://doc.dovecot.org/confi
 
 **The default parameters should be fine for most people.**
 
-### `fts_flatcurve_commit_limit`
+<template v-for="(v, k) in data">
 
-* Default: `500`
-* Value: integer, set to `0` to use the Xapian default
+## `{{ k }}`
 
-Commit database changes after this many documents are updated. Higher commit
-limits will result in faster indexing for large transactions (i.e. indexing a
-large mailbox) at the expense of high memory usage. The default value should
-be sufficient to allow indexing in a 256 MB maximum size process.
+<ConfigurationComponent :config="v" />
 
-### `fts_flatcurve_max_term_size`
-
-* Default: `30`
-* Value: integer, maximum `200`
-
-The maximum number of characters in a term to index.
-
-### `fts_flatcurve_min_term_size`
-
-* Default: `2`
-* Value: integer
-
-The minimum number of characters in a term to index.
-
-### `fts_flatcurve_optimize_limit`
-
-* Default: `10`
-* Value: integer, set to 0 to disable
-
-Once the database reaches this number of shards, automatically optimize the DB
-at shutdown.
-
-### `fts_flatcurve_rotate_size`
-
-* Default: `5000`
-* Value: integer, set to `0` to disable rotation
-
-When the "current" fts database reaches this number of messages, it is rotated
-to a read-only database and replaced by a new write DB. Most people should not
-change this setting.
-
-### `fts_flatcurve_rotate_time`
-
-* Default: `5000`
-* Value: integer, set to `0` to disable rotation
-
-When the "current" fts database exceeds this length of time (in msecs) to
-commit changes, it is rotated to a read-only database and replaced by a new
-write DB. Most people should not change this setting.
-
-### `fts_flatcurve_substring_search`
-
-* Default: `no`
-* Value: boolean (`yes` or `no`)
-
-If enabled, allows substring searches (RFC 3501 compliant). However, this
-requires significant additional storage space. Most users today expect
-"Google-like" behavior, which is prefix searching, so substring searching is
-arguably not the "modern, expected" behavior. Therefore, even though it
-is not strictly RFC compliant, prefix (non-substring) searching is enabled
-by default.
-
+</template>
 
 ## FTS-Flatcurve Plugin Settings Example
 
