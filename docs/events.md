@@ -4,6 +4,7 @@ layout: doc
 
 <script setup>
 import { data } from './events.data.js'
+import EventsComponent from './components/EventsComponent.vue'
 </script>
 
 # Events
@@ -17,25 +18,6 @@ The following named events are emitted:
 
 ## `{{ k }}`
 
-{{ v.summary }}
-
-<table>
-  <thead>
-    <tr>
-      <th>Field</th>
-      <th>Description</th>
-      <template v-if="v.options"><th>Options</th></template>
-    </tr>
-  </thead>
-  <tbody>
-    <template v-for="(v2, k2) in v.fields">
-      <tr>
-        <td><code>{{ k2 }}</code></td>
-        <td>{{ v2 }}</td>
-        <template v-if="v.options"><td><template v-if="k2 in v.options"><code>{{ v.options[k2].join(', ') }}</code></template></td></template>
-      </tr>
-    </template>
-  </tbody>
-</table>
+<EventsComponent :event="v" />
 
 </template>
