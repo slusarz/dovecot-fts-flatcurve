@@ -3,7 +3,6 @@ layout: doc
 ---
 
 <script setup>
-import { data } from './data/events.data.js'
 import EventsComponent from './components/EventsComponent.vue'
 </script>
 
@@ -16,10 +15,4 @@ with the category `fts-flatcurve` (a child of the category `fts`).
 
 The following named events are emitted:
 
-<template v-for="(v, k) in data">
-
-### `{{ k }}`
-
-<EventsComponent :event="v" />
-
-</template>
+<EventsComponent />

@@ -3,7 +3,6 @@ layout: doc
 ---
 
 <script setup>
-import { data } from './data/configuration.data.js'
 import ConfigurationComponent from './components/ConfigurationComponent.vue'
 </script>
 
@@ -47,10 +46,4 @@ plugin {
 }
 ```
 
-<template v-for="(v, k) in data">
-
-### `{{ k }}`
-
-<ConfigurationComponent :config="v" />
-
-</template>
+<ConfigurationComponent />
