@@ -1,6 +1,12 @@
 /* Copyright (c) Michael Slusarz <slusarz@curecanti.org>
  * See the included COPYING file */
 
+#ifdef XAPIAN_MOVE_SEMANTICS
+#  define std_move(x) std::move(x)
+#else
+#  define std_move(x) x
+#endif
+
 #include <xapian.h>
 #include <algorithm>
 #include <sstream>
@@ -1540,7 +1546,7 @@ fts_flatcurve_build_query_arg_term(struct flatcurve_fts_query *query,
 				  Xapian::Query::MatchAll, q);
 
 	if (x->query == NULL)
-		x->query = new Xapian::Query(q);
+		x->query = new Xapian::Query(std_move(q));
 	else {
 		oldq = x->query;
 		x->query = new Xapian::Query(op, *(x->query), q);
