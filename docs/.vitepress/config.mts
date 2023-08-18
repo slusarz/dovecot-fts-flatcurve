@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import { pagefindPlugin } from 'vitepress-plugin-pagefind'
 
 import { createWriteStream } from 'node:fs'
 import { resolve } from 'node:path'
@@ -13,6 +14,10 @@ export default defineConfig({
   lang: 'en-US',
   description: "Documentation for the fts-flatcurve Dovecot plugin",
   srcExclude: ['/DOCS.md'],
+
+  vite: {
+    plugins: [pagefindPlugin()],
+  },
 
   transformHtml: (_, id, { pageData }) => {
     if (!/[\\/]404\.html$/.test(id))
@@ -84,10 +89,6 @@ export default defineConfig({
     socialLinks: [
       { icon: 'github', link: 'https://github.com/slusarz/dovecot-fts-flatcurve/' }
     ],
-
-    search: {
-      provider: 'local'
-    },
 
     outline: 'deep',
     externalLinkIcon: true
