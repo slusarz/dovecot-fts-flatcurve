@@ -2,7 +2,7 @@
   "devDependencies": {
     "markdown-it": "*",
     "sitemap": "^7.1.1",
-    "vitepress": "^1.0.0-rc.4"
+    "vitepress": "^1.0.0-rc.20"
   },
   "scripts": {
     "docs:dev": "vitepress dev docs",
@@ -10,7 +10,7 @@
     "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
-    "pagefind": "^0.12.0",
-    "vitepress-plugin-pagefind": "^0.2.6"
+    "pagefind": "^1.0.3",
+    "vitepress-plugin-pagefind": "^0.2.10"
   }
 }
