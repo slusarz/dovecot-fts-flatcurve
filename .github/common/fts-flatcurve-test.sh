@@ -109,6 +109,10 @@ run_test "Testing GitHub Issue #35 (Email searching)" \
 	/dovecot/configs/dovecot.conf \
 	/dovecot/imaptest/issue-35/issue-35
 
+run_test "Testing GitHub Issue #44 (Xapian indexed string too long)" \
+	/dovecot/configs/dovecot.conf \
+	/dovecot/imaptest/issue-44/issue-44
+
 TESTBOX=rotatetest
 run_test "Testing DB Rotation/Deletion (populating mailbox)" \
 	/dovecot/configs/dovecot.conf.issue-11 \
