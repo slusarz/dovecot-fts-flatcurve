@@ -6,7 +6,7 @@ Documentation is generated using [VitePress](https://vitepress.dev/).
 Vitepress (and helpers) can be installed via:
 
 ```
-npm install -D vitepress sitemap
+npm ci
 ```
 
 Vitepress commands (run as `npm run <cmd>`):

@@ -1,12 +1,6 @@
 import { defineConfig } from 'vitepress'
 import { pagefindPlugin } from 'vitepress-plugin-pagefind'
 
-import { createWriteStream } from 'node:fs'
-import { resolve } from 'node:path'
-import { SitemapStream } from 'sitemap'
-
-const links = []
-
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   base: '/dovecot-fts-flatcurve/',
@@ -19,22 +13,8 @@ export default defineConfig({
     plugins: [pagefindPlugin()],
   },
 
-  transformHtml: (_, id, { pageData }) => {
-    if (!/[\\/]404\.html$/.test(id))
-      links.push({
-        url: pageData.relativePath.replace(/\/index\.md$/, '/').replace(/\.md$/, '.html'),
-        lastmod: pageData.lastUpdated
-      })
-  },
-  buildEnd: async ({ outDir }) => {
-    const sitemap = new SitemapStream({
-      hostname: 'https://slusarz.github.io/dovecot-fts-flatcurve/'
-    })
-    const writeStream = createWriteStream(resolve(outDir, 'sitemap.xml'))
-    sitemap.pipe(writeStream)
-    links.forEach((link) => sitemap.write(link))
-    sitemap.end()
-    await new Promise((r) => writeStream.on('finish', r))
+  sitemap: {
+    hostname: 'https://slusarz.github.io/dovecot-fts-flatcurve/',
   },
 
   themeConfig: {
