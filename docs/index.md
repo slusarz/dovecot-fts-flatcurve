@@ -6,6 +6,9 @@ hero:
   name: "FTS Flatcurve"
   text: "Dovecot (2.3.x) Full Text Search (FTS) Plugin"
   tagline: An easy-to-setup Dovecot plugin that uses Xapian to locally index messages
+  image:
+    src: /curve.jpg
+    alt: Flatcurve
   actions:
     - theme: brand
       text: Get Started
