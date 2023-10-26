@@ -27,6 +27,7 @@ export default defineConfig({
     sidebar: [
       {
         text: 'Introduction',
+        collapsed: false,
         items: [
           { text: 'What is Flatcurve?', link: '/what' },
           { text: 'Why "Flatcurve"?', link: '/why' },
@@ -34,6 +35,7 @@ export default defineConfig({
       },
       {
         text: 'Installation',
+        collapsed: false,
         items: [
           { text: 'Requirements', link: '/requirements' },
           { text: 'Compilation', link: '/compilation' },
@@ -43,6 +45,7 @@ export default defineConfig({
       },
       {
         text: 'Operation',
+        collapsed: false,
         items: [
           { text: 'Doveadm', link: '/doveadm' },
           { text: 'Events', link: '/events' },
@@ -51,6 +54,7 @@ export default defineConfig({
       },
       {
         text: 'Technical',
+        collapsed: false,
         items: [
           { text: 'Benchmarks', link: '/benchmarks' },
           { text: 'Data Storage', link: '/datastorage' },
