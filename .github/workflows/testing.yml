@@ -13,7 +13,7 @@ jobs:
     name: Testing on Debian
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           sparse-checkout: .github
       - name: Copy test files to base directory
@@ -25,7 +25,7 @@ jobs:
     name: Testing on Alpine
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           sparse-checkout: .github
       - name: Copy test files to base directory
