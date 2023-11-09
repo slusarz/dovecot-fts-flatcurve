@@ -28,6 +28,12 @@ plugin {
   # Define "flatcurve" as the FTS driver.
   fts = flatcurve
 
+  # These are not flatcurve settings, but required for Dovecot FTS. See
+  # Dovecot FTS Configuration link above for further information.
+  fts_languages = en es de
+  fts_tokenizer_generic = algorithm=simple
+  fts_tokenizers = generic email-address
+
   # OPTIONAL: Recommended default FTS core configuration
   fts_filters = normalizer-icu snowball stopwords
   fts_filters_en = lowercase snowball english-possessive stopwords
