@@ -195,6 +195,10 @@ run_doveadm "fts-flatcurve stats -A rotatetest"
 # TODO: Scan for expected input
 echo "Success!"
 
+run_test "Testing GitHub Issue #38" \
+	/dovecot/configs/dovecot.conf.issue-38 \
+	/dovecot/imaptest/issue-38/issue-38
+
 TESTBOX=INBOX
 echo
 echo "Testing 'doveadm fts-flatcurve remove'"
@@ -210,6 +214,7 @@ for m in imaptest
 do
 	populate_mbox_msg ${m} "Subject: msg1\n\nbody2\n"
 done
+
 run_test "Testing virtual search" \
 	/dovecot/configs/dovecot.conf.virtual \
 	/dovecot/imaptest/virtual

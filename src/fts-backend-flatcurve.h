@@ -50,11 +50,11 @@ struct flatcurve_fts_query {
 	pool_t pool;
 
 	bool match_all:1;
-	bool maybe:1;
 };
 
 struct flatcurve_fts_result {
 	ARRAY_TYPE(fts_score_map) scores;
+	ARRAY_TYPE(seq_range) maybe_uids;
 	ARRAY_TYPE(seq_range) uids;
 };
 

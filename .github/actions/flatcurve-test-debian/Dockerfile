@@ -22,13 +22,15 @@ RUN apt-get update && apt-get install -y \
 	bison \
 	flex \
 	valgrind \
+	unzip \
 	libssl-dev \
 	pkg-config \
 	libstemmer-dev \
 	libexttextcat-dev \
 	libicu-dev \
 	libxapian-dev \
-	dovecot-imaptest
+	dovecot-imaptest \
+	poppler-utils
 
 # We need to build Dovecot ourselves, since "standard" Dovecot does not
 # come with necessary ICU libraries built-in

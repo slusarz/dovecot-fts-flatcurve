@@ -15,6 +15,7 @@
 #include "fts-flatcurve-config.h"
 extern "C" {
 #include "lib.h"
+#include "array.h"
 #include "file-create-locked.h"
 #include "hash.h"
 #include "mail-storage-private.h"
@@ -148,8 +149,17 @@ struct flatcurve_xapian {
 	bool closing:1;
 };
 
+struct flatcurve_fts_query_xapian_maybe {
+	Xapian::Query *query;
+};
+
 struct flatcurve_fts_query_xapian {
 	Xapian::Query *query;
+	ARRAY(struct flatcurve_fts_query_xapian_maybe) maybe_queries;
+
+	bool and_search:1;
+	bool maybe:1;
+	bool start:1;
 };
 
 struct flatcurve_xapian_db_iter {
@@ -185,6 +195,9 @@ struct fts_flatcurve_xapian_query_iter {
 	Xapian::Enquire *enquire;
 	Xapian::MSetIterator i;
 	struct fts_flatcurve_xapian_query_result *result;
+	int curr_query;
+
+	bool next_query:1;
 };
 
 static void
@@ -1465,12 +1478,14 @@ fts_flatcurve_build_query_arg_term(struct flatcurve_fts_query *query,
 				   const char *term)
 {
 	const char *hdr;
+	bool maybe_or = FALSE;
+	struct flatcurve_fts_query_xapian_maybe *mquery;
 	Xapian::Query::op op = Xapian::Query::OP_INVALID;
 	Xapian::Query *oldq, q;
 	struct flatcurve_fts_query_xapian *x = query->xapian;
 
-	if (x->query != NULL) {
-		if ((query->flags & FTS_LOOKUP_FLAG_AND_ARGS) != 0) {
+	if (x->start) {
+		if (x->and_search) {
 			op = Xapian::Query::OP_AND;
 			str_append(query->qtext, " AND ");
 		} else {
@@ -1478,6 +1493,7 @@ fts_flatcurve_build_query_arg_term(struct flatcurve_fts_query *query,
 			str_append(query->qtext, " OR ");
 		}
 	}
+	x->start = TRUE;
 
 	if (arg->match_not)
 		str_append(query->qtext, "NOT ");
@@ -1529,7 +1545,10 @@ fts_flatcurve_build_query_arg_term(struct flatcurve_fts_query *query,
 				 * appears in the general pool of header
 				 * terms for the message, not to a specific
 				 * header, so this is only a maybe match. */
-				query->maybe = TRUE;
+				if (x->and_search)
+					x->maybe = TRUE;
+				else
+					maybe_or = TRUE;
 			}
 		} else {
 			hdr = t_str_lcase(arg->hdr_field_name);
@@ -1545,9 +1564,17 @@ fts_flatcurve_build_query_arg_term(struct flatcurve_fts_query *query,
 		q = Xapian::Query(Xapian::Query::OP_AND_NOT,
 				  Xapian::Query::MatchAll, q);
 
-	if (x->query == NULL)
+	if (maybe_or) {
+		/* Maybe searches are not added to the "master search" query if this
+		 * is an OR search; they will be run independently. Matches will be
+		 * placed in the maybe results array. */
+		if (!array_is_created(&x->maybe_queries))
+			p_array_init(&x->maybe_queries, query->pool, 4);
+		mquery = array_append_space(&x->maybe_queries);
+		mquery->query = new Xapian::Query(std_move(q));
+	} else if (x->query == NULL) {
 		x->query = new Xapian::Query(std_move(q));
-	else {
+	} else {
 		oldq = x->query;
 		x->query = new Xapian::Query(op, *(x->query), q);
 		delete(oldq);
@@ -1631,6 +1658,8 @@ void fts_flatcurve_xapian_build_query(struct flatcurve_fts_query *query)
 		return;
 	}
 
+	x->and_search = ((query->flags & FTS_LOOKUP_FLAG_AND_ARGS) != 0);
+
 	for (; args != NULL ; args = args->next) {
 		fts_flatcurve_build_query_arg(query, args);
 	}
@@ -1642,6 +1671,10 @@ fts_flatcurve_xapian_query_iter_init(struct flatcurve_fts_query *query)
 	struct fts_flatcurve_xapian_query_iter *iter;
 
 	iter = p_new(query->pool, struct fts_flatcurve_xapian_query_iter, 1);
+	/* -1: "Master" query
+	 * >= 0: Current index of maybe_queries */
+	iter->curr_query = -1;
+	iter->next_query = TRUE;
 	iter->query = query;
 	iter->result = p_new(query->pool,
 			     struct fts_flatcurve_xapian_query_result, 1);
@@ -1653,22 +1686,45 @@ struct fts_flatcurve_xapian_query_result *
 fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iter *iter)
 {
 	Xapian::MSet m;
+	const struct flatcurve_fts_query_xapian_maybe *mquery;
 	enum flatcurve_xapian_db_opts opts =
 		ENUM_EMPTY(flatcurve_xapian_db_opts);
+	Xapian::Query *q = NULL;
 
-	if (iter->enquire == NULL) {
-		if ((iter->query->xapian->query == NULL) ||
-		    ((iter->db = fts_flatcurve_xapian_read_db(iter->query->backend, opts)) == NULL))
+	if (iter->next_query) {
+		iter->next_query = FALSE;
+
+		/* Master query. */
+		if (iter->curr_query == -1) {
+			if (iter->query->xapian->query == NULL)
+				++iter->curr_query;
+			else
+				q = iter->query->xapian->query;
+		}
+
+		/* Maybe queries. */
+		if ((iter->curr_query >= 0) &&
+			(array_is_created(&iter->query->xapian->maybe_queries)) &&
+			(array_count(&iter->query->xapian->maybe_queries) > iter->curr_query)) {
+			mquery = array_idx(&iter->query->xapian->maybe_queries,
+							   iter->curr_query);
+			q = mquery->query;
+		}
+
+		if (iter->db == NULL)
+		    iter->db = fts_flatcurve_xapian_read_db(iter->query->backend, opts);
+
+		if ((q == NULL) || (iter->db == NULL))
 			return NULL;
 
-		iter->enquire = new Xapian::Enquire(*iter->db);
-		iter->enquire->set_docid_order(
-				Xapian::Enquire::DONT_CARE);
-		iter->enquire->set_query(*iter->query->xapian->query);
+		if (iter->enquire == NULL) {
+			iter->enquire = new Xapian::Enquire(*iter->db);
+			iter->enquire->set_docid_order(Xapian::Enquire::DONT_CARE);
+		}
+		iter->enquire->set_query(*q);
 
 		try {
-			m = iter->enquire->get_mset(0,
-						    iter->db->get_doccount());
+			m = iter->enquire->get_mset(0, iter->db->get_doccount());
 		} catch (Xapian::DatabaseModifiedError &e) {
 			/* Per documentation, this is only thrown if more than
 			 * one change has been made to the database. To
@@ -1685,9 +1741,13 @@ fts_flatcurve_xapian_query_iter_next(struct fts_flatcurve_xapian_query_iter *ite
 		iter->i = m.begin();
 	}
 
-	if (iter->i == m.end())
-		return NULL;
+	if (iter->i == m.end()) {
+		++iter->curr_query;
+		iter->next_query = TRUE;
+		return fts_flatcurve_xapian_query_iter_next(iter);
+	}
 
+	iter->result->maybe = (iter->curr_query >= 0);
 	iter->result->score = iter->i.get_weight();
 	/* MSet docid can be an "interleaved" docid generated by
 	 * Xapian::Database when handling multiple DBs at once. Instead, we
@@ -1723,7 +1783,10 @@ bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_query *query,
 	if ((iter = fts_flatcurve_xapian_query_iter_init(query)) == NULL)
 		return FALSE;
 	while ((result = fts_flatcurve_xapian_query_iter_next(iter)) != NULL) {
-		seq_range_array_add(&r->uids, result->uid);
+		if (result->maybe || query->xapian->maybe)
+			seq_range_array_add(&r->maybe_uids, result->uid);
+		else
+			seq_range_array_add(&r->uids, result->uid);
 		score = array_append_space(&r->scores);
 		score->score = (float)result->score;
 		score->uid = result->uid;
@@ -1734,7 +1797,15 @@ bool fts_flatcurve_xapian_run_query(struct flatcurve_fts_query *query,
 
 void fts_flatcurve_xapian_destroy_query(struct flatcurve_fts_query *query)
 {
+	struct flatcurve_fts_query_xapian_maybe *mquery;
+
 	delete(query->xapian->query);
+	if (array_is_created(&query->xapian->maybe_queries)) {
+		array_foreach_modifiable(&query->xapian->maybe_queries, mquery) {
+			delete(mquery->query);
+		}
+		array_free(&query->xapian->maybe_queries);
+	}
 }
 
 const char *fts_flatcurve_xapian_library_version()
