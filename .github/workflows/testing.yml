@@ -3,6 +3,8 @@ name: Testing for dovecot-fts-flatcurve
 
 on:
   push:
+    branches:
+      - master
     paths:
       - 'src/**'
   pull_request:
