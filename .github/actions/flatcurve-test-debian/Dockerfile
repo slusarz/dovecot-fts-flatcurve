@@ -40,7 +40,8 @@ RUN cd /dovecot/core && \
 	PANDOC=false ./configure --with-stemmer --with-textcat --with-icu && \
 	make install
 
-RUN cd /flatcurve && ./autogen.sh && ./configure && make install
+ADD flatcurve/ /dovecot/flatcurve
+RUN cd /dovecot/flatcurve && ./autogen.sh && ./configure && make install
 
 # Users dovecot and dovenull are created by dovecot-imaptest package
 RUN useradd vmail && \
