@@ -35,9 +35,7 @@ RUN cd /dovecot/core && \
 		--enable-hardening=no && \
 	make install
 
-RUN git clone --depth 1 https://github.com/slusarz/dovecot-fts-flatcurve.git \
-	/dovecot/fts-flatcurve
-RUN cd /dovecot/fts-flatcurve && ./autogen.sh && ./configure && make install
+RUN cd /flatcurve && ./autogen.sh && ./configure && make install
 
 RUN git clone --depth 1 --branch ${IMAPTEST_VERSION} \
 	https://github.com/dovecot/imaptest.git \

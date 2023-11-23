@@ -15,11 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: .github
+          path: flatcurve
       - name: Copy test files to base directory
         run: |
-          cp -av ./.github/actions/flatcurve-test-debian/* ./
-          cp -av ./.github/common/* ./
+          cp -av ./flatcurve/.github/actions/flatcurve-test-debian/* ./
+          cp -av ./flatcurve/.github/common/* ./
       - uses: ./
   alpine_test:
     name: Testing on Alpine
@@ -27,9 +27,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: .github
+          path: flatcurve
       - name: Copy test files to base directory
         run: |
-          cp -av ./.github/actions/flatcurve-test-alpine/* ./
-          cp -av ./.github/common/* ./
+          cp -av ./flatcurve/.github/actions/flatcurve-test-alpine/* ./
+          cp -av ./flatcurve/.github/common/* ./
       - uses: ./

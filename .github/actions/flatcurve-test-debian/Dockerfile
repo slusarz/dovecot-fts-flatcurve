@@ -40,9 +40,7 @@ RUN cd /dovecot/core && \
 	PANDOC=false ./configure --with-stemmer --with-textcat --with-icu && \
 	make install
 
-RUN git clone --depth 1 https://github.com/slusarz/dovecot-fts-flatcurve.git \
-	/dovecot/fts-flatcurve
-RUN cd /dovecot/fts-flatcurve && ./autogen.sh && ./configure && make install
+RUN cd /flatcurve && ./autogen.sh && ./configure && make install
 
 # Users dovecot and dovenull are created by dovecot-imaptest package
 RUN useradd vmail && \
