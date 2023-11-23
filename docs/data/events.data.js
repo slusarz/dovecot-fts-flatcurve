@@ -37,7 +37,7 @@ export default {
         fields: {
           count: "The number of messages matched",
           mailbox: "The mailbox name",
-          maybe: "Are the results uncertain?",
+          maybe_uids: "The list of maybe UIDs returned by the query (these UIDs need to have their contents directly searched by Dovecot core)",
           query: "The query text sent to Xapian",
           uids: "The list of UIDs returned by the query"
         },
