@@ -2,8 +2,8 @@ FROM alpine:3.18
 
 LABEL org.opencontainers.image.authors="Michael Slusarz <slusarz@curecanti.org>"
 
-ARG DOVECOT_VERSION=2.3.20
-ARG PIGEONHOLE_VERSION=0.5.20
+ARG DOVECOT_VERSION=2.3.21
+ARG PIGEONHOLE_VERSION=0.5.21
 
 RUN apk add --no-cache icu libstemmer libexttextcat tini \
 	xapian-core openssl1.1-compat ca-certificates
