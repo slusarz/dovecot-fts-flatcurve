@@ -29,10 +29,17 @@ The containers run a script located at `/fts-flatcurve-test.sh` which performs a
 
 ### Testing Commands
 
-To build image, run (in one of the `actions` directories from above):
+To build image, the GitHub testing environment needs to be replicated locally.
+
+The `dev/build_env.sh` script is provided to help with this. It creates the expected environment in the `/tmp/dovecot-fts-flatcurve-build` directory.
+
+The script takes one argument: either `alpine` or `ubuntu`.
+
+For example, to create the Alpine testing image:
 
 ```sh
-podman build -t dovecot-fts-flatcurve .
+./dev/build_env.sh alpine
+podman build -t dovecot-fts-flatcurve /tmp/dovecot-fts-flatcurve-build
 ```
 
 To run tests:
