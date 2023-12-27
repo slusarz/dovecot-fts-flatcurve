@@ -51,7 +51,7 @@ podman run dovecot-fts-flatcurve
 To enter interactive shell without running the tests:
 
 ```sh
-podman run -it --rm dovecot-fts-flatcurve /bin/bash
+podman run -it --rm --entrypoint=/bin/ash dovecot-fts-flatcurve
 ```
 
 #### Imaptest
