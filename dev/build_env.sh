@@ -9,8 +9,8 @@ SCRIPTPATH=$(dirname "$SCRIPT")
 case "$1" in
 	"alpine")
 		echo "Building alpine test environment ...";;
-	"ubuntu")
-		echo "Building ubuntu test environment ...";;
+	"debian")
+		echo "Building debian test environment ...";;
 	*)
 		echo "Usage: $SCRIPT <image_name>"
 		exit 1;;

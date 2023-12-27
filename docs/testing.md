@@ -23,7 +23,7 @@ There are two Dockerfiles used for testing:
 | Name                    | Description                                        |
 | ----------------------- | -------------------------------------------------- |
 | `flatcurve-test-alpine` | [Alpine Linux](https://alpinelinux.org/) Container |
-| `flatcurve-test-ubuntu` | [Ubuntu](https://ubuntu.com/) Container            |
+| `flatcurve-test-debian` | [Debian](https://debian.org/) Container            |
 
 The containers run a script located at `/fts-flatcurve-test.sh` which performs all the testing.
 
@@ -33,7 +33,7 @@ To build image, the GitHub testing environment needs to be replicated locally.
 
 The `dev/build_env.sh` script is provided to help with this. It creates the expected environment in the `/tmp/dovecot-fts-flatcurve-build` directory.
 
-The script takes one argument: either `alpine` or `ubuntu`.
+The script takes one argument: either `alpine` or `debian`.
 
 For example, to create the Alpine testing image:
 
