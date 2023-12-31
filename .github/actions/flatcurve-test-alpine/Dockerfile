@@ -1,7 +1,6 @@
 FROM alpine:3.18
 
 ARG DOVECOT_VERSION=release-2.3
-ARG IMAPTEST_VERSION=release-2.3
 
 RUN apk add --no-cache \
 	git \
@@ -22,7 +21,8 @@ RUN apk add --no-cache \
 	libstemmer-dev \
 	libexttextcat-dev \
 	xapian-core-dev \
-	runuser
+	runuser \
+	gcompat
 
 # We need to build Dovecot ourselves, since "standard" Dovecot does not
 # come with necessary ICU libraries built-in
@@ -38,10 +38,10 @@ RUN cd /dovecot/core && \
 ADD flatcurve/ /dovecot/flatcurve
 RUN cd /dovecot/flatcurve && ./autogen.sh && ./configure && make install
 
-RUN git clone --depth 1 --branch ${IMAPTEST_VERSION} \
-	https://github.com/dovecot/imaptest.git \
-	/dovecot/imaptest-src
-RUN cd /dovecot/imaptest-src && ./autogen.sh && ./configure && make install
+# Download imaptest from GitHub page
+# As this was statically built with glibc, we need the gcompat Alpine package
+RUN wget https://github.com/dovecot/imaptest/releases/download/latest/imaptest.tgz \
+       -O - | tar -xzvf - -C /usr/local/bin
 
 # vmail needs to come first, as it needs to be the lowest UID in order to
 # have correct permissions to access mailbox directory
