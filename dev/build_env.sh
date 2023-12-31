@@ -6,6 +6,8 @@
 SCRIPT=$(readlink -f "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 
+BUILDDIR=/tmp/dovecot-fts-flatcurve-build
+
 case "$1" in
 	"alpine")
 		echo "Building alpine test environment ...";;
@@ -16,14 +18,15 @@ case "$1" in
 		exit 1;;
 esac
 
-rm -rf /tmp/dovecot-fts-flatcurve-build
-mkdir /tmp/dovecot-fts-flatcurve-build
+rm -rf $BUILDDIR
+mkdir $BUILDDIR
 
 echo "Copying .github/actions/flatcurve-test-$1 ..."
-cp -a $SCRIPTPATH/../.github/actions/flatcurve-test-$1/* /tmp/dovecot-fts-flatcurve-build
+cp -a $SCRIPTPATH/../.github/actions/flatcurve-test-$1/* $BUILDDIR
 echo "Copying .github/common ..."
-cp -a $SCRIPTPATH/../.github/common/* /tmp/dovecot-fts-flatcurve-build
+cp -a $SCRIPTPATH/../.github/common/* $BUILDDIR
 echo "Copying flatcurve source ..."
-cp -a $SCRIPTPATH/../ /tmp/dovecot-fts-flatcurve-build/flatcurve
+cp -a $SCRIPTPATH/../ $BUILDDIR/flatcurve
 
-echo "Test build directory at: /tmp/dovecot-fts-flatcurve-build"
+cd $BUILDDIR
+echo "Test build directory at: $BUILDDIR"
