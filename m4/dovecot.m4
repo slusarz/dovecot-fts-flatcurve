@@ -6,7 +6,7 @@ dnl This file is free software; the authors give
 dnl unlimited permission to copy and/or distribute it, with or without
 dnl modifications, as long as this notice is preserved.
 
-# serial 33
+# serial 38
 
 dnl
 dnl Check for support for D_FORTIFY_SOURCE=2
@@ -23,51 +23,63 @@ AC_DEFUN([AC_CC_D_FORTIFY_SOURCE],[
             [],
             [AC_LANG_PROGRAM()]
           )
+        ;;
       esac
     ])
 ])
 
 dnl * gcc specific options
 AC_DEFUN([DC_DOVECOT_CFLAGS],[
+  m4_version_prereq(2.70, [AC_PROG_CC], [AC_PROG_CC_C99])
+
+  AS_IF([test "$ac_prog_cc_stdc" = "c89" || test "$ac_prog_cc_std" = "no" || test "$ac_cv_prog_cc_c99" = "no"], [
+    AC_MSG_ERROR(C99 capable compiler required)
+  ])
+
+  AC_MSG_CHECKING([Which $CC -std flag to use])
+  old_cflags=$CFLAGS
+  std=
+  for mystd in gnu11 gnu99 c11 c99; do
+    CFLAGS="-std=$mystd"
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM()
+    ], [
+      CFLAGS="$CFLAGS $old_cflags"
+      std=$mystd
+      break
+    ], [
+      CFLAGS="$old_cflags"
+    ])
+  done
+  AC_MSG_RESULT($std)
+
   AS_IF([test "x$ac_cv_c_compiler_gnu" = "xyes"], [
-        dnl -Wcast-qual -Wcast-align -Wconversion -Wunreachable-code # too many warnings
-        dnl -Wstrict-prototypes -Wredundant-decls # may give warnings in some systems
-        dnl -Wmissing-format-attribute -Wmissing-noreturn -Wwrite-strings # a couple of warnings
-        CFLAGS="$CFLAGS -Wall -W -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wchar-subscripts -Wformat=2 -Wbad-function-cast"
+    dnl -Wcast-qual -Wcast-align -Wconversion -Wunreachable-code # too many warnings
+    dnl -Wstrict-prototypes -Wredundant-decls # may give warnings in some systems
+    dnl -Wmissing-format-attribute -Wmissing-noreturn -Wwrite-strings # a couple of warnings
+    CFLAGS="$CFLAGS -Wall -W -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wchar-subscripts -Wformat=2 -Wbad-function-cast"
 
-        AS_IF([test "$have_clang" = "yes"], [
-          AC_TRY_COMPILE([
-          #if __clang_major__ > 3 || (__clang_major__ == 3 && __clang_minor__ >= 3)
-          #  error new clang
-          #endif
-          ],,,[
-            dnl clang 3.3+ unfortunately this gives warnings with hash.h
-            CFLAGS="$CFLAGS -Wno-duplicate-decl-specifier"
-          ])
-        ], [
-          dnl This is simply to avoid warning when building strftime() wrappers..
-          CFLAGS="$CFLAGS -fno-builtin-strftime"
-        ])
+    AS_IF([test "$have_clang" = "yes"], [
+      AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+      #if __clang_major__ > 3 || (__clang_major__ == 3 && __clang_minor__ >= 3)
+      #  error new clang
+      #endif
+      ]], [[]])],[],[
+        dnl clang 3.3+ unfortunately this gives warnings with hash.h
+        CFLAGS="$CFLAGS -Wno-duplicate-decl-specifier"
+      ])
+    ], [
+      dnl This is simply to avoid warning when building strftime() wrappers..
+      CFLAGS="$CFLAGS -fno-builtin-strftime"
+    ])
 
-        AC_TRY_COMPILE([
-        #if __GNUC__ < 4
-        #  error old gcc
-        #endif
-        ],,[
-          dnl gcc4
-          CFLAGS="$CFLAGS -Wstrict-aliasing=2"
-        ])
-
-        dnl Use std=gnu99 if we have new enough gcc
-        old_cflags=$CFLAGS
-        CFLAGS="-std=gnu99"
-        AC_TRY_COMPILE([
-        ],, [
-          CFLAGS="$CFLAGS $old_cflags"
-        ], [
-          CFLAGS="$old_cflags"
-        ])
-
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+      #if __GNUC__ < 4
+      #  error old gcc
+      #endif
+      ]], [[]])],[
+        dnl gcc4
+        CFLAGS="$CFLAGS -Wstrict-aliasing=2"
+      ],[])
   ])
 ])
 
@@ -239,7 +251,7 @@ AC_DEFUN([DC_DOVECOT_MODULEDIR],[
 	AC_ARG_WITH(moduledir,
 	[  --with-moduledir=DIR    Base directory for dynamically loadable modules],
 		[moduledir="$withval"],
-		[moduledir="$dovecot_moduledir"]
+		[moduledir="\$(libdir)/dovecot"]
 	)
 	AC_SUBST(moduledir)
 ])
@@ -259,55 +271,11 @@ AC_DEFUN([DC_PLUGIN_DEPS],[
 ])
 
 AC_DEFUN([DC_DOVECOT_TEST_WRAPPER],[
+  AC_REQUIRE_AUX_FILE([run-test.sh.in])
   AC_ARG_VAR([VALGRIND], [Path to valgrind])
   AC_PATH_PROG(VALGRIND, valgrind, reject)
   AS_IF([test "$VALGRIND" != reject], [
-    cat > run-test.sh <<_DC_EOF
-#!/bin/sh
-top_srcdir=\$[1]
-shift
-
-if test "\$NOUNDEF" != ""; then
-  noundef="--undef-value-errors=no"
-else
-  noundef=""
-fi
-
-if test "\$NOCHILDREN" != ""; then
-  trace_children="--trace-children=no"
-else
-  trace_children="--trace-children=yes"
-fi
-
-skip_path="\$top_srcdir/run-test-valgrind.exclude"
-if test -r "\$skip_path" && grep -w -q "\$(basename \$[1])" "\$skip_path"; then
-  NOVALGRIND=true
-fi
-
-if test "\$NOVALGRIND" != ""; then
-  \$[*]
-  ret=\$?
-else
-  test_out="test.out~\$\$"
-  trap "rm -f \$test_out" 0 1 2 3 15
-  supp_path="\$top_srcdir/run-test-valgrind.supp"
-  if test -r "\$supp_path"; then
-    $VALGRIND -q \$trace_children --error-exitcode=213 --leak-check=full --gen-suppressions=all --suppressions="\$supp_path" --log-file=\$test_out \$noundef \$[*]
-  else
-    $VALGRIND -q \$trace_children --error-exitcode=213 --leak-check=full --gen-suppressions=all --log-file=\$test_out \$noundef \$[*]
-  fi
-  ret=\$?
-  if test -s \$test_out; then
-    cat \$test_out
-    ret=1
-  fi
-fi
-if test \$ret != 0; then
-  echo "Failed to run: \$[*]" >&2
-fi
-exit \$ret
-_DC_EOF
-    RUN_TEST='$(LIBTOOL) execute $(SHELL) $(top_builddir)/run-test.sh $(top_srcdir)'
+    RUN_TEST='$(LIBTOOL) execute $(SHELL) $(top_builddir)/build-aux/run-test.sh'
   ], [
     RUN_TEST=''
   ])
@@ -368,7 +336,7 @@ AC_DEFUN([DC_DOVECOT],[
 	)
 
 	AC_ARG_WITH(dovecot-install-dirs,
-		[AC_HELP_STRING([--with-dovecot-install-dirs],
+		[AS_HELP_STRING([--with-dovecot-install-dirs],
 		[Use install directories configured for Dovecot (default)])],
 	AS_IF([test x$withval = xno], [
 		use_install_dirs=no
@@ -421,6 +389,7 @@ AC_DEFUN([DC_DOVECOT],[
 	])
 
 	CC_CLANG
+	CC_STRICT_BOOL
 	DC_DOVECOT_CFLAGS
 	DC_DOVECOT_HARDENING
 
@@ -430,7 +399,7 @@ AC_DEFUN([DC_DOVECOT],[
 	AX_SUBST_L([LIBDOVECOT_DEPS], [LIBDOVECOT_LOGIN_DEPS], [LIBDOVECOT_SQL_DEPS], [LIBDOVECOT_SSL_DEPS], [LIBDOVECOT_COMPRESS_DEPS], [LIBDOVECOT_LDA_DEPS], [LIBDOVECOT_STORAGE_DEPS], [LIBDOVECOT_DSYNC_DEPS], [LIBDOVECOT_LIBFTS_DEPS])
 	AX_SUBST_L([LIBDOVECOT_INCLUDE], [LIBDOVECOT_LDA_INCLUDE], [LIBDOVECOT_AUTH_INCLUDE], [LIBDOVECOT_DOVEADM_INCLUDE], [LIBDOVECOT_SERVICE_INCLUDE], [LIBDOVECOT_STORAGE_INCLUDE], [LIBDOVECOT_LOGIN_INCLUDE], [LIBDOVECOT_SQL_INCLUDE])
 	AX_SUBST_L([LIBDOVECOT_IMAP_LOGIN_INCLUDE], [LIBDOVECOT_CONFIG_INCLUDE], [LIBDOVECOT_IMAP_INCLUDE], [LIBDOVECOT_POP3_INCLUDE], [LIBDOVECOT_SUBMISSION_INCLUDE], [LIBDOVECOT_LMTP_INCLUDE], [LIBDOVECOT_DSYNC_INCLUDE], [LIBDOVECOT_IMAPC_INCLUDE], [LIBDOVECOT_FTS_INCLUDE])
-	AX_SUBST_L([LIBDOVECOT_NOTIFY_INCLUDE], [LIBDOVECOT_PUSH_NOTIFICATION_INCLUDE], [LIBDOVECOT_ACL_INCLUDE], [LIBDOVECOT_LIBFTS_INCLUDE])
+	AX_SUBST_L([LIBDOVECOT_NOTIFY_INCLUDE], [LIBDOVECOT_PUSH_NOTIFICATION_INCLUDE], [LIBDOVECOT_ACL_INCLUDE], [LIBDOVECOT_LIBFTS_INCLUDE], [LIBDOVECOT_LUA_INCLUDE])
 	AX_SUBST_L([DOVECOT_LUA_LIBS], [DOVECOT_LUA_CFLAGS], [LIBDOVECOT_LUA], [LIBDOVECOT_LUA_DEPS])
 
 	AM_CONDITIONAL(DOVECOT_INSTALLED, test "$DOVECOT_INSTALLED" = "yes")
@@ -450,7 +419,7 @@ AC_DEFUN([DC_CC_WRAPPER],[
 	cat > cc-wrapper.sh <<_DC_EOF
 #!/bin/sh
 
-if echo "\$[*]" | grep -- -ldl > /dev/null; then
+if echo "\$[*]" | grep -- -export-dynamic > /dev/null; then
   # the binary uses plugins. make sure we include everything from .a libs
   exec $CC -Wl,--whole-archive \$[*] -Wl,--no-whole-archive
 else
@@ -464,18 +433,6 @@ _DC_EOF
   ])
 ])
 
-AC_DEFUN([DC_PANDOC], [
-  AC_ARG_VAR(PANDOC, [Path to pandoc program])
-
-  dnl Optional tool for making documentation
-  AC_CHECK_PROGS(PANDOC, [pandoc], [true])
-
-  AS_IF([test "$PANDOC" = "true"], [
-   AS_IF([test ! -e README], [
-     AC_MSG_ERROR([Cannot produce documentation without pandoc - disable with PANDOC=false ./configure])
-   ])
-  ])
-])
 # warnings.m4 serial 11
 dnl Copyright (C) 2008-2015 Free Software Foundation, Inc.
 dnl This file is free software; the Free Software Foundation
@@ -566,6 +523,15 @@ AC_DEFUN([CC_CLANG],[
   AC_MSG_RESULT([$have_clang])
 ])
 
+AC_DEFUN([CC_STRICT_BOOL], [
+  AS_IF([test $have_clang = yes], [
+    AC_REQUIRE([gl_UNKNOWN_WARNINGS_ARE_ERRORS])
+    gl_COMPILER_OPTION_IF([-Wstrict-bool], [
+      AC_DEFINE(HAVE_STRICT_BOOL,, [we have strict bool])
+    ])
+  ])
+])
+
 AC_DEFUN([DOVECOT_WANT_UBSAN], [
   AC_ARG_ENABLE(ubsan,
     AS_HELP_STRING([--enable-ubsan], [Enable undefined behaviour sanitizes (default=no)]),
@@ -575,7 +541,7 @@ AC_DEFUN([DOVECOT_WANT_UBSAN], [
   AS_IF([test x$want_ubsan = xyes], [
      san_flags=""
      gl_COMPILER_OPTION_IF([-fsanitize=undefined], [
-             san_flags="$san_flags -fsanitize=undefined"
+             san_flags="$san_flags -fsanitize=undefined -fno-sanitize=function,vptr"
              AC_DEFINE([HAVE_FSANITIZE_UNDEFINED], [1], [Define if your compiler has -fsanitize=undefined])
      ])
      gl_COMPILER_OPTION_IF([-fno-sanitize=nonnull-attribute], [
