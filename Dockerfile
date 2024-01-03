@@ -12,7 +12,7 @@ RUN apk add --no-cache icu libstemmer libexttextcat tini \
 # we don't want any of the temporary compilation collateral to make
 # it into one of the Docker image layers.
 RUN apk add --no-cache -t dovecot_temp git autoconf automake libtool wget \
-		make gettext-dev bison flex icu-dev \
+		make gettext-dev bison flex icu-dev rpcgen \
 		openssl1.1-compat-dev gcc g++ bash libstemmer-dev \
 		libexttextcat-dev xapian-core-dev && \
     mkdir /dovecot && \
