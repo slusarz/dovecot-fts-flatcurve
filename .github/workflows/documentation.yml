@@ -16,7 +16,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Node (Bun)
-        uses: actions/setup-bun@v1
+        uses: oven-sh/setup-bun@v1
       - name: Setup Pages
         if: ${{ github.repository == 'slusarz/dovecot-fts-flatcurve' && github.ref == 'refs/heads/master' }}
         uses: actions/configure-pages@v3
