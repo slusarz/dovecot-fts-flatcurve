@@ -18,7 +18,10 @@ These ports are exposed by default:
 To run the latest version from master, use the command:
 
 ```sh
-docker run ghcr.io/slusarz/dovecot-fts-flatcurve:master
+docker run --rm \
+  -p 24:24 \
+  -p 143:143 \
+  ghcr.io/slusarz/dovecot-fts-flatcurve:master
 ```
 
 :::details Further Details
