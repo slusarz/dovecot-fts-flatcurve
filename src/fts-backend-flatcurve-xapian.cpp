@@ -302,7 +302,8 @@ fts_flatcurve_xapian_db_iter_next(struct flatcurve_xapian_db_iter *iter)
 	if ((iter->dirp == NULL) || (d = readdir(iter->dirp)) == NULL)
 		return FALSE;
 
-	if ((strcmp(d->d_name, ".") == 0) || (strcmp(d->d_name, "..") == 0))
+	if ((strcmp(d->d_name, ".") == 0) || (strcmp(d->d_name, "..") == 0) ||
+	    str_begins(d->d_name, ".nfs"))
 		return fts_flatcurve_xapian_db_iter_next(iter);
 
 	iter->path = fts_flatcurve_xapian_create_db_path(iter->backend,
