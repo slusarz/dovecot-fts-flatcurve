@@ -35,3 +35,4 @@ Makefile.in
 docs/.vitepress/cache
 docs/.vitepress/dist
 node_modules/
+bun.lockb
