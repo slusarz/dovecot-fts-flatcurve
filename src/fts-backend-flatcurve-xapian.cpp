@@ -707,9 +707,11 @@ fts_flatcurve_xapian_read_db(struct flatcurve_fts_backend *backend,
 	iter = hash_table_iterate_init(x->dbs);
 	while (hash_table_iterate(iter, x->dbs, &key, &val)) {
 		xdb = (struct flatcurve_xapian_db *)val;
-		if (!fts_flatcurve_xapian_db_read_add(backend, xdb))
+		if (!fts_flatcurve_xapian_db_read_add(backend, xdb)) {
 			/* If we can't open a DB, delete it. */
 			fts_flatcurve_xapian_delete(backend, xdb->dbpath);
+			hash_table_remove(x->dbs, key);
+		}
 	}
 	hash_table_iterate_deinit(&iter);
 
