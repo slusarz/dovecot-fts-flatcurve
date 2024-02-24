@@ -487,7 +487,8 @@ fts_backend_flatcurve_iterate_ns(struct fts_backend *_backend,
 	struct mailbox_list_iterate_context *iter;
 	const enum mailbox_list_iter_flags iter_flags =
 		MAILBOX_LIST_ITER_NO_AUTO_BOXES |
-		MAILBOX_LIST_ITER_RETURN_NO_FLAGS;
+		MAILBOX_LIST_ITER_RETURN_NO_FLAGS |
+		MAILBOX_LIST_ITER_SKIP_ALIASES;
 	enum mailbox_flags mbox_flags = 0;
 	pool_t pool;
 	bool pool_alloc = FALSE;
@@ -495,7 +496,7 @@ fts_backend_flatcurve_iterate_ns(struct fts_backend *_backend,
 	iter = mailbox_list_iter_init(_backend->ns->list, "*", iter_flags);
 	while ((info = mailbox_list_iter_next(iter)) != NULL) {
 		if ((info->flags & (MAILBOX_NOSELECT | MAILBOX_NONEXISTENT)) != 0)
-                        continue;
+			continue;
 
 		box = mailbox_alloc(backend->backend.ns->list, info->vname,
 				    mbox_flags);
