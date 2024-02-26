@@ -18,8 +18,10 @@ extern "C" {
 #include "array.h"
 #include "file-create-locked.h"
 #include "hash.h"
+#include "hex-binary.h"
 #include "mail-storage-private.h"
 #include "mail-search.h"
+#include "md5.h"
 #include "sleep.h"
 #include "str.h"
 #include "time-util.h"
@@ -512,19 +514,31 @@ fts_flatcurve_xapian_db_add(struct flatcurve_fts_backend *backend,
 
 static int fts_flatcurve_xapian_lock(struct flatcurve_fts_backend *backend)
 {
+	struct file_create_settings set;
 	struct flatcurve_xapian *x = backend->xapian;
 
-	if (x->lock_path == NULL)
-		x->lock_path = p_strdup_printf(
-			x->pool, "%s" FLATCURVE_XAPIAN_LOCK_FNAME,
-			str_c(backend->db_path));
-
-	struct file_create_settings set;
 	i_zero(&set);
 	set.lock_timeout_secs = FLATCURVE_XAPIAN_LOCK_TIMEOUT_SECS;
 	set.lock_settings.close_on_free = TRUE;
 	set.lock_settings.unlink_on_free = TRUE;
 	set.lock_settings.lock_method = backend->parsed_lock_method;
+
+	if (x->lock_path == NULL) {
+		if (str_len(backend->volatile_dir) > 0) {
+			unsigned char db_path_hash[MD5_RESULTLEN];
+			md5_get_digest(str_c(backend->db_path), str_len(backend->db_path),
+				db_path_hash);
+			x->lock_path = p_strdup_printf(
+				x->pool, "%s/" FLATCURVE_XAPIAN_LOCK_FNAME ".%s",
+				str_c(backend->volatile_dir),
+				binary_to_hex(db_path_hash, sizeof(db_path_hash)));
+			set.mkdir_mode = 0700;
+		} else {
+			x->lock_path = p_strdup_printf(
+				x->pool, "%s" FLATCURVE_XAPIAN_LOCK_FNAME,
+				str_c(backend->db_path));
+		}
+	}
 
 	bool created;
 	const char *error;
