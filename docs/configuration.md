@@ -40,6 +40,12 @@ plugin {
 }
 ```
 
+### NFS Recommendation
+
+To prevent concurrent writes to the Xapian database files, Dovecot relies on file locking.
+
+If using NFS, the [`VOLATILEDIR`](https://doc.dovecot.org/configuration_manual/nfs/#optimizations) parameter for the [`mail_location`](https://doc.dovecot.org/configuration_manual/mail_location/) configuration option should be used to perform this locking locally as opposed to on the remote server.
+
 ## Plugin Settings
 
 **The default parameters should be fine for most people.**
