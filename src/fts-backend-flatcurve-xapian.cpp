@@ -1434,8 +1434,8 @@ fts_flatcurve_xapian_optimize_box_do(struct flatcurve_fts_backend *backend,
 	if ((iter = fts_flatcurve_xapian_db_iter_init(backend, opts)) == NULL)
 		return FALSE;
 	while (fts_flatcurve_xapian_db_iter_next(iter)) {
-		if ((iter->type != FLATCURVE_XAPIAN_DB_TYPE_OPTIMIZE) &&
-		    (iter->type != FLATCURVE_XAPIAN_DB_TYPE_LOCK))
+		if ((iter->type == FLATCURVE_XAPIAN_DB_TYPE_INDEX) ||
+		    (iter->type == FLATCURVE_XAPIAN_DB_TYPE_CURRENT))
 			fts_flatcurve_xapian_delete(backend, iter->path);
 	}
 	fts_flatcurve_xapian_db_iter_deinit(&iter);
