@@ -1,0 +1,3 @@
+!include /dovecot/configs/dovecot.conf
+
+mail_location = sdbox:~/sdbox:VOLATILEDIR=~/volatile

@@ -113,6 +113,10 @@ run_test "Testing GitHub Issue #44 (Xapian indexed string too long)" \
 	/dovecot/configs/dovecot.conf \
 	/dovecot/imaptest/issue-44/issue-44
 
+run_test "Testing GitHub Issue #54 (VOLATILEDIR locking)" \
+	/dovecot/configs/dovecot.conf.issue-54 \
+	/dovecot/imaptest/small_mailbox
+
 TESTBOX=rotatetest
 run_test "Testing DB Rotation/Deletion (populating mailbox)" \
 	/dovecot/configs/dovecot.conf.issue-11 \
