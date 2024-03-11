@@ -78,6 +78,9 @@ run_test "Testing GitHub Issue #9 (1st pass)" \
 run_test "Testing GitHub Issue #9 (2nd pass; crash)" \
 	/dovecot/configs/dovecot.conf.issue-9 \
 	/dovecot/imaptest/issue-9
+run_test "Testing GitHub Issue #61" \
+	/dovecot/configs/dovecot.conf.virtual \
+	/dovecot/imaptest/issue-61
 
 TESTBOX=imaptest
 run_test "Testing GitHub Issue #10 (English)" \

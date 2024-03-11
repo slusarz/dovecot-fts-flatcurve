@@ -1,0 +1,24 @@
+messages: 1
+
+ok search or from user body body
+* search 1
+ok search or header reply-to user body body
+* search 1
+ok search or header reply-to foo body bar
+* search
+ok search or header reply-to user or header reply-to domain body body
+* search 1
+
+ok examine Virtual/Onlyinbox
+
+# From header works
+ok search or from user body body
+* search 1
+
+# Panic: file fts-search.c: line 87 (level_scores_add_vuids): assertion failed: (array_count(&vuids_arr) == array_count(&br->scores))
+ok search or header reply-to user body body
+* search 1
+ok search or header reply-to foo body bar
+* search
+ok search or header reply-to user or header reply-to domain body body
+* search 1
