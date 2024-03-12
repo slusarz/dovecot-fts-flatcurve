@@ -48,3 +48,9 @@ To compile and install, execute the following:
 make
 sudo make install
 ```
+
+## Examples
+
+### Ubuntu 20.04/22.04
+
+See: https://github.com/slusarz/dovecot-fts-flatcurve/issues/60#issuecomment-1987879138
