@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <sstream>
 #include <string>
-#include <unicode/unistr.h>
 #include "fts-flatcurve-config.h"
 extern "C" {
 #include "lib.h"
