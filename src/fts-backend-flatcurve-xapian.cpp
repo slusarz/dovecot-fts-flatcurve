@@ -24,6 +24,7 @@ extern "C" {
 #include "sleep.h"
 #include "str.h"
 #include "time-util.h"
+#include "unichar.h"
 #include "fts-backend-flatcurve.h"
 #include "fts-backend-flatcurve-xapian.h"
 #include <dirent.h>
@@ -1247,7 +1248,7 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 {
 	struct fts_flatcurve_user *fuser = ctx->backend->fuser;
 	std::string h;
-	Xapian::Utf8Iterator ustr;
+	const char *p = (const char *)data;
 	struct flatcurve_xapian *x = ctx->backend->xapian;
 
 	if (!fts_flatcurve_xapian_init_msg(ctx))
@@ -1259,12 +1260,11 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 			FLATCURVE_XAPIAN_BOOLEAN_FIELD_PREFIX + h);
 	}
 
-	ustr = Xapian::Utf8Iterator((const char *)data, size);
 	if (ctx->indexed_hdr)
 		h = str_ucase(str_c_modifiable(ctx->hdr_name));
 
 	do {
-		std::string t (ustr.raw());
+		std::string t (p, size);
 
 		/* Capital ASCII letters at the beginning of a Xapian term are
 		 * treated as a "term prefix". Check for a leading ASCII
@@ -1278,8 +1278,13 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 				FLATCURVE_XAPIAN_HEADER_PREFIX + h + t);
 		}
 		x->doc->add_term(FLATCURVE_XAPIAN_ALL_HEADERS_PREFIX + t);
+
+		unsigned int csize = uni_utf8_char_bytes(*p);
+		p += csize;
+		size -= csize;
 	} while (fuser->set.substring_search &&
-		 ((++ustr).left() >= fuser->set.min_term_size));
+		(size >= 0) &&
+		(uni_utf8_strlen(p) >= fuser->set.min_term_size));
 }
 
 void
@@ -1287,16 +1292,14 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 				const unsigned char *data, size_t size)
 {
 	struct fts_flatcurve_user *fuser = ctx->backend->fuser;
-	Xapian::Utf8Iterator ustr;
+	const char *p = (const char *)data;
 	struct flatcurve_xapian *x = ctx->backend->xapian;
 
 	if (!fts_flatcurve_xapian_init_msg(ctx))
 		return;
 
-	ustr = Xapian::Utf8Iterator((const char *)data, size);
-
 	do {
-		std::string t (ustr.raw());
+		std::string t (p, size);
 
 		/* Capital ASCII letters at the beginning of a Xapian term are
 		 * treated as a "term prefix". Check for a leading ASCII
@@ -1306,8 +1309,13 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 			t[0] = i_tolower(t[0]);
 
 		x->doc->add_term(t);
+
+		unsigned int csize = uni_utf8_char_bytes(*p);
+		p += csize;
+		size -= csize;
 	} while (fuser->set.substring_search &&
-		 ((++ustr).left() >= fuser->set.min_term_size));
+		(size >= 0) &&
+		(uni_utf8_strlen(p) >= fuser->set.min_term_size));
 }
 
 void fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend)
