@@ -14,11 +14,6 @@ limits will result in faster indexing for large transactions (i.e. indexing a
 large mailbox) at the expense of high memory usage. The default value should
 be sufficient to allow indexing in a 256 MB maximum size process.`
       },
-      fts_flatcurve_max_term_size: {
-        default: "30",
-        value: "integer, set to `0` to use the Xapian default",
-        summary: `The maximum number of characters in a term to index.`,
-      },
       fts_flatcurve_min_term_size: {
         default: "2",
         value: "integer",

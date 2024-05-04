@@ -12,10 +12,6 @@
 #define FTS_FLATCURVE_PLUGIN_COMMIT_LIMIT "fts_flatcurve_commit_limit"
 #define FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT 500
 
-#define FTS_FLATCURVE_PLUGIN_MAX_TERM_SIZE "fts_flatcurve_max_term_size"
-#define FTS_FLATCURVE_MAX_TERM_SIZE_DEFAULT 30
-#define FTS_FLATCURVE_MAX_TERM_SIZE_MAX 200
-
 #define FTS_FLATCURVE_PLUGIN_MIN_TERM_SIZE "fts_flatcurve_min_term_size"
 #define FTS_FLATCURVE_MIN_TERM_SIZE_DEFAULT 2
 
@@ -66,21 +62,6 @@ fts_flatcurve_plugin_init_settings(struct mail_user *user,
 		set->commit_limit = val;
 	} else {
 		set->commit_limit = FTS_FLATCURVE_COMMIT_LIMIT_DEFAULT;
-	}
-
-	pset = mail_user_plugin_getenv(user,
-				       FTS_FLATCURVE_PLUGIN_MAX_TERM_SIZE);
-	if (pset != NULL) {
-		if (str_to_uint(pset, &val) < 0) {
-			e_warning(user->event, FTS_FLATCURVE_DEBUG_PREFIX
-				  "Invalid %s: %s",
-				  FTS_FLATCURVE_PLUGIN_MAX_TERM_SIZE, pset);
-			return -1;
-		}
-		set->max_term_size = I_MIN(val,
-					   FTS_FLATCURVE_MAX_TERM_SIZE_MAX);
-	} else {
-		set->max_term_size = FTS_FLATCURVE_MAX_TERM_SIZE_DEFAULT;
 	}
 
 	pset = mail_user_plugin_getenv(user,
