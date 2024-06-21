@@ -316,7 +316,7 @@ fts_backend_flatcurve_update_build_more(struct fts_backend_update_context *_ctx,
 
 	/* Xapian has a hard limit of "245 bytes", at least with the glass
 	 * and chert backends. */
-	size = I_MIN(size, FTS_FLATCURVE_MAX_TERM_SIZE);
+	(void)uni_utf8_partial_strlen_n(data, I_MIN(size, FTS_FLATCURVE_MAX_TERM_SIZE), &size);
 
 	switch (ctx->type) {
 	case FTS_BACKEND_BUILD_KEY_HDR:
