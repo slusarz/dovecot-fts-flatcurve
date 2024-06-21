@@ -1284,7 +1284,7 @@ fts_flatcurve_xapian_index_header(struct flatcurve_fts_backend_update_context *c
 		size -= csize;
 	} while (fuser->set.substring_search &&
 		(size >= 0) &&
-		(uni_utf8_strlen(p) >= fuser->set.min_term_size));
+		(uni_utf8_strlen_n(p, size) >= fuser->set.min_term_size));
 }
 
 void
@@ -1315,7 +1315,7 @@ fts_flatcurve_xapian_index_body(struct flatcurve_fts_backend_update_context *ctx
 		size -= csize;
 	} while (fuser->set.substring_search &&
 		(size >= 0) &&
-		(uni_utf8_strlen(p) >= fuser->set.min_term_size));
+		(uni_utf8_strlen_n(p, size) >= fuser->set.min_term_size));
 }
 
 void fts_flatcurve_xapian_delete_index(struct flatcurve_fts_backend *backend)
