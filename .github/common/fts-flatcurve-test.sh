@@ -120,6 +120,10 @@ run_test "Testing GitHub Issue #54 (VOLATILEDIR locking)" \
 	/dovecot/configs/dovecot.conf.issue-54 \
 	/dovecot/imaptest/small_mailbox
 
+run_test "Testing GitHub Issue #62 (Invalid tokenized string)" \
+	/dovecot/configs/dovecot.conf \
+	/dovecot/imaptest/issue-62/issue-62
+
 TESTBOX=rotatetest
 run_test "Testing DB Rotation/Deletion (populating mailbox)" \
 	/dovecot/configs/dovecot.conf.issue-11 \
