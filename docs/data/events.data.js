@@ -19,6 +19,14 @@ export default {
           uid: "The UID that was added to the FTS index"
         }
       },
+      fts_flatcurve_index_truncate: {
+        summary: "Emitted when an index term is truncated.",
+        fields: {
+          mailbox: "The mailbox name",
+          orig_size: "The original size of the term, before truncation",
+          uid: "The UID being indexed"
+        }
+      },
       fts_flatcurve_last_uid: {
         summary: "Emitted when the system queries for the last UID indexed.",
         fields: {
