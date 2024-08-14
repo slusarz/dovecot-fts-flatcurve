@@ -35,6 +35,7 @@ plugin {
 
   # Maximum term length can be set via the 'maxlen' argument (maxlen is
   # specified in bytes, not number of UTF-8 characters)
+  fts_tokenizer_email_address = maxlen=100
   fts_tokenizer_generic = algorithm=simple maxlen=30
 
   # OPTIONAL: Recommended default FTS core configuration
