@@ -324,7 +324,7 @@ fts_backend_flatcurve_update_build_more(struct fts_backend_update_context *_ctx,
 			add_str("mailbox", str_c(ctx->backend->boxname))->
 			add_int("uid", ctx->uid)->
 			add_int("orig_size", size)->event(),
-			"Truncated token uid=%d orig_size=%d", ctx->uid, size);
+			"Truncated token uid=%d orig_size=%ld", ctx->uid, size);
 
 	switch (ctx->type) {
 	case FTS_BACKEND_BUILD_KEY_HDR:
