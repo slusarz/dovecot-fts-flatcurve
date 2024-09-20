@@ -1794,6 +1794,7 @@ fts_flatcurve_xapian_query_iter_deinit(struct fts_flatcurve_xapian_query_iter **
 	 * allocated internally. */
 	*_iter = NULL;
 	iter->i.~MSetIterator();
+	iter->m.~MSet();
 	delete(iter->enquire);
 	p_free(iter->query->pool, iter->result);
 	p_free(iter->query->pool, iter);
