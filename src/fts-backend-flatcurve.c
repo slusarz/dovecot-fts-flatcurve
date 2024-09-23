@@ -329,10 +329,10 @@ fts_backend_flatcurve_update_build_more(struct fts_backend_update_context *_ctx,
 	switch (ctx->type) {
 	case FTS_BACKEND_BUILD_KEY_HDR:
 	case FTS_BACKEND_BUILD_KEY_MIME_HDR:
-		fts_flatcurve_xapian_index_header(ctx, data, size);
+		fts_flatcurve_xapian_index_header(ctx, data, new_size);
 		break;
 	case FTS_BACKEND_BUILD_KEY_BODY_PART:
-		fts_flatcurve_xapian_index_body(ctx, data, size);
+		fts_flatcurve_xapian_index_body(ctx, data, new_size);
 		break;
 	default:
 		i_unreached();
