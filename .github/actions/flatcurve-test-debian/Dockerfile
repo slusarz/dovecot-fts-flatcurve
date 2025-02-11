@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
         curl \
         gpg
 
-RUN curl https://repo.dovecot.org/DOVECOT-REPO-GPG | gpg --import && \
+RUN curl https://repo.dovecot.org/DOVECOT-REPO-GPG-2.3 | gpg --import && \
         gpg --export ED409DA1 > /etc/apt/trusted.gpg.d/dovecot.gpg && \
         echo "deb https://repo.dovecot.org/ce-2.3-latest/debian/bullseye bullseye main" >> /etc/apt/sources.list.d/dovecot.list
 
@@ -39,10 +39,10 @@ RUN git clone --depth 1 --branch ${DOVECOT_VERSION} \
 RUN cd /dovecot/core && \
 	./autogen.sh && \
 	PANDOC=false ./configure --with-stemmer --with-textcat --with-icu && \
-	make install
+	make -j install
 
 ADD flatcurve/ /dovecot/flatcurve
-RUN cd /dovecot/flatcurve && ./autogen.sh && ./configure && make install
+RUN cd /dovecot/flatcurve && ./autogen.sh && ./configure && make -j install
 
 # Users dovecot and dovenull are created by dovecot-imaptest package
 RUN useradd vmail && \

@@ -33,15 +33,16 @@ RUN cd /dovecot/core && \
 	./autogen.sh && \
 	PANDOC=false ./configure --with-stemmer --with-textcat --with-icu \
 		--enable-hardening=no && \
-	make install
+	make -j install
 
 ADD flatcurve/ /dovecot/flatcurve
-RUN cd /dovecot/flatcurve && ./autogen.sh && ./configure && make install
+RUN cd /dovecot/flatcurve && ./autogen.sh && ./configure && make -j install
 
 # Download imaptest from GitHub page
 # As this was statically built with glibc, we need the gcompat Alpine package
-RUN wget https://github.com/dovecot/imaptest/releases/download/latest/imaptest.tgz \
-       -O - | tar -xzvf - -C /usr/local/bin
+RUN wget https://github.com/dovecot/imaptest/releases/download/latest/imaptest-x86_64-debian-11 \
+       -O /usr/local/bin/imaptest &&
+       chmod +x /usr/local/bin/imaptest
 
 # vmail needs to come first, as it needs to be the lowest UID in order to
 # have correct permissions to access mailbox directory
