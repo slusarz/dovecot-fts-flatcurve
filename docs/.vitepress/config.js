@@ -7,7 +7,7 @@ export default defineConfig({
   title: "FTS Flatcurve",
   lang: 'en-US',
   description: "Documentation for the fts-flatcurve Dovecot plugin",
-  srcExclude: ['/DOCS.md'],
+  srcExclude: ['DOCS.md'],
 
   vite: {
     plugins: [pagefindPlugin()],
