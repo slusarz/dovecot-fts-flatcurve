@@ -26,6 +26,11 @@ export default defineConfig({
 
     sidebar: [
       {
+        items: [
+          { text: 'End of Life Announcement', link: '/eol' },
+        ]
+      },
+      {
         text: 'Introduction',
         collapsed: false,
         items: [

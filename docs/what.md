@@ -4,10 +4,8 @@ layout: doc
 
 # What is Flatcurve?
 
-::: warning Important Note
-FTS Flatcurve will become the default Dovecot Community Edition (CE) FTS driver in v2.4 ([merged into Dovecot core in April 2022](https://github.com/dovecot/core/commit/137572e77fdf79b2e8d607021667741ed3f19da1)).
-
-FTS Flatcurve will continued to be maintained separately in GitHub for backwards support with ___Dovecot CE v2.3.x___. However, it is possible that configuration and features may differ between this v2.3 code and core v2.4 code.
+::: danger EOL (End of Life) Notice
+See [Flatcurve Dovecot CE 2.3 EOL Notice](eol).
 :::
 
 This is a [Dovecot](https://dovecot.org/) FTS (Full Text Search) plugin to enable message indexing using the [Xapian](https://xapian.org/) Open Source Search Engine Library.

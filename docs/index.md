@@ -41,3 +41,7 @@ features:
       src: ./doc.png
       alt: Document Icon
 ---
+
+::: danger EOL (End of Life) Notice
+See [Flatcurve Dovecot CE 2.3 EOL Notice](eol).
+:::
