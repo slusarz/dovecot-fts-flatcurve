@@ -1,6 +1,7 @@
 {
   "devDependencies": {
     "markdown-it": "^15.0.0",
+    "typescript": "^5.9.2",
     "vitepress": "^1.6.3",
     "vitepress-plugin-pagefind": "^0.4.13"
   },
